@@ -1,0 +1,453 @@
+/**
+ * End-to-end checks against a real server.
+ *
+ * These cover the boundaries that matter most: nothing is reachable without
+ * signing in, one game master cannot see another's material, a player can only
+ * open the sheet of the character they are actually playing, and a cross-site
+ * request cannot change anything.
+ */
+
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { serverOptions } from "../src/server/app.ts";
+import { registerServer } from "../src/server/ws.ts";
+import { gms } from "../src/db/queries.ts";
+import { unique } from "./helpers.ts";
+
+let base: string;
+let server: ReturnType<typeof Bun.serve>;
+
+const ORIGIN_HEADER = () => ({ Origin: base });
+
+beforeAll(async () => {
+  server = Bun.serve({ ...serverOptions, port: 0 });
+  registerServer(server as never);
+  base = server.url.origin.replace(/\/$/, "");
+});
+
+afterAll(() => server.stop(true));
+
+/** A signed-in game master, represented by the cookie their browser would hold. */
+async function signIn(): Promise<{ cookie: string; email: string }> {
+  const email = `${unique("gm")}@example.com`;
+  const password = "a-sufficiently-long-password";
+  gms.create(email, await Bun.password.hash(password, { algorithm: "argon2id" }));
+
+  const response = await fetch(`${base}/api/auth/gm/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Origin: base },
+    body: JSON.stringify({ email, password }),
+  });
+  expect(response.status).toBe(200);
+
+  const cookie = response.headers.getSetCookie().map((entry) => entry.split(";")[0]).join("; ");
+  return { cookie, email };
+}
+
+function authed(cookie: string, init: RequestInit = {}): RequestInit {
+  return { ...init, headers: { Cookie: cookie, Origin: base, ...(init.headers ?? {}) } };
+}
+
+/** Creates a campaign with one PC and one NPC, and starts a session with both. */
+async function makeTable(cookie: string) {
+  const campaignForm = new FormData();
+  campaignForm.set("name", unique("Campaign"));
+  const campaign = await (
+    await fetch(`${base}/api/campaigns`, authed(cookie, { method: "POST", body: campaignForm }))
+  ).json();
+
+  const addCharacter = async (kind: "pc" | "npc") => {
+    const form = new FormData();
+    form.set("campaignId", campaign.campaign.id);
+    form.set("kind", kind);
+    form.set("name", unique(kind));
+    form.set("sheet", new File(["<h1>sheet</h1>"], "sheet.html"));
+    const response = await fetch(
+      `${base}/api/characters`,
+      authed(cookie, { method: "POST", body: form }),
+    );
+    return (await response.json()).character;
+  };
+
+  const pc = await addCharacter("pc");
+  const npc = await addCharacter("npc");
+
+  const session = (
+    await (
+      await fetch(
+        `${base}/api/sessions`,
+        authed(cookie, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ campaignId: campaign.campaign.id }),
+        }),
+      )
+    ).json()
+  ).session;
+
+  for (const character of [pc, npc]) {
+    await fetch(
+      `${base}/api/sessions/${session.id}/characters/${character.id}`,
+      authed(cookie, { method: "POST" }),
+    );
+  }
+
+  return { campaign: campaign.campaign, pc, npc, session };
+}
+
+/** Joins a session as a player and returns their cookie. */
+async function joinAs(code: string, name: string): Promise<string> {
+  const response = await fetch(`${base}/api/sessions/join`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Origin: base },
+    body: JSON.stringify({ code, name }),
+  });
+  expect(response.status).toBe(201);
+  return response.headers.getSetCookie().map((entry) => entry.split(";")[0]).join("; ");
+}
+
+/* -------------------------------------------------------------------------- */
+
+describe("nothing is reachable without signing in", () => {
+  const guarded = [
+    "/api/campaigns",
+    "/api/characters",
+    "/api/sessions",
+  ];
+
+  test.each(guarded)("%s refuses an anonymous caller", async (path) => {
+    const response = await fetch(base + path);
+    expect(response.status).toBe(401);
+  });
+
+  test("an anonymous caller cannot reach a sheet or an image", async () => {
+    const { cookie } = await signIn();
+    const { pc } = await makeTable(cookie);
+
+    expect((await fetch(`${base}/sheets/${pc.id}`)).status).toBe(404);
+    expect((await fetch(`${base}/uploads/images/anything`)).status).toBe(401);
+  });
+
+  test("an unknown path is a 404, not the application", async () => {
+    expect((await fetch(`${base}/not-a-page`)).status).toBe(404);
+  });
+});
+
+describe("one game master cannot see another's material", () => {
+  test("a campaign, its characters and its sessions are all invisible", async () => {
+    const owner = await signIn();
+    const stranger = await signIn();
+    const { campaign, pc, session } = await makeTable(owner.cookie);
+
+    const campaigns = await (
+      await fetch(`${base}/api/campaigns`, authed(stranger.cookie))
+    ).json();
+    expect(campaigns.campaigns.find((entry: { id: string }) => entry.id === campaign.id))
+      .toBeUndefined();
+
+    // Probing by id reveals nothing either.
+    expect(
+      (await fetch(`${base}/api/sessions/${session.id}`, authed(stranger.cookie))).status,
+    ).toBe(404);
+    expect((await fetch(`${base}/sheets/${pc.id}`, authed(stranger.cookie))).status).toBe(404);
+    expect(
+      (await fetch(
+        `${base}/api/campaigns/${campaign.id}`,
+        authed(stranger.cookie, { method: "DELETE" }),
+      )).status,
+    ).toBe(404);
+  });
+});
+
+describe("character sheets reach only the right people", () => {
+  test("a player opens their own sheet and nobody else's", async () => {
+    const gm = await signIn();
+    const { pc, npc, session } = await makeTable(gm.cookie);
+
+    // A second player character, so there is someone else's sheet to try.
+    const form = new FormData();
+    form.set("campaignId", pc.campaignId);
+    form.set("kind", "pc");
+    form.set("name", unique("pc"));
+    form.set("sheet", new File(["<h1>other</h1>"], "sheet.html"));
+    const other = (
+      await (await fetch(`${base}/api/characters`, authed(gm.cookie, { method: "POST", body: form }))).json()
+    ).character;
+    await fetch(
+      `${base}/api/sessions/${session.id}/characters/${other.id}`,
+      authed(gm.cookie, { method: "POST" }),
+    );
+
+    const alice = await joinAs(session.code, "Alice");
+    await fetch(
+      `${base}/api/sessions/${session.id}/claim`,
+      authed(alice, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ characterId: pc.id }),
+      }),
+    );
+
+    // Her own character: allowed.
+    expect((await fetch(`${base}/sheets/${pc.id}`, { headers: { Cookie: alice } })).status).toBe(200);
+    // Another player's character, and an NPC: both hidden.
+    expect((await fetch(`${base}/sheets/${other.id}`, { headers: { Cookie: alice } })).status).toBe(404);
+    expect((await fetch(`${base}/sheets/${npc.id}`, { headers: { Cookie: alice } })).status).toBe(404);
+    // The game master sees everything in their own campaign.
+    expect((await fetch(`${base}/sheets/${npc.id}`, { headers: { Cookie: gm.cookie } })).status).toBe(200);
+  });
+
+  test("a sheet is served into an opaque origin", async () => {
+    const gm = await signIn();
+    const { pc } = await makeTable(gm.cookie);
+
+    const response = await fetch(`${base}/sheets/${pc.id}`, { headers: { Cookie: gm.cookie } });
+    const policy = response.headers.get("content-security-policy") ?? "";
+
+    // `sandbox` without `allow-same-origin` is what denies the sheet access to
+    // this app's cookies, storage and DOM.
+    expect(policy).toContain("sandbox");
+    expect(policy).not.toContain("allow-same-origin");
+    expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(response.headers.get("content-type")).toContain("text/html");
+  });
+});
+
+describe("players are read-only", () => {
+  test("a player cannot reorder, set the turn, or touch the library", async () => {
+    const gm = await signIn();
+    const { pc, session } = await makeTable(gm.cookie);
+    const player = await joinAs(session.code, "Bob");
+
+    const attempts = [
+      fetch(
+        `${base}/api/sessions/${session.id}/order`,
+        authed(player, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ order: [pc.id] }),
+        }),
+      ),
+      fetch(
+        `${base}/api/sessions/${session.id}/turn`,
+        authed(player, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ characterId: pc.id }),
+        }),
+      ),
+      fetch(`${base}/api/sessions/${session.id}/end`, authed(player, { method: "POST" })),
+      fetch(`${base}/api/campaigns`, authed(player)),
+      fetch(`${base}/api/characters/${pc.id}`, authed(player, { method: "DELETE" })),
+    ];
+
+    for (const response of await Promise.all(attempts)) {
+      expect(response.status).toBeGreaterThanOrEqual(401);
+      expect(response.status).toBeLessThan(500);
+    }
+  });
+
+  test("a player cannot read a session they did not join", async () => {
+    const gm = await signIn();
+    const first = await makeTable(gm.cookie);
+    const second = await makeTable(gm.cookie);
+    const player = await joinAs(first.session.code, "Carol");
+
+    expect(
+      (await fetch(`${base}/api/sessions/${second.session.id}`, { headers: { Cookie: player } }))
+        .status,
+    ).toBe(401);
+  });
+});
+
+describe("cross-site requests are refused", () => {
+  test("a mutating request from another origin is blocked", async () => {
+    const { cookie } = await signIn();
+    const form = new FormData();
+    form.set("name", unique("Campaign"));
+
+    const response = await fetch(`${base}/api/campaigns`, {
+      method: "POST",
+      headers: { Cookie: cookie, Origin: "https://evil.example.com" },
+      body: form,
+    });
+
+    expect(response.status).toBe(403);
+  });
+
+  test("a browser's own cross-site marker is enough to block it", async () => {
+    const { cookie } = await signIn();
+    const response = await fetch(`${base}/api/campaigns`, {
+      method: "POST",
+      headers: { Cookie: cookie, Origin: base, "Sec-Fetch-Site": "cross-site" },
+      body: new FormData(),
+    });
+
+    expect(response.status).toBe(403);
+  });
+
+  test("reading is unaffected", async () => {
+    const { cookie } = await signIn();
+    const response = await fetch(`${base}/api/campaigns`, {
+      headers: { Cookie: cookie, Origin: "https://evil.example.com" },
+    });
+    // A cross-origin read cannot see the response body anyway, and blocking it
+    // would break nothing an attacker cares about.
+    expect(response.status).toBe(200);
+  });
+});
+
+describe("session cookies", () => {
+  test("are http-only and same-site", async () => {
+    const email = `${unique("gm")}@example.com`;
+    const password = "a-sufficiently-long-password";
+    gms.create(email, await Bun.password.hash(password, { algorithm: "argon2id" }));
+
+    const response = await fetch(`${base}/api/auth/gm/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Origin: base },
+      body: JSON.stringify({ email, password }),
+    });
+
+    const cookie = response.headers.getSetCookie().find((entry) => entry.startsWith("gm_sid="))!;
+    expect(cookie.toLowerCase()).toContain("httponly");
+    expect(cookie.toLowerCase()).toContain("samesite=lax");
+    expect(cookie.toLowerCase()).toContain("path=/");
+  });
+
+  test("sign-in failures say the same thing whatever the cause", async () => {
+    const email = `${unique("gm")}@example.com`;
+    gms.create(email, await Bun.password.hash("the-real-password", { algorithm: "argon2id" }));
+
+    const wrongPassword = await (
+      await fetch(`${base}/api/auth/gm/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Origin: base },
+        body: JSON.stringify({ email, password: "not-the-password" }),
+      })
+    ).json();
+
+    const unknownEmail = await (
+      await fetch(`${base}/api/auth/gm/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Origin: base },
+        body: JSON.stringify({ email: "nobody@example.com", password: "not-the-password" }),
+      })
+    ).json();
+
+    // Identical messages: whether an address has an account is not disclosed.
+    expect(wrongPassword.error.message).toBe(unknownEmail.error.message);
+  });
+});
+
+describe("a player leaving", () => {
+  test("frees their name and their character so they can come back", async () => {
+    const gm = await signIn();
+    const { pc, session } = await makeTable(gm.cookie);
+
+    const first = await joinAs(session.code, "Frank");
+    await fetch(
+      `${base}/api/sessions/${session.id}/claim`,
+      authed(first, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ characterId: pc.id }),
+      }),
+    );
+
+    await fetch(`${base}/api/auth/player/leave`, authed(first, { method: "POST" }));
+
+    // The same name works again, and the character they held is free.
+    const second = await joinAs(session.code, "Frank");
+    const claim = await fetch(
+      `${base}/api/sessions/${session.id}/claim`,
+      authed(second, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ characterId: pc.id }),
+      }),
+    );
+    expect(claim.status).toBe(200);
+  });
+
+  test("a refresh keeps the same identity and character", async () => {
+    const gm = await signIn();
+    const { pc, session } = await makeTable(gm.cookie);
+    const player = await joinAs(session.code, "Grace");
+
+    await fetch(
+      `${base}/api/sessions/${session.id}/claim`,
+      authed(player, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ characterId: pc.id }),
+      }),
+    );
+
+    // A reload is just another request carrying the same cookie.
+    const me = await (
+      await fetch(`${base}/api/auth/me`, { headers: { Cookie: player } })
+    ).json();
+
+    expect(me.kind).toBe("player");
+    expect(me.player.name).toBe("Grace");
+    expect(me.player.claimedCharacterId).toBe(pc.id);
+  });
+});
+
+describe("ending a session", () => {
+  test("freezes it against every further change", async () => {
+    const gm = await signIn();
+    const { pc, session } = await makeTable(gm.cookie);
+    await fetch(`${base}/api/sessions/${session.id}/end`, authed(gm.cookie, { method: "POST" }));
+
+    // The owner is still the owner, but an ended session accepts nothing.
+    const mutations = await Promise.all([
+      fetch(
+        `${base}/api/sessions/${session.id}/characters/${pc.id}`,
+        authed(gm.cookie, { method: "DELETE" }),
+      ),
+      fetch(
+        `${base}/api/sessions/${session.id}/order`,
+        authed(gm.cookie, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ order: [pc.id] }),
+        }),
+      ),
+      fetch(
+        `${base}/api/sessions/${session.id}/turn/advance`,
+        authed(gm.cookie, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ direction: "next" }),
+        }),
+      ),
+    ]);
+
+    for (const response of mutations) expect(response.status).toBe(409);
+
+    // Reading it back still works, so the session stays visible as history.
+    expect(
+      (await fetch(`${base}/api/sessions/${session.id}`, authed(gm.cookie))).status,
+    ).toBe(200);
+  });
+
+  test("revokes the code and cuts the player off", async () => {
+    const gm = await signIn();
+    const { session } = await makeTable(gm.cookie);
+    const player = await joinAs(session.code, "Dave");
+
+    await fetch(`${base}/api/sessions/${session.id}/end`, authed(gm.cookie, { method: "POST" }));
+
+    const rejoin = await fetch(`${base}/api/sessions/join`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Origin: base },
+      body: JSON.stringify({ code: session.code, name: "Eve" }),
+    });
+    expect(rejoin.status).toBe(404);
+
+    // The player's cookie no longer identifies anyone.
+    const me = await (await fetch(`${base}/api/auth/me`, { headers: { Cookie: player } })).json();
+    expect(me.kind).toBe("anonymous");
+  });
+});

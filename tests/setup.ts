@@ -1,0 +1,20 @@
+/**
+ * Test bootstrap, loaded via bunfig.toml before any test file.
+ *
+ * Points the application at a scratch database so a test run can never touch
+ * development or production data, then applies the migrations to it.
+ */
+
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+const directory = mkdtempSync(join(tmpdir(), "ttrpg-test-"));
+process.env.DATABASE_PATH = join(directory, "test.db");
+process.env.UPLOAD_DIR = join(directory, "uploads");
+process.env.APP_ORIGIN = "http://localhost:3000";
+process.env.LOG_LEVEL = "error";
+
+// Imported after the environment is set, so the connection opens on the scratch file.
+const { migrate } = await import("../src/db/migrate.ts");
+migrate();

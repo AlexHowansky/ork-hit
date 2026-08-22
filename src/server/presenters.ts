@@ -1,0 +1,56 @@
+/**
+ * Shapes database rows into the JSON the client consumes.
+ *
+ * Kept separate from the routes so that the WebSocket snapshot and the REST
+ * responses describe a character the same way, and so neither has to import the
+ * other.
+ */
+
+import type { CampaignRow, CharacterRow, GameSessionRow, PlayerRow } from "../db/types.ts";
+
+export function presentCampaign(campaign: CampaignRow) {
+  return {
+    id: campaign.id,
+    name: campaign.name,
+    backgroundUrl: campaign.background_upload_id
+      ? `/uploads/images/${campaign.background_upload_id}`
+      : null,
+    createdAt: campaign.created_at,
+  };
+}
+
+export function presentCharacter(character: CharacterRow) {
+  return {
+    id: character.id,
+    campaignId: character.campaign_id,
+    kind: character.kind,
+    name: character.name,
+    sheetUrl: `/sheets/${character.id}`,
+    backgroundUrl: character.background_upload_id
+      ? `/uploads/images/${character.background_upload_id}`
+      : null,
+  };
+}
+
+/** The game master's view of a session, including the code they hand out. */
+export function presentSessionForGm(session: GameSessionRow, campaign: CampaignRow) {
+  return {
+    id: session.id,
+    campaignId: session.campaign_id,
+    campaignName: campaign.name,
+    code: session.code,
+    status: session.status,
+    round: session.round,
+    activeCharacterId: session.active_character_id,
+    createdAt: session.created_at,
+    endedAt: session.ended_at,
+  };
+}
+
+export function presentPlayer(player: PlayerRow) {
+  return {
+    id: player.id,
+    name: player.name,
+    claimedCharacterId: player.claimed_character_id,
+  };
+}

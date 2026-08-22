@@ -1,0 +1,70 @@
+@import "tailwindcss";
+
+/*
+  Theme.
+
+  Light is the default. Dark applies either when the reader's system asks for it,
+  or when they have explicitly chosen it with the toggle. An explicit choice is
+  recorded as `data-theme` on <html> and always wins over the system preference,
+  which is why the media query excludes an explicit light choice.
+
+  Because the system preference is handled in CSS rather than JavaScript, the
+  first paint is already correct for most readers with no script involved.
+*/
+@custom-variant dark {
+  &:where([data-theme="dark"], [data-theme="dark"] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not([data-theme="light"]) *, :root:not([data-theme="light"])) {
+      @slot;
+    }
+  }
+}
+
+@theme {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+:root {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+  }
+}
+
+body {
+  @apply bg-stone-100 text-stone-900 antialiased;
+}
+
+:root[data-theme="dark"] body {
+  @apply bg-stone-950 text-stone-100;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) body {
+    @apply bg-stone-950 text-stone-100;
+  }
+}
+
+/* A visible focus ring everywhere, since much of this app is driven by keyboard. */
+:focus-visible {
+  @apply outline-2 outline-offset-2 outline-amber-600;
+}
+
+/* Respect a reader who has asked for less motion; the drag list animates a lot. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

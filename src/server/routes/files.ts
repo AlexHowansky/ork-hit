@@ -1,0 +1,113 @@
+/**
+ * Authorised delivery of uploaded files.
+ *
+ * Uploads live outside any statically served directory, so the only way to reach
+ * one is through these handlers — which means every request is authenticated and
+ * authorised first.
+ *
+ * Character sheets are the sensitive case: they carry the game master's own
+ * JavaScript. They are served with a `sandbox` Content-Security-Policy, which
+ * puts the document in an *opaque origin*. It is same-site by URL, but the
+ * browser treats it as its own origin with no relationship to the app: it cannot
+ * read `document.cookie`, touch `localStorage`, reach into the parent frame, or
+ * call the API as the signed-in user. The embedding iframe repeats the sandbox
+ * as an attribute, so the restriction holds even if the frame is reached some
+ * other way.
+ */
+
+import type { BunRequest } from "bun";
+import { handler } from "../http.ts";
+import { errors } from "../../lib/errors.ts";
+import { currentGm, currentPlayer } from "../middleware/auth.ts";
+import { campaigns, characters, uploads } from "../../db/queries.ts";
+import type { UploadRow } from "../../db/types.ts";
+
+/** Streams an upload from disk, or 404s if the row points at a missing file. */
+async function serveUpload(upload: UploadRow, headers: Record<string, string>): Promise<Response> {
+  const file = Bun.file(upload.disk_path);
+  if (!(await file.exists())) {
+    throw errors.notFound("That file is no longer available.");
+  }
+  return new Response(file, { headers });
+}
+
+export const fileRoutes = {
+  /**
+   * A character's sheet.
+   *
+   * Readable by the game master who owns the campaign, or by the one player who
+   * has claimed that character in an active session. Everyone else gets a 404
+   * rather than a 403, so probing character ids reveals nothing about what exists.
+   */
+  "/sheets/:characterId": {
+    GET: handler(async (request: BunRequest<"/sheets/:characterId">) => {
+      const { characterId } = request.params;
+      const character = characters.byId(characterId);
+      if (!character) throw errors.notFound("We couldn't find that character sheet.");
+
+      let allowed = false;
+
+      const gm = currentGm(request);
+      if (gm) {
+        const campaign = campaigns.byId(character.campaign_id);
+        allowed = campaign?.gm_id === gm.id;
+      } else {
+        const identity = currentPlayer(request);
+        // Players see only the sheet of the character they have claimed.
+        allowed = identity?.player.claimed_character_id === characterId;
+      }
+
+      if (!allowed) throw errors.notFound("We couldn't find that character sheet.");
+
+      const upload = uploads.byId(character.sheet_upload_id);
+      if (!upload) throw errors.notFound("That character sheet is no longer available.");
+
+      return await serveUpload(upload, {
+        "Content-Type": "text/html; charset=utf-8",
+        // The isolation boundary. `sandbox` with only `allow-scripts` gives the
+        // document an opaque origin: its JavaScript still runs, but it has no
+        // access to this app's cookies, storage, DOM or authenticated API.
+        // `frame-ancestors 'self'` keeps the sheet embeddable by this app and
+        // nobody else's site.
+        "Content-Security-Policy":
+          "sandbox allow-scripts allow-forms allow-popups; frame-ancestors 'self'",
+        // Overrides the app-wide DENY: a sheet exists to be framed by this app.
+        // The sandbox above is what makes that safe.
+        "X-Frame-Options": "SAMEORIGIN",
+        "Content-Disposition": "inline",
+        "Referrer-Policy": "no-referrer",
+        "Cache-Control": "private, no-store",
+        "X-Content-Type-Options": "nosniff",
+      });
+    }),
+  },
+
+  /**
+   * A background image for a campaign or character.
+   *
+   * Any authenticated user may read one: backgrounds are decoration shown on
+   * cards that the viewer is already entitled to see.
+   */
+  "/uploads/images/:uploadId": {
+    GET: handler(async (request: BunRequest<"/uploads/images/:uploadId">) => {
+      const signedIn = currentGm(request) !== null || currentPlayer(request) !== null;
+      if (!signedIn) throw errors.unauthorized();
+
+      const upload = uploads.byId(request.params.uploadId);
+      if (!upload || upload.kind !== "image") {
+        throw errors.notFound("We couldn't find that image.");
+      }
+
+      return await serveUpload(upload, {
+        // The type comes from the magic bytes checked at upload time, never from
+        // what the client claimed — paired with nosniff below.
+        "Content-Type": upload.mime,
+        "Content-Security-Policy": "sandbox; default-src 'none'; frame-ancestors 'self'",
+        "X-Frame-Options": "SAMEORIGIN",
+        "Content-Disposition": "inline",
+        "Cache-Control": "private, max-age=3600",
+        "X-Content-Type-Options": "nosniff",
+      });
+    }),
+  },
+};
