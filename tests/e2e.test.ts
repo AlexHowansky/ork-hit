@@ -134,6 +134,27 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     await player.getByText("In the scene (2)").waitFor({ timeout: 5000 });
   }, 60_000);
 
+  test("the player whose turn it is gets told", async () => {
+    if (!browser) return;
+    const { page: gm, code } = await gmWithSession();
+    const player = await playerIn(code, "Dana");
+
+    // Nobody is up yet, so nothing has been announced.
+    expect(await player.getByText("It's your turn!").count()).toBe(0);
+
+    // An NPC's turn is not this player's business.
+    await gm.getByRole("listitem").filter({ hasText: "Strahd" })
+      .getByRole("button", { name: "Set turn" }).click();
+    await player.locator("p", { hasText: "Up now:" }).getByText("Strahd")
+      .waitFor({ timeout: 5000 });
+    expect(await player.getByText("It's your turn!").count()).toBe(0);
+
+    // Their own character's turn is.
+    await gm.getByRole("listitem").filter({ hasText: "Thorin" })
+      .getByRole("button", { name: "Set turn" }).click();
+    await player.getByText("It's your turn!").waitFor({ timeout: 5000 });
+  }, 60_000);
+
   test("the initiative order can be dragged, and players see the new order", async () => {
     if (!browser) return;
     const { page: gm, code } = await gmWithSession();

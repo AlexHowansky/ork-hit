@@ -7,10 +7,15 @@
  * turn all arrive over the socket without a refresh.
  *
  * A player who hasn't picked a character yet is asked to choose one first.
+ *
+ * When the turn reaches this player's character they get a toast and a chime,
+ * since a table is a room full of distractions and the highlighted row alone is
+ * easy to miss.
  */
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "../api.ts";
+import { playDing } from "../ding.ts";
 import { useSessionSocket } from "../useSessionSocket.ts";
 import { Button, EmptyState, KindBadge, Panel } from "../components/ui.tsx";
 import { InitiativeList } from "../components/InitiativeList.tsx";
@@ -49,6 +54,30 @@ export function PlayerSession({
   const { snapshot, connection, applySnapshot } = useSessionSocket(sessionId);
   const [claiming, setClaiming] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
+
+  // Identifies this player's turn, changing again if the order comes back round
+  // to them — with one character in the scene the id alone would never change.
+  const myTurnKey = (() => {
+    if (!snapshot) return null;
+    const claimed =
+      snapshot.players.find((player) => player.id === playerId)?.claimedCharacterId ?? null;
+    if (!claimed || snapshot.session.activeCharacterId !== claimed) return null;
+    return `${claimed}#${snapshot.session.round}`;
+  })();
+
+  // `undefined` until the first snapshot lands: arriving mid-turn is not a change,
+  // and neither is the snapshot a reconnect replays.
+  const announcedTurn = useRef<string | null | undefined>(undefined);
+
+  useEffect(() => {
+    if (!snapshot) return;
+    const previous = announcedTurn.current;
+    announcedTurn.current = myTurnKey;
+    if (previous === undefined || !myTurnKey || myTurnKey === previous) return;
+
+    toast.show("It's your turn!", "success");
+    void playDing();
+  }, [snapshot, myTurnKey, toast]);
 
   if (connection === "ended") {
     return (

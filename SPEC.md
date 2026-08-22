@@ -121,6 +121,10 @@ The app should have the following features:
   whose turn it is. When the GM makes this selection, the player screens should
   instantly update without a refresh.
 
+* When the turn reaches a player's character, that player should get a toast and
+  an audible chime. Only that player: the turn passing to anyone else must stay
+  silent.
+
 ## Conclusion
 
 Ask me about design decisions or for any additional details you may need.

@@ -74,6 +74,23 @@ whatever the names are. Every hover rule is paired with a `focus-within` one,
 because a card is a box of buttons and a keyboard user would otherwise get no
 feedback at all.
 
+## The turn chime
+
+When the turn reaches a player's character, that player — and only that player —
+gets a toast and a two-note chime. The chime is synthesised with the Web Audio
+API (`src/client/ding.ts`) rather than shipped as a file, so there is no asset to
+serve and nothing to add to the page's CSP.
+
+Browsers refuse to start audio for a page nobody has interacted with. A player
+has always clicked their way in by the time a turn can reach them, so it plays in
+practice, but every step is best effort and the toast carries the message on its
+own if audio is refused.
+
+Announcing the turn is deliberately about *changes*: the snapshot that arrives on
+a reconnect or a page load says nothing has changed, so a player who was already
+up is not chimed at again. The alert is keyed on the round as well as the
+character, so a scene with one character in it still announces each new lap.
+
 ## Character sheets
 
 Sheets are uploaded HTML and keep their JavaScript, so a sheet with dice buttons
