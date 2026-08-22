@@ -1,7 +1,7 @@
 /** A character in the library, presented as a card with its background image. */
 
 import type { Character } from "../types.ts";
-import { CARD_HOVER, KindBadge } from "./ui.tsx";
+import { CARD_BASE, KindBadge } from "./ui.tsx";
 
 export function CharacterCard({
   character,
@@ -14,9 +14,9 @@ export function CharacterCard({
 }) {
   return (
     <article
-      className={`relative overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm dark:border-stone-800 dark:bg-stone-900 ${CARD_HOVER}`}
+      className={`${CARD_BASE} border-stone-200 bg-white dark:border-stone-800 dark:bg-stone-900`}
     >
-      <div className="relative h-32 bg-stone-200 dark:bg-stone-800">
+      <div className="relative min-h-0 flex-1 bg-stone-200 dark:bg-stone-800">
         {character.backgroundUrl ? (
           <img
             src={character.backgroundUrl}
@@ -25,7 +25,7 @@ export function CharacterCard({
             loading="lazy"
           />
         ) : (
-          <div className="flex h-full items-center justify-center text-3xl opacity-30" aria-hidden>
+          <div className="flex h-full items-center justify-center text-4xl opacity-30" aria-hidden>
             {character.kind === "pc" ? "🛡" : "🐉"}
           </div>
         )}
@@ -34,17 +34,19 @@ export function CharacterCard({
         </div>
       </div>
 
-      <div className="p-3">
+      <div className="shrink-0 p-3">
         {onOpen ? (
           <button
             type="button"
             onClick={onOpen}
-            className="text-left font-medium text-stone-900 hover:underline dark:text-stone-100"
+            className="block w-full truncate text-left font-medium text-stone-900 hover:underline dark:text-stone-100"
           >
             {character.name}
           </button>
         ) : (
-          <h3 className="font-medium text-stone-900 dark:text-stone-100">{character.name}</h3>
+          <h3 className="truncate font-medium text-stone-900 dark:text-stone-100">
+            {character.name}
+          </h3>
         )}
         {actions ? <div className="mt-3 flex flex-wrap gap-2">{actions}</div> : null}
       </div>

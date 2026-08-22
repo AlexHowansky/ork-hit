@@ -67,10 +67,12 @@ ordered list rather than a move — which makes it idempotent and lets the serve
 reject a list built from a stale view instead of silently dropping a character.
 
 **Card styling is shared.** The campaign and character grids are different
-components, so their hover treatment lives in one place — `CARD_HOVER` in
-`src/client/components/ui.tsx`. It pairs every hover rule with a `focus-within`
-one, because a card is a box of buttons and a keyboard user would otherwise get
-no feedback at all.
+components, so their shape and hover treatment live in one place — `CARD_BASE`
+in `src/client/components/ui.tsx`. Cards are square: the caption and its buttons
+take the height they need and the image absorbs the rest, so a row lines up
+whatever the names are. Every hover rule is paired with a `focus-within` one,
+because a card is a box of buttons and a keyboard user would otherwise get no
+feedback at all.
 
 ## Character sheets
 

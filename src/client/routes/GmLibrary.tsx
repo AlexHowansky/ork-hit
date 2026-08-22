@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { api } from "../api.ts";
-import { Button, CARD_HOVER, EmptyState, Field, Panel } from "../components/ui.tsx";
+import { Button, CARD_BASE, EmptyState, Field, Panel } from "../components/ui.tsx";
 import { CharacterCard } from "../components/CharacterCard.tsx";
 import { SheetFrame } from "../components/SheetFrame.tsx";
 import { useToast } from "../components/Toast.tsx";
@@ -356,7 +356,7 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
               return (
                 <article
                   key={campaign.id}
-                  className={`overflow-hidden rounded-xl border shadow-sm ${CARD_HOVER} ${
+                  className={`${CARD_BASE} ${
                     isSelected
                       ? "border-amber-500 ring-2 ring-amber-500/30"
                       : "border-stone-200 dark:border-stone-800"
@@ -365,10 +365,10 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
                   <button
                     type="button"
                     onClick={() => setSelectedCampaignId(campaign.id)}
-                    className="block w-full text-left"
+                    className="flex min-h-0 flex-1 flex-col text-left"
                     aria-pressed={isSelected}
                   >
-                    <div className="h-28 overflow-hidden bg-stone-200 dark:bg-stone-800">
+                    <div className="min-h-0 flex-1 overflow-hidden bg-stone-200 dark:bg-stone-800">
                       {campaign.backgroundUrl ? (
                         <img
                           src={campaign.backgroundUrl}
@@ -378,18 +378,18 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
                         />
                       ) : (
                         <div
-                          className="flex h-full items-center justify-center text-3xl opacity-30"
+                          className="flex h-full items-center justify-center text-4xl opacity-30"
                           aria-hidden
                         >
                           📜
                         </div>
                       )}
                     </div>
-                    <h3 className="px-3 pt-3 font-medium text-stone-900 dark:text-stone-100">
+                    <h3 className="shrink-0 truncate px-3 pt-3 font-medium text-stone-900 dark:text-stone-100">
                       {campaign.name}
                     </h3>
                   </button>
-                  <div className="flex gap-2 p-3">
+                  <div className="flex shrink-0 gap-2 p-3">
                     <Button onClick={() => setCampaignDialog({ open: true, editing: campaign })}>
                       Edit
                     </Button>

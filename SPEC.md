@@ -13,8 +13,9 @@ document explains the requirements that must be adhered to.
 * Use Tailwind for styling. Always offer light and dark mode for visual
   elements.
 
-* Cards in the libraries must show a clear highlight when hovered, and give the
-  same feedback to anyone arriving by keyboard rather than mouse.
+* Cards in the libraries must be square, whatever the length of the name they
+  carry. They must show a clear highlight when hovered, and give the same
+  feedback to anyone arriving by keyboard rather than mouse.
 
 * Observe OWASP Top Ten guidelines.
 
