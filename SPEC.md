@@ -96,6 +96,11 @@ The app should have the following features:
   may choose one PC to play. This PC to player association must be maintained as
   long as the session lasts.
 
+* An active PC that no player has claimed should be highlighted in an alert
+  colour on the session page, so that both the game master and the players can
+  see at a glance which characters are still free. The cue must not rely on
+  colour alone.
+
 * Once a session is joined, players should see two panels. One should contain a
   list of all the joined players, and one should contain a list of all active
   PCs and NPCs. For the PCs, the list should include which player is associated.

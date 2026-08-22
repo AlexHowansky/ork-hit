@@ -3,7 +3,8 @@
 A private table companion. The game master keeps a library of campaigns and
 character sheets, starts a session, and hands out a code. Players join with that
 code, claim a character, and watch the table update live — who is in the scene,
-what order they act in, and whose turn it is.
+what order they act in, whose turn it is, and which characters nobody has
+claimed yet.
 
 Built on Bun 1.4, SQLite, React 19 and Tailwind v4. One process, one database
 file, no external services.

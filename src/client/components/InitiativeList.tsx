@@ -58,16 +58,24 @@ function Row({
     disabled: !editable,
   });
 
+  // A player character nobody has taken yet: an open seat at the table, and the
+  // one thing both audiences want to spot without reading.
+  const isUnclaimed = character.kind === "pc" && character.claimedByPlayerId === null;
+
   return (
     <li
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       // The active turn is marked by a heavy left border and bolder text as well
-      // as colour, so it reads in both themes and without colour vision.
+      // as colour, so it reads in both themes and without colour vision. The
+      // turn keeps the border when a row is both on turn and unclaimed — the
+      // badge below carries the unclaimed cue in that case.
       className={`flex items-center gap-3 border-l-4 px-3 py-2.5 ${
         isActive
           ? "border-amber-500 bg-amber-50 dark:bg-amber-950/40"
-          : "border-transparent hover:bg-stone-50 dark:hover:bg-stone-800/50"
+          : isUnclaimed
+            ? "border-rose-400 bg-rose-50 hover:bg-rose-100 dark:border-rose-500/70 dark:bg-rose-950/40 dark:hover:bg-rose-950/60"
+            : "border-transparent hover:bg-stone-50 dark:hover:bg-stone-800/50"
       } ${isDragging ? "relative z-10 opacity-80 shadow-lg" : ""}`}
       aria-current={isActive ? "true" : undefined}
     >
@@ -107,14 +115,25 @@ function Row({
               Turn
             </span>
           ) : null}
+          {isUnclaimed ? (
+            <span className="rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-rose-800 uppercase dark:bg-rose-950 dark:text-rose-200">
+              Unclaimed
+            </span>
+          ) : null}
         </div>
 
         {/* Only player characters carry an association, per the spec. */}
         {character.kind === "pc" ? (
-          <p className="mt-0.5 truncate text-xs text-stone-500 dark:text-stone-400">
+          <p
+            className={`mt-0.5 truncate text-xs ${
+              isUnclaimed
+                ? "font-medium text-rose-700 dark:text-rose-300"
+                : "text-stone-500 dark:text-stone-400"
+            }`}
+          >
             {character.claimedByPlayerName
               ? `Played by ${character.claimedByPlayerName}${isYours ? " (you)" : ""}`
-              : "Unclaimed"}
+              : "No player has claimed this character"}
           </p>
         ) : null}
       </div>
