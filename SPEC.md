@@ -105,6 +105,9 @@ The app should have the following features:
   see at a glance which characters are still free. The cue must not rely on
   colour alone.
 
+* A player's session page should be headed by their own name, with the
+  character they are playing named underneath it.
+
 * Once a session is joined, players should see two panels. One should contain a
   list of all the joined players, and one should contain a list of all active
   PCs and NPCs. For the PCs, the list should include which player is associated.

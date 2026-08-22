@@ -96,7 +96,9 @@ async function playerIn(code: string, name: string): Promise<Page> {
   await page.getByRole("button", { name: "Join session" }).click();
   await page.getByText("Choose your character").waitFor();
   await page.getByRole("button", { name: "Thorin" }).click();
-  await page.getByText(`Playing as ${name}`).waitFor();
+  // The session page is headed by the player, and says which character they hold.
+  await page.getByRole("heading", { name, exact: true }).waitFor();
+  await page.getByText("Playing as Thorin").waitFor();
   return page;
 }
 

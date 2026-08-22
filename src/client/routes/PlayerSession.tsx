@@ -189,9 +189,11 @@ export function PlayerSession({
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-stone-900 dark:text-stone-100">
-            {myCharacter?.name ?? "Your character"}
+            {playerName}
           </h1>
-          <p className="text-sm text-stone-500 dark:text-stone-400">Playing as {playerName}</p>
+          <p className="text-sm text-stone-500 dark:text-stone-400">
+            Playing as {myCharacter?.name ?? "your character"}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           {connection === "reconnecting" ? (
