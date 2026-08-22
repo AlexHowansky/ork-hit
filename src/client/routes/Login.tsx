@@ -124,12 +124,13 @@ export function Login({ onIdentity }: { onIdentity: (identity: Identity) => void
                   hint="Your game master will send you this."
                 />
                 <Field
-                  label="Your name"
+                  label="Player name"
                   value={playerName}
                   onChange={(event) => setPlayerName(event.target.value)}
                   placeholder="What should everyone call you?"
                   autoComplete="nickname"
                   required
+                  hint="You will select a character after logging in."
                 />
                 <Button variant="primary" type="submit" disabled={busy} className="w-full">
                   {busy ? "Joining…" : "Join session"}
