@@ -53,7 +53,7 @@ src/
 data/        SQLite database and uploads (gitignored, never served statically)
 ```
 
-Two things are worth knowing before reading the code.
+Three things are worth knowing before reading the code.
 
 **Every change republishes the whole session.** Rather than sending diffs, any
 mutation recomputes a complete snapshot — session, players, characters in
@@ -65,6 +65,12 @@ a reorder racing a turn change cannot leave someone highlighting the wrong row.
 `0..n-1`. Adds append, removes close the gap, and a reorder sends the entire
 ordered list rather than a move — which makes it idempotent and lets the server
 reject a list built from a stale view instead of silently dropping a character.
+
+**Card styling is shared.** The campaign and character grids are different
+components, so their hover treatment lives in one place — `CARD_HOVER` in
+`src/client/components/ui.tsx`. It pairs every hover rule with a `focus-within`
+one, because a card is a box of buttons and a keyboard user would otherwise get
+no feedback at all.
 
 ## Character sheets
 

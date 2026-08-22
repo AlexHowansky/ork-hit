@@ -5,6 +5,16 @@ import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from "react
 const BUTTON_BASE =
   "inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50";
 
+/**
+ * The hover treatment shared by every card in the library.
+ *
+ * Lives here so the campaign and character grids lift identically. `focus-within`
+ * repeats the effect for anyone arriving by keyboard, since the cards are just
+ * buttons in a box and hover alone would leave them out.
+ */
+export const CARD_HOVER =
+  "group transition duration-150 hover:-translate-y-0.5 hover:border-amber-400 hover:shadow-lg focus-within:-translate-y-0.5 focus-within:border-amber-400 focus-within:shadow-lg dark:hover:border-amber-500/70 dark:focus-within:border-amber-500/70";
+
 const VARIANTS = {
   primary:
     "bg-amber-600 text-white hover:bg-amber-700 dark:bg-amber-500 dark:text-stone-950 dark:hover:bg-amber-400",

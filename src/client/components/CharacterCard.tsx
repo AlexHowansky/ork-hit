@@ -1,7 +1,7 @@
 /** A character in the library, presented as a card with its background image. */
 
 import type { Character } from "../types.ts";
-import { KindBadge } from "./ui.tsx";
+import { CARD_HOVER, KindBadge } from "./ui.tsx";
 
 export function CharacterCard({
   character,
@@ -13,13 +13,15 @@ export function CharacterCard({
   onOpen?: () => void;
 }) {
   return (
-    <article className="group relative overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm transition-shadow hover:shadow-md dark:border-stone-800 dark:bg-stone-900">
+    <article
+      className={`relative overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm dark:border-stone-800 dark:bg-stone-900 ${CARD_HOVER}`}
+    >
       <div className="relative h-32 bg-stone-200 dark:bg-stone-800">
         {character.backgroundUrl ? (
           <img
             src={character.backgroundUrl}
             alt=""
-            className="h-full w-full object-cover"
+            className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105 group-focus-within:scale-105"
             loading="lazy"
           />
         ) : (
