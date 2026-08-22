@@ -11,7 +11,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { api } from "../api.ts";
 import { useSessionSocket } from "../useSessionSocket.ts";
-import { Button, CopyButton, EmptyState, KindBadge, Panel } from "../components/ui.tsx";
+import { Button, CharacterThumb, CopyButton, EmptyState, KindBadge, Panel } from "../components/ui.tsx";
 import { InitiativeList } from "../components/InitiativeList.tsx";
 import { TurnControls } from "../components/TurnControls.tsx";
 import { SheetFrame } from "../components/SheetFrame.tsx";
@@ -271,6 +271,10 @@ export function GmSessionConsole() {
               <ul className="divide-y divide-stone-100 dark:divide-stone-800">
                 {availableCharacters.map((character) => (
                   <li key={character.id} className="flex items-center gap-3 py-2">
+                    <CharacterThumb
+                      kind={character.kind}
+                      backgroundUrl={character.backgroundUrl}
+                    />
                     <span className="flex-1 truncate text-sm text-stone-800 dark:text-stone-200">
                       {character.name}
                     </span>

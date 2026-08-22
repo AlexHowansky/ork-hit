@@ -29,7 +29,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { SessionCharacter } from "../types.ts";
-import { KindBadge } from "./ui.tsx";
+import { CharacterThumb, KindBadge } from "./ui.tsx";
 
 interface RowProps {
   character: SessionCharacter;
@@ -98,10 +98,14 @@ function Row({
         </span>
       )}
 
+      <CharacterThumb kind={character.kind} backgroundUrl={character.backgroundUrl} />
+
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
+        {/* Badges wrap below the name rather than crowding it out: with a picture
+            and three of them, the game master's narrower column runs out of room. */}
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <span
-            className={`truncate ${
+            className={`max-w-full truncate ${
               isActive
                 ? "font-semibold text-stone-900 dark:text-stone-50"
                 : "text-stone-800 dark:text-stone-200"

@@ -92,7 +92,7 @@ async function gmWithSession(): Promise<{ page: Page; code: string }> {
 async function playerIn(code: string, name: string): Promise<Page> {
   const page = await (await browser!.newContext()).newPage();
   await page.goto(`${base}/join?code=${encodeURIComponent(code)}`);
-  await page.getByLabel("Your name").fill(name);
+  await page.getByLabel("Player name").fill(name);
   await page.getByRole("button", { name: "Join session" }).click();
   await page.getByText("Choose your character").waitFor();
   await page.getByRole("button", { name: "Thorin" }).click();

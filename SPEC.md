@@ -109,6 +109,10 @@ The app should have the following features:
   list of all the joined players, and one should contain a list of all active
   PCs and NPCs. For the PCs, the list should include which player is associated.
 
+* Each PC and NPC on a session page should be shown with a small picture of
+  itself — in the scene, and in the list the game master adds them from —
+  falling back to a placeholder for a character that has no background image.
+
 * The list of PCs and NPCs should be presented in initiative order. For now this
   will be controlled manually. Allow the GM to drag PCs and NPCs to change the
   order.

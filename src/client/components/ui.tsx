@@ -110,6 +110,35 @@ export function KindBadge({ kind }: { kind: "pc" | "npc" }) {
   );
 }
 
+/**
+ * A character's picture at list size, for the session screens.
+ *
+ * Decorative: every list that uses one puts the character's name right beside it,
+ * so the image carries no alt text and the placeholder is hidden outright.
+ */
+export function CharacterThumb({
+  kind,
+  backgroundUrl,
+}: {
+  kind: "pc" | "npc";
+  backgroundUrl: string | null;
+}) {
+  return (
+    <div className="h-10 w-10 shrink-0 overflow-hidden rounded-md bg-stone-200 dark:bg-stone-800">
+      {backgroundUrl ? (
+        <img src={backgroundUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
+      ) : (
+        <span
+          className="flex h-full w-full items-center justify-center text-lg opacity-40"
+          aria-hidden="true"
+        >
+          {kind === "pc" ? "🛡" : "🐉"}
+        </span>
+      )}
+    </div>
+  );
+}
+
 /** Copies text and confirms it, for the session code and invite link. */
 export function CopyButton({ value, label }: { value: string; label: string }) {
   return (
