@@ -63,28 +63,67 @@ export function Field({
   );
 }
 
+/**
+ * The page frame every route sits in.
+ *
+ * On a tall screen this is the centred column the app has always been: the page
+ * grows downwards and the window scrolls. On a wide screen it becomes a fixed
+ * frame exactly one viewport high that never scrolls itself — the panels inside
+ * are laid out side by side and each scrolls its own list, so the controls at the
+ * top of the page stay put while a list moves underneath them.
+ *
+ * `max` is the cap for the tall layout only; the wide layout uses the full width.
+ */
+export function AppPage({
+  max = "max-w-6xl",
+  children,
+  className = "",
+}: {
+  max?: string;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`mx-auto ${max} space-y-5 p-4 sm:p-6 wide:flex wide:h-dvh wide:max-w-none wide:flex-col wide:gap-5 wide:space-y-0 wide:overflow-hidden ${className}`}
+    >
+      {children}
+    </div>
+  );
+}
+
+/**
+ * `scroll` keeps a panel inside the height its parent gives it and moves its
+ * body's overflow into the panel instead, leaving the heading pinned. It only
+ * means anything where the parent has a height to give — inside `AppPage`'s wide
+ * layout — which is why the default is off.
+ */
 export function Panel({
   title,
   actions,
   children,
   className = "",
+  scroll = false,
 }: {
   title: ReactNode;
   actions?: ReactNode;
   children: ReactNode;
   className?: string;
+  scroll?: boolean;
 }) {
   return (
     <section
-      className={`rounded-xl border border-stone-200 bg-white shadow-sm dark:border-stone-800 dark:bg-stone-900 ${className}`}
+      className={`rounded-xl border border-stone-200 bg-white shadow-sm dark:border-stone-800 dark:bg-stone-900 ${
+        scroll ? "flex min-h-0 flex-col" : ""
+      } ${className}`}
     >
-      <header className="flex items-center justify-between gap-3 border-b border-stone-200 px-4 py-3 dark:border-stone-800">
+      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-stone-200 px-4 py-3 dark:border-stone-800">
         <h2 className="text-sm font-semibold tracking-wide text-stone-500 uppercase dark:text-stone-400">
           {title}
         </h2>
         {actions}
       </header>
-      <div className="p-4">{children}</div>
+      <div className={`p-4 ${scroll ? "min-h-0 flex-1 overflow-y-auto" : ""}`}>{children}</div>
     </section>
   );
 }

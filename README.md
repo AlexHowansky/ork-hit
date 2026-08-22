@@ -74,6 +74,16 @@ whatever the names are. Every hover rule is paired with a `focus-within` one,
 because a card is a box of buttons and a keyboard user would otherwise get no
 feedback at all.
 
+**Wide screens get a dashboard, not a document.** A 16:9 monitor is much shorter
+relative to its width than a phone, so a page that stacks its panels makes the
+game master scroll away from the turn tracker mid-turn. A `wide` variant in
+`src/client/styles.css` — keyed on the aspect ratio as well as the width, so a
+portrait monitor is left alone — switches the session and library pages to a
+frame exactly one viewport high, panels side by side, each scrolling its own
+list. `AppPage` and `Panel`'s `scroll` prop in `src/client/components/ui.tsx`
+carry this; the routes only choose the grid tracks. Anything narrower or taller
+keeps the stacked layout unchanged.
+
 ## The turn chime
 
 When the turn reaches a player's character, that player — and only that player —

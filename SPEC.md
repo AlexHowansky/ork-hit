@@ -13,6 +13,11 @@ document explains the requirements that must be adhered to.
 * Use Tailwind for styling. Always offer light and dark mode for visual
   elements.
 
+* Make good use of the screen. On a wide, short screen — a 16:9 monitor — a page
+  should fill one viewport with its panels side by side, each scrolling its own
+  content, rather than stacking them into a page that scrolls as a whole. Narrow
+  or tall screens keep the stacked layout.
+
 * Cards in the libraries must be square, whatever the length of the name they
   carry. They must show a clear highlight when hovered, and give the same
   feedback to anyone arriving by keyboard rather than mouse.

@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { api } from "../api.ts";
-import { Button, CARD_BASE, EmptyState, Field, Panel } from "../components/ui.tsx";
+import { AppPage, Button, CARD_BASE, EmptyState, Field, Panel } from "../components/ui.tsx";
 import { CharacterCard } from "../components/CharacterCard.tsx";
 import { SheetFrame } from "../components/SheetFrame.tsx";
 import { useToast } from "../components/Toast.tsx";
@@ -41,7 +41,7 @@ function Modal({
         aria-modal="true"
         aria-label={title}
         className={`flex max-h-[90vh] w-full flex-col overflow-hidden rounded-xl bg-white shadow-xl dark:bg-stone-900 ${
-          wide ? "max-w-5xl" : "max-w-lg"
+          wide ? "max-w-5xl wide:max-w-7xl" : "max-w-lg"
         }`}
       >
         <header className="flex items-center justify-between border-b border-stone-200 px-5 py-3 dark:border-stone-800">
@@ -309,8 +309,8 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
-      <header className="flex flex-wrap items-center justify-between gap-3">
+    <AppPage>
+      <header className="flex shrink-0 flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-stone-900 dark:text-stone-100">Your library</h1>
           <p className="text-sm text-stone-500 dark:text-stone-400">Signed in as {email}</p>
@@ -319,7 +319,7 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
       </header>
 
       {activeSessions.length > 0 ? (
-        <Panel title={`Sessions in progress (${activeSessions.length})`}>
+        <Panel title={`Sessions in progress (${activeSessions.length})`} className="shrink-0">
           <ul className="space-y-2">
             {activeSessions.map((session) => (
               <li key={session.id} className="flex items-center justify-between gap-3">
@@ -336,118 +336,122 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
         </Panel>
       ) : null}
 
-      <Panel
-        title="Campaigns"
-        actions={
-          <Button
-            variant="primary"
-            onClick={() => setCampaignDialog({ open: true, editing: null })}
-          >
-            New campaign
-          </Button>
-        }
-      >
-        {campaigns.length === 0 ? (
-          <EmptyState>No campaigns yet. Create one to get started.</EmptyState>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {campaigns.map((campaign) => {
-              const isSelected = campaign.id === selectedCampaignId;
-              return (
-                <article
-                  key={campaign.id}
-                  className={`${CARD_BASE} ${
-                    isSelected
-                      ? "border-amber-500 ring-2 ring-amber-500/30"
-                      : "border-stone-200 dark:border-stone-800"
-                  } bg-white dark:bg-stone-900`}
-                >
-                  <button
-                    type="button"
-                    onClick={() => setSelectedCampaignId(campaign.id)}
-                    className="flex min-h-0 flex-1 flex-col text-left"
-                    aria-pressed={isSelected}
-                  >
-                    <div className="min-h-0 flex-1 overflow-hidden bg-stone-200 dark:bg-stone-800">
-                      {campaign.backgroundUrl ? (
-                        <img
-                          src={campaign.backgroundUrl}
-                          alt=""
-                          className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105 group-focus-within:scale-105"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <div
-                          className="flex h-full items-center justify-center text-4xl opacity-30"
-                          aria-hidden
-                        >
-                          📜
-                        </div>
-                      )}
-                    </div>
-                    <h3 className="shrink-0 truncate px-3 pt-3 font-medium text-stone-900 dark:text-stone-100">
-                      {campaign.name}
-                    </h3>
-                  </button>
-                  <div className="flex shrink-0 gap-2 p-3">
-                    <Button onClick={() => setCampaignDialog({ open: true, editing: campaign })}>
-                      Edit
-                    </Button>
-                    <Button variant="danger" onClick={() => void deleteCampaign(campaign)}>
-                      Delete
-                    </Button>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        )}
-      </Panel>
-
-      {selectedCampaign ? (
+      <div className="space-y-6 wide:grid wide:min-h-0 wide:flex-1 wide:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] wide:gap-6 wide:space-y-0">
         <Panel
-          title={`Characters in ${selectedCampaign.name}`}
+          title="Campaigns"
+          scroll
           actions={
-            <div className="flex gap-2">
-              <Button
-                variant="primary"
-                onClick={() => setCharacterDialog({ open: true, editing: null })}
-              >
-                Add character
-              </Button>
-              <Button onClick={() => void startSession()}>Start session</Button>
-            </div>
+            <Button
+              variant="primary"
+              onClick={() => setCampaignDialog({ open: true, editing: null })}
+            >
+              New campaign
+            </Button>
           }
         >
-          {visibleCharacters.length === 0 ? (
-            <EmptyState>
-              No characters in this campaign yet. Add one by uploading its HTML sheet.
-            </EmptyState>
+          {campaigns.length === 0 ? (
+            <EmptyState>No campaigns yet. Create one to get started.</EmptyState>
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {visibleCharacters.map((character) => (
-                <CharacterCard
-                  key={character.id}
-                  character={character}
-                  onOpen={() => setPreviewing(character)}
-                  actions={
-                    <>
-                      <Button
-                        onClick={() => setCharacterDialog({ open: true, editing: character })}
-                      >
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {campaigns.map((campaign) => {
+                const isSelected = campaign.id === selectedCampaignId;
+                return (
+                  <article
+                    key={campaign.id}
+                    className={`${CARD_BASE} ${
+                      isSelected
+                        ? "border-amber-500 ring-2 ring-amber-500/30"
+                        : "border-stone-200 dark:border-stone-800"
+                    } bg-white dark:bg-stone-900`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCampaignId(campaign.id)}
+                      className="flex min-h-0 flex-1 flex-col text-left"
+                      aria-pressed={isSelected}
+                    >
+                      <div className="min-h-0 flex-1 overflow-hidden bg-stone-200 dark:bg-stone-800">
+                        {campaign.backgroundUrl ? (
+                          <img
+                            src={campaign.backgroundUrl}
+                            alt=""
+                            className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105 group-focus-within:scale-105"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div
+                            className="flex h-full items-center justify-center text-4xl opacity-30"
+                            aria-hidden
+                          >
+                            📜
+                          </div>
+                        )}
+                      </div>
+                      <h3 className="shrink-0 truncate px-3 pt-3 font-medium text-stone-900 dark:text-stone-100">
+                        {campaign.name}
+                      </h3>
+                    </button>
+                    <div className="flex shrink-0 gap-2 p-3">
+                      <Button onClick={() => setCampaignDialog({ open: true, editing: campaign })}>
                         Edit
                       </Button>
-                      <Button variant="danger" onClick={() => void deleteCharacter(character)}>
+                      <Button variant="danger" onClick={() => void deleteCampaign(campaign)}>
                         Delete
                       </Button>
-                    </>
-                  }
-                />
-              ))}
+                    </div>
+                  </article>
+                );
+              })}
             </div>
           )}
         </Panel>
-      ) : null}
+
+        {selectedCampaign ? (
+          <Panel
+            scroll
+            title={`Characters in ${selectedCampaign.name}`}
+            actions={
+              <div className="flex gap-2">
+                <Button
+                  variant="primary"
+                  onClick={() => setCharacterDialog({ open: true, editing: null })}
+                >
+                  Add character
+                </Button>
+                <Button onClick={() => void startSession()}>Start session</Button>
+              </div>
+            }
+          >
+            {visibleCharacters.length === 0 ? (
+              <EmptyState>
+                No characters in this campaign yet. Add one by uploading its HTML sheet.
+              </EmptyState>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                {visibleCharacters.map((character) => (
+                  <CharacterCard
+                    key={character.id}
+                    character={character}
+                    onOpen={() => setPreviewing(character)}
+                    actions={
+                      <>
+                        <Button
+                          onClick={() => setCharacterDialog({ open: true, editing: character })}
+                        >
+                          Edit
+                        </Button>
+                        <Button variant="danger" onClick={() => void deleteCharacter(character)}>
+                          Delete
+                        </Button>
+                      </>
+                    }
+                  />
+                ))}
+              </div>
+            )}
+          </Panel>
+        ) : null}
+      </div>
 
       {campaignDialog.open ? (
         <Modal
@@ -484,11 +488,11 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
 
       {previewing ? (
         <Modal title={previewing.name} onClose={() => setPreviewing(null)} wide>
-          <div className="h-[70vh]">
+          <div className="h-[70vh] wide:h-[80vh]">
             <SheetFrame src={previewing.sheetUrl} title={previewing.name} />
           </div>
         </Modal>
       ) : null}
-    </div>
+    </AppPage>
   );
 }

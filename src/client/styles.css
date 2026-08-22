@@ -22,6 +22,21 @@
   }
 }
 
+/*
+  Wide screens.
+
+  A 16:9 monitor is not just wider than a phone, it is much shorter relative to
+  its width. Pages that read as a scrolling document on a tall screen should read
+  as a single dashboard here: one viewport-high frame with the panels side by
+  side, each scrolling its own list. Keyed on the aspect ratio as well as the
+  width so a tall portrait monitor keeps the stacked layout it suits.
+*/
+@custom-variant wide {
+  @media (min-width: 1024px) and (min-aspect-ratio: 3/2) {
+    @slot;
+  }
+}
+
 @theme {
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }

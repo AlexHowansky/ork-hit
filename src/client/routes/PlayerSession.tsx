@@ -17,7 +17,7 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "../api.ts";
 import { playDing } from "../ding.ts";
 import { useSessionSocket } from "../useSessionSocket.ts";
-import { Button, EmptyState, KindBadge, Panel } from "../components/ui.tsx";
+import { AppPage, Button, EmptyState, KindBadge, Panel } from "../components/ui.tsx";
 import { InitiativeList } from "../components/InitiativeList.tsx";
 import { TurnControls } from "../components/TurnControls.tsx";
 import { SheetFrame } from "../components/SheetFrame.tsx";
@@ -132,7 +132,7 @@ export function PlayerSession({
     );
 
     return (
-      <div className="mx-auto max-w-2xl p-4 sm:p-6">
+      <div className="mx-auto max-w-2xl p-4 sm:p-6 wide:max-w-5xl">
         <header className="mb-6 flex items-center justify-between">
           <h1 className="text-xl font-semibold text-stone-900 dark:text-stone-100">
             Welcome, {playerName}
@@ -147,7 +147,7 @@ export function PlayerSession({
               updates on its own.
             </EmptyState>
           ) : (
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-2 wide:grid-cols-4">
               {available.map((character) => (
                 <button
                   key={character.id}
@@ -185,8 +185,8 @@ export function PlayerSession({
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-5 p-4 sm:p-6">
-      <header className="flex flex-wrap items-center justify-between gap-3">
+    <AppPage max="max-w-5xl">
+      <header className="flex shrink-0 flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-stone-900 dark:text-stone-100">
             {playerName}
@@ -205,6 +205,7 @@ export function PlayerSession({
       </header>
 
       <TurnControls
+        className="shrink-0"
         round={snapshot.session.round}
         activeCharacterName={
           snapshot.characters.find(
@@ -214,8 +215,8 @@ export function PlayerSession({
         editable={false}
       />
 
-      <div className="grid gap-5 lg:grid-cols-[1fr_1.4fr]">
-        <Panel title={`Players (${snapshot.players.length})`}>
+      <div className="grid gap-5 lg:grid-cols-[1fr_1.4fr] wide:min-h-0 wide:flex-1">
+        <Panel title={`Players (${snapshot.players.length})`} scroll>
           <ul className="divide-y divide-stone-100 dark:divide-stone-800">
             {snapshot.players.map((player) => {
               const character = snapshot.characters.find(
@@ -241,6 +242,7 @@ export function PlayerSession({
         </Panel>
 
         <Panel
+          scroll
           title={`In the scene (${snapshot.characters.length})`}
           actions={
             myCharacter ? (
@@ -269,7 +271,7 @@ export function PlayerSession({
             role="dialog"
             aria-modal="true"
             aria-label={`${myCharacter.name} character sheet`}
-            className="flex h-[85vh] w-full max-w-5xl flex-col overflow-hidden rounded-xl bg-white dark:bg-stone-900"
+            className="flex h-[85vh] w-full max-w-5xl flex-col overflow-hidden rounded-xl bg-white wide:h-[92vh] wide:max-w-7xl dark:bg-stone-900"
           >
             <header className="flex items-center justify-between border-b border-stone-200 px-5 py-3 dark:border-stone-800">
               <h2 className="flex items-center gap-2 font-semibold text-stone-900 dark:text-stone-100">
@@ -286,6 +288,6 @@ export function PlayerSession({
           </div>
         </div>
       ) : null}
-    </div>
+    </AppPage>
   );
 }

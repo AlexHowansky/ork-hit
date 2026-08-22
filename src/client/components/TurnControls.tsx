@@ -19,12 +19,14 @@ export function TurnControls({
   editable,
   onAdvance,
   disabled = false,
+  className = "",
 }: {
   round: number;
   activeCharacterName: string | null;
   editable: boolean;
   onAdvance?: (direction: "next" | "prev") => void;
   disabled?: boolean;
+  className?: string;
 }) {
   // Arrow keys drive the tracker, so the game master can run turns without
   // hunting for the buttons. Ignored while typing into a field.
@@ -50,7 +52,9 @@ export function TurnControls({
   }, [editable, onAdvance, disabled]);
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-stone-200 bg-white px-4 py-3 dark:border-stone-800 dark:bg-stone-900">
+    <div
+      className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border border-stone-200 bg-white px-4 py-3 dark:border-stone-800 dark:bg-stone-900 ${className}`}
+    >
       <div>
         <p className="text-xs font-semibold tracking-wide text-stone-500 uppercase dark:text-stone-400">
           Round {round}

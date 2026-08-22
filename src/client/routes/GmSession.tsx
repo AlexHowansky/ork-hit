@@ -11,7 +11,15 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { api } from "../api.ts";
 import { useSessionSocket } from "../useSessionSocket.ts";
-import { Button, CharacterThumb, CopyButton, EmptyState, KindBadge, Panel } from "../components/ui.tsx";
+import {
+  AppPage,
+  Button,
+  CharacterThumb,
+  CopyButton,
+  EmptyState,
+  KindBadge,
+  Panel,
+} from "../components/ui.tsx";
 import { InitiativeList } from "../components/InitiativeList.tsx";
 import { TurnControls } from "../components/TurnControls.tsx";
 import { SheetFrame } from "../components/SheetFrame.tsx";
@@ -152,9 +160,22 @@ export function GmSessionConsole() {
 
   const joinUrl = `${location.origin}/join?code=${encodeURIComponent(session.code)}`;
 
+  // Three static controls. On a tall screen they get their own panel; on a wide
+  // one that band of height is worth more to the lists below, so they ride along
+  // in the header instead.
+  const invite = (
+    <div className="flex flex-wrap items-center gap-3">
+      <code className="rounded-lg bg-stone-100 px-3 py-2 font-mono text-sm tracking-wider text-stone-900 dark:bg-stone-800 dark:text-stone-100">
+        {session.code}
+      </code>
+      <CopyButton value={session.code} label="Copy code" />
+      <CopyButton value={joinUrl} label="Copy join link" />
+    </div>
+  );
+
   return (
-    <div className="mx-auto max-w-6xl space-y-5 p-4 sm:p-6">
-      <header className="flex flex-wrap items-start justify-between gap-3">
+    <AppPage>
+      <header className="flex shrink-0 flex-wrap items-start justify-between gap-3">
         <div>
           <Button variant="ghost" onClick={() => navigate("/gm")} className="mb-1 -ml-2">
             ← Library
@@ -163,7 +184,8 @@ export function GmSessionConsole() {
             {session.campaignName}
           </h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="hidden wide:block">{invite}</div>
           {connection === "reconnecting" ? (
             <span className="text-xs text-amber-700 dark:text-amber-400">Reconnecting…</span>
           ) : null}
@@ -173,17 +195,12 @@ export function GmSessionConsole() {
         </div>
       </header>
 
-      <Panel title="Invite">
-        <div className="flex flex-wrap items-center gap-3">
-          <code className="rounded-lg bg-stone-100 px-3 py-2 font-mono text-sm tracking-wider text-stone-900 dark:bg-stone-800 dark:text-stone-100">
-            {session.code}
-          </code>
-          <CopyButton value={session.code} label="Copy code" />
-          <CopyButton value={joinUrl} label="Copy join link" />
-        </div>
+      <Panel title="Invite" className="wide:hidden">
+        {invite}
       </Panel>
 
       <TurnControls
+        className="shrink-0"
         round={snapshot?.session.round ?? session.round}
         activeCharacterName={activeCharacter?.name ?? null}
         editable
@@ -191,8 +208,8 @@ export function GmSessionConsole() {
         disabled={busy || (snapshot?.characters.length ?? 0) === 0}
       />
 
-      <div className="grid gap-5 lg:grid-cols-2">
-        <Panel title={`Initiative order (${snapshot?.characters.length ?? 0})`}>
+      <div className="grid gap-5 lg:grid-cols-2 wide:min-h-0 wide:flex-1 wide:grid-cols-3">
+        <Panel title={`Initiative order (${snapshot?.characters.length ?? 0})`} scroll>
           {snapshot && snapshot.characters.length > 0 ? (
             <>
               <p className="mb-2 text-xs text-stone-500 dark:text-stone-400">
@@ -215,8 +232,8 @@ export function GmSessionConsole() {
           )}
         </Panel>
 
-        <div className="space-y-5">
-          <Panel title={`Players (${snapshot?.players.length ?? 0})`}>
+        <div className="space-y-5 wide:contents">
+          <Panel title={`Players (${snapshot?.players.length ?? 0})`} scroll>
             {snapshot && snapshot.players.length > 0 ? (
               <ul className="divide-y divide-stone-100 dark:divide-stone-800">
                 {snapshot.players.map((player) => {
@@ -264,7 +281,7 @@ export function GmSessionConsole() {
             )}
           </Panel>
 
-          <Panel title="Add from library">
+          <Panel title="Add from library" scroll>
             {availableCharacters.length === 0 ? (
               <EmptyState>Every character in this campaign is already in the session.</EmptyState>
             ) : (
@@ -296,7 +313,7 @@ export function GmSessionConsole() {
             role="dialog"
             aria-modal="true"
             aria-label={`${viewingSheet.name} character sheet`}
-            className="flex h-[85vh] w-full max-w-5xl flex-col overflow-hidden rounded-xl bg-white dark:bg-stone-900"
+            className="flex h-[85vh] w-full max-w-5xl flex-col overflow-hidden rounded-xl bg-white wide:h-[92vh] wide:max-w-7xl dark:bg-stone-900"
           >
             <header className="flex items-center justify-between border-b border-stone-200 px-5 py-3 dark:border-stone-800">
               <h2 className="font-semibold text-stone-900 dark:text-stone-100">
@@ -312,6 +329,6 @@ export function GmSessionConsole() {
           </div>
         </div>
       ) : null}
-    </div>
+    </AppPage>
   );
 }
