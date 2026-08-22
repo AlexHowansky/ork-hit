@@ -64,7 +64,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={api}>
       {children}
       <div
-        className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex flex-col items-center gap-2 p-4"
+        className="pointer-events-none fixed inset-x-0 top-0 z-50 flex flex-col items-center gap-2 p-4"
         // Announced to assistive technology without stealing focus.
         role="status"
         aria-live="polite"
@@ -74,7 +74,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             key={toast.id}
             type="button"
             onClick={() => dismiss(toast.id)}
-            className={`pointer-events-auto max-w-lg rounded-lg px-4 py-3 text-left text-sm shadow-lg ring-1 ${
+            className={`pointer-events-auto max-w-xl rounded-xl px-6 py-4 text-left text-base font-medium shadow-xl ring-1 ${
               toast.tone === "error"
                 ? "bg-red-50 text-red-900 ring-red-200 dark:bg-red-950 dark:text-red-100 dark:ring-red-900"
                 : toast.tone === "success"
