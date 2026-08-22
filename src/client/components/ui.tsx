@@ -34,6 +34,10 @@ export function Button({
   return <button {...props} className={`${BUTTON_BASE} ${VARIANTS[variant]} ${className}`} />;
 }
 
+/**
+ * A labelled text input. `className` extends the input, as it does on `Button` —
+ * not the wrapping label, or it would restyle the label and hint along with it.
+ */
 export function Field({
   label,
   hint,
@@ -41,13 +45,13 @@ export function Field({
   ...props
 }: InputHTMLAttributes<HTMLInputElement> & { label: string; hint?: string }) {
   return (
-    <label className={`block ${className}`}>
+    <label className="block">
       <span className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">
         {label}
       </span>
       <input
         {...props}
-        className="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 placeholder:text-stone-400 focus:border-amber-500 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100 dark:placeholder:text-stone-600"
+        className={`w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 placeholder:text-stone-400 focus:border-amber-500 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100 dark:placeholder:text-stone-600 ${className}`}
       />
       {hint ? (
         <span className="mt-1 block text-xs text-stone-500 dark:text-stone-400">{hint}</span>
