@@ -91,8 +91,10 @@ The app should have the following features:
   character panel, which opens the add form holding it. The add and edit form
   asks for the sheet first, then the name, the type, the campaign, and the image. Uploading a sheet
   fills the name in from the file's name, minus its extension, unless the game
-  master has typed a name of their own. An uploaded sheet is also scanned for a
-  portrait: if it carries one, and the character has no picture of its own, that
+  master has typed a name of their own. Pictures — a campaign's, a character's,
+  and one found inside a sheet alike — are scaled down on the way in to the size
+  the cards show them at, in proportion and without cropping. An uploaded sheet
+  is also scanned for a portrait: if it carries one, and the character has no picture of its own, that
   becomes the character's image. A picture the game master chose is never
   replaced by one found in a file. Present the character library as cards,
   ordered by name whatever their kind.

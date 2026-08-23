@@ -51,6 +51,15 @@ export const config = {
 export const limits = {
   sheetBytes: 5 * 1024 * 1024,
   imageBytes: 5 * 1024 * 1024,
+  /**
+   * The shorter side a stored image is scaled down to.
+   *
+   * Every picture the app shows is a square card 11rem — 176px — across, cropped
+   * from whatever was uploaded, so the shorter side is what has to cover it.
+   * 512 leaves room for a card at three times that density, or the full-width
+   * card a phone shows, without keeping a 4000px photograph to draw a thumbnail.
+   */
+  cardImagePx: 512,
   /** Sliding window before a GM has to log in again. */
   gmSessionTtlMs: 7 * 24 * 60 * 60 * 1000,
   /** Hard ceiling regardless of activity. */

@@ -10,7 +10,9 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { serverOptions } from "../src/server/app.ts";
 import { registerServer } from "../src/server/ws.ts";
+import sharp from "sharp";
 import { gms } from "../src/db/queries.ts";
+import { limits } from "../src/lib/config.ts";
 import { unique } from "./helpers.ts";
 
 let base: string;
@@ -808,5 +810,57 @@ describe("a sheet's own picture becomes the character's", () => {
     );
     const kept = await patch(gifSheet);
     expect(kept.backgroundUrl).toBe(filled.backgroundUrl);
+  });
+});
+
+describe("pictures are stored at the size a card shows them", () => {
+  /** A real picture, decodable, in the format the app will keep it in. */
+  const picture = async (width: number, height: number) =>
+    new Uint8Array(
+      await sharp({
+        create: { width, height, channels: 3, background: { r: 30, g: 90, b: 160 } },
+      }).png().toBuffer(),
+    );
+
+  /** The picture as the browser would actually receive it. */
+  const served = async (cookie: string, url: string) => {
+    const response = await fetch(base + url, authed(cookie));
+    expect(response.status).toBe(200);
+    return await sharp(await response.arrayBuffer()).metadata();
+  };
+
+  test("a character's uploaded picture comes back scaled, in proportion", async () => {
+    const { cookie } = await signIn();
+    const { campaign } = await makeTable(cookie);
+
+    const form = new FormData();
+    form.set("campaignId", campaign.id);
+    form.set("kind", "pc");
+    form.set("name", unique("Hero"));
+    form.set("sheet", new File(["<h1>sheet</h1>"], "sheet.html"));
+    form.set("background", new File([await picture(2400, 1800)], "huge.png"));
+
+    const character = (await (
+      await fetch(`${base}/api/characters`, authed(cookie, { method: "POST", body: form }))
+    ).json()).character;
+
+    const { width, height } = await served(cookie, character.backgroundUrl);
+    expect(height).toBe(limits.cardImagePx);
+    expect(width! / height!).toBeCloseTo(2400 / 1800, 2);
+  });
+
+  test("a campaign's picture is scaled the same way", async () => {
+    const { cookie } = await signIn();
+
+    const form = new FormData();
+    form.set("name", unique("Campaign"));
+    form.set("background", new File([await picture(3000, 3000)], "square.png"));
+
+    const created = (await (
+      await fetch(`${base}/api/campaigns`, authed(cookie, { method: "POST", body: form }))
+    ).json()).campaign;
+
+    const { width, height } = await served(cookie, created.backgroundUrl);
+    expect([width, height]).toEqual([limits.cardImagePx, limits.cardImagePx]);
   });
 });

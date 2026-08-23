@@ -206,6 +206,26 @@ an empty picture but never replaces an existing one, and a failed scan is logged
 and forgotten rather than failing the upload, since a portrait nobody asked for
 is not worth an error.
 
+**Pictures are stored at the size they are looked at.** Every image the app shows
+— a campaign's, a character's, and the portrait lifted out of a sheet — ends up
+in a square card 176px across, so keeping the 4000px photograph that was uploaded
+costs a game master's phone several megabytes to draw a thumbnail. `fitToCard`
+(`src/server/uploads.ts`, on the path every image upload takes) scales the
+**shorter** side down to `limits.cardImagePx`, since that is the side that has to
+cover a square. Nothing is cropped: the card takes its square at display time,
+and the rest of the picture is still in the file for anywhere it is shown
+differently. Nothing is enlarged either, and an image already small enough is
+stored byte-for-byte as it arrived rather than re-encoded for no gain — as is one
+whose bytes sharp cannot read, since it passed the magic-byte check and a game
+master would rather have their picture at full size than an error. The format is
+never changed, and an animated GIF is resized whole rather than flattened to its
+first frame.
+
+This is the one thing in the app that needs a real library: `sharp`. It is a
+native binding, which is a heavier dependency than anything else here, and it is
+worth it — decoding and rescaling four image formats correctly is not something
+to hand-roll.
+
 **Wide screens get a dashboard, not a document.** A 16:9 monitor is much shorter
 relative to its width than a phone, so a page that stacks its panels makes the
 game master scroll away from the turn tracker mid-turn. A `wide` variant in

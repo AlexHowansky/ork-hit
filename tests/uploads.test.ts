@@ -9,6 +9,7 @@
 
 import { describe, expect, test } from "bun:test";
 import { basename } from "node:path";
+import sharp from "sharp";
 import { portraitFromSheet, storeImage, storeSheet } from "../src/server/uploads.ts";
 import { limits } from "../src/lib/config.ts";
 
@@ -195,5 +196,78 @@ describe("the portrait inside a sheet", () => {
     const lie = Buffer.from("<script>alert(1)</script>".repeat(200)).toString("base64");
     const sheet = await sheetWith(`<img src="data:image/png;base64,${lie}">`);
     expect(await portraitFromSheet(sheet)).toBeNull();
+  });
+});
+
+describe("images are stored at the size they are looked at", () => {
+  /** A real picture, not a header with noise behind it: this one gets decoded. */
+  const picture = async (width: number, height: number, format: "png" | "gif" = "png") => {
+    const image = sharp({
+      create: { width, height, channels: 3, background: { r: 160, g: 40, b: 60 } },
+    });
+    return new Uint8Array(await (format === "gif" ? image.gif() : image.png()).toBuffer());
+  };
+
+  const sizeOf = async (path: string) => {
+    const { width, height, format } = await sharp(await Bun.file(path).arrayBuffer()).metadata();
+    return { width, height, format };
+  };
+
+  test("a picture larger than a card is scaled down to it", async () => {
+    const upload = await storeImage(file("big.png", await picture(2000, 1500)));
+
+    // The shorter side is what has to cover the card, so that is what is fitted.
+    expect(await sizeOf(upload.disk_path)).toEqual({
+      width: Math.round((2000 / 1500) * limits.cardImagePx),
+      height: limits.cardImagePx,
+      format: "png",
+    });
+  });
+
+  test("the shape of the picture is never changed", async () => {
+    const tall = await storeImage(file("tall.png", await picture(900, 2700)));
+    const { width, height } = await sizeOf(tall.disk_path);
+
+    expect(width).toBe(limits.cardImagePx);
+    expect(height! / width!).toBeCloseTo(2700 / 900, 1);
+  });
+
+  test("nothing is cropped away", async () => {
+    // A panorama keeps its panorama-ness: the card crops at display time, and the
+    // rest of the picture is still in the file.
+    const wide = await storeImage(file("wide.png", await picture(4000, 800)));
+    const { width, height } = await sizeOf(wide.disk_path);
+
+    expect(height).toBe(limits.cardImagePx);
+    expect(width).toBe(4000 / (800 / limits.cardImagePx));
+  });
+
+  test("a picture already small enough is left exactly as it arrived", async () => {
+    const original = await picture(300, 200);
+    const upload = await storeImage(file("small.png", original));
+
+    // Not enlarged, and not re-encoded either.
+    const stored = new Uint8Array(await Bun.file(upload.disk_path).arrayBuffer());
+    expect([...stored]).toEqual([...original]);
+  });
+
+  test("an animated GIF stays a GIF", async () => {
+    const upload = await storeImage(file("moving.gif", await picture(1600, 1200, "gif")));
+
+    expect(upload.mime).toBe("image/gif");
+    expect(await sizeOf(upload.disk_path)).toMatchObject({
+      height: limits.cardImagePx,
+      format: "gif",
+    });
+  });
+
+  test("a portrait taken out of a sheet is scaled like any other picture", async () => {
+    const portrait = await picture(1800, 1200);
+    const sheet = await storeSheet(
+      file("hero.html", `<img src="data:image/png;base64,${Buffer.from(portrait).toString("base64")}">`),
+    );
+
+    const found = await portraitFromSheet(sheet);
+    expect(await sizeOf(found!.disk_path)).toMatchObject({ height: limits.cardImagePx });
   });
 });

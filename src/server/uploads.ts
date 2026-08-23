@@ -16,6 +16,7 @@
 
 import { mkdir, unlink } from "node:fs/promises";
 import { join, resolve } from "node:path";
+import sharp from "sharp";
 import { config, limits } from "../lib/config.ts";
 import { errors } from "../lib/errors.ts";
 import { log } from "../lib/log.ts";
@@ -119,14 +120,71 @@ export async function storeSheet(file: File): Promise<UploadRow> {
   return await persist(bytes, SHEET_DIR, "sheet", "text/html", name);
 }
 
+/**
+ * Scales a picture down to the size it is actually looked at.
+ *
+ * Every image the app shows ends up in a square card 176px across, so a 4000px
+ * photograph costs a game master's phone several megabytes to draw a thumbnail.
+ * The shorter side is what has to cover that square, so that is what is scaled —
+ * to `limits.cardImagePx`, proportionally, with nothing cropped: the card takes
+ * its square at display time, and the rest of the picture is still there for
+ * anywhere it is shown differently.
+ *
+ * Nothing is enlarged, and an image already small enough is stored exactly as it
+ * arrived rather than re-encoded for no gain. The format is never changed; an
+ * animated GIF is resized as a whole rather than flattened to its first frame.
+ *
+ * A picture that cannot be read is stored as it came in. It passed the magic-byte
+ * check, so this is a decoder disagreeing about the details of a real image, and
+ * a game master would rather have their picture at full size than an error.
+ */
+async function fitToCard(bytes: Uint8Array, mime: string): Promise<Uint8Array> {
+  const animated = mime === "image/gif";
+  try {
+    const { width, height } = await sharp(bytes).metadata();
+    if (!width || !height) return bytes;
+    if (Math.min(width, height) <= limits.cardImagePx) return bytes;
+
+    const resized = await sharp(bytes, { animated })
+      .resize({
+        width: limits.cardImagePx,
+        height: limits.cardImagePx,
+        // `outside` fits the shorter side to the box and lets the longer one run
+        // over, which is exactly what a cropping card needs.
+        fit: "outside",
+        withoutEnlargement: true,
+      })
+      .toBuffer();
+
+    log.info("image scaled for the card", {
+      from: `${width}x${height}`,
+      bytes: `${bytes.byteLength} -> ${resized.byteLength}`,
+    });
+    return new Uint8Array(resized);
+  } catch (error) {
+    log.warn("could not scale an image; storing it as uploaded", { mime, error });
+    return bytes;
+  }
+}
+
+/**
+ * Stores an image, verifying the format by its magic bytes and scaling it to the
+ * size it is displayed at. Returns null for anything that is not an image.
+ */
+async function persistImage(bytes: Uint8Array, originalName: string): Promise<UploadRow | null> {
+  const mime = detectImageMime(bytes);
+  if (!mime) return null;
+  return await persist(await fitToCard(bytes, mime), IMAGE_DIR, "image", mime, originalName);
+}
+
 /** Stores a background image, verifying the format by its magic bytes. */
 export async function storeImage(file: File): Promise<UploadRow> {
   const bytes = await readWithLimit(file, limits.imageBytes, "image");
-  const mime = detectImageMime(bytes);
-  if (!mime) {
+  const stored = await persistImage(bytes, file.name ?? "image");
+  if (!stored) {
     throw errors.badRequest("That image must be a PNG, JPEG, GIF or WebP file.");
   }
-  return await persist(bytes, IMAGE_DIR, "image", mime, file.name ?? "image");
+  return stored;
 }
 
 /* ---------------------------------------------------------------- portraits */
@@ -250,7 +308,9 @@ export async function portraitFromSheet(sheet: UploadRow): Promise<UploadRow | n
     mime: best.mime,
     bytes: best.bytes.byteLength,
   });
-  return await persist(best.bytes, IMAGE_DIR, "image", best.mime, `portrait.${extension}`);
+  // Scaled on the way in like any other picture: a sheet's portrait is often the
+  // largest image the app ever sees.
+  return await persistImage(best.bytes, `portrait.${extension}`);
 }
 
 /** Removes an upload's row and its file. Missing files are not an error. */
