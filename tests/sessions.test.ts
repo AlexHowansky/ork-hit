@@ -6,7 +6,7 @@ import { describe, expect, test } from "bun:test";
 import { db } from "../src/db/index.ts";
 import { characters, gameSessions, players, sessionCharacters } from "../src/db/queries.ts";
 import { generateSessionCode } from "../src/lib/ids.ts";
-import { makeCampaign, makeCharacter, makePlayer, makeSession, unique } from "./helpers.ts";
+import { makeCampaign, makeCharacter, makeGm, makePlayer, makeSession, unique } from "./helpers.ts";
 
 describe("player names", () => {
   test("are unique within a session, ignoring case", () => {
@@ -204,5 +204,30 @@ describe("the starting roster", () => {
 
     expect(roster.map((character) => character.name)).toEqual(["Aaron", "Beatrix"]);
     expect(roster.map((character) => character.position)).toEqual([0, 1]);
+  });
+});
+
+describe("the character library", () => {
+  test("comes back in name order, ignoring case and kind", () => {
+    const campaign = makeCampaign();
+    for (const [name, kind] of [
+      ["zarina", "npc"],
+      ["Bruenor", "pc"],
+      ["strahd", "npc"],
+      ["Elara", "pc"],
+    ] as const) {
+      makeCharacter(campaign.id, kind, name);
+    }
+
+    const listed = characters.listForGm(campaign.gm_id, campaign.id).map((c) => c.name);
+    expect(listed).toEqual(["Bruenor", "Elara", "strahd", "zarina"]);
+  });
+
+  test("is ordered the same way across campaigns", () => {
+    const gm = makeGm();
+    makeCharacter(makeCampaign(gm.id).id, "npc", "Yorick");
+    makeCharacter(makeCampaign(gm.id).id, "pc", "Alwin");
+
+    expect(characters.listForGm(gm.id).map((c) => c.name)).toEqual(["Alwin", "Yorick"]);
   });
 });

@@ -85,7 +85,7 @@ The app should have the following features:
 * A game master may add, edit, and delete PCs and NPCs. These are represented by
   HTML file uploads. Each PC and NPC must be categorized into one campaign. Each
   PC and NPC may have a background image. Present the character library as
-  cards.
+  cards, ordered by name whatever their kind.
 
 * A game master may start a new session. Every PC in the campaign joins the new
   session automatically, in name order; the NPCs stay in the library until the

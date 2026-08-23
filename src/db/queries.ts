@@ -221,20 +221,27 @@ export const campaigns = {
 /* ----------------------------------------------------------------- characters */
 
 export const characters = {
+  /**
+   * The library, in name order.
+   *
+   * By name alone rather than by kind first: the cards carry a badge saying which
+   * is which, so grouping them only made a character harder to find by the one
+   * thing the reader knows about it.
+   */
   listForGm(gmId: string, campaignId?: string): CharacterRow[] {
     if (campaignId) {
       return db.query<CharacterRow, { gmId: string; campaignId: string }>(`
         SELECT c.* FROM characters c
         JOIN campaigns cp ON cp.id = c.campaign_id
         WHERE cp.gm_id = $gmId AND c.campaign_id = $campaignId
-        ORDER BY c.kind, c.name COLLATE NOCASE
+        ORDER BY c.name COLLATE NOCASE
       `).all({ gmId, campaignId });
     }
     return db.query<CharacterRow, { gmId: string }>(`
       SELECT c.* FROM characters c
       JOIN campaigns cp ON cp.id = c.campaign_id
       WHERE cp.gm_id = $gmId
-      ORDER BY c.kind, c.name COLLATE NOCASE
+      ORDER BY c.name COLLATE NOCASE
     `).all({ gmId });
   },
 
