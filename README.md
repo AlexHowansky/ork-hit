@@ -152,7 +152,17 @@ what `FormData` reads on submit. A drop copies the file into that input through 
 knows nothing about any of this. Dropped files are not type-checked in the
 browser — the server identifies an image by its magic bytes, not by what the
 client called it, so a wrong file comes back as the same error the picker would
-have produced.
+have produced. The sheet field leads the form, ahead of the name: handing the
+file over is what the dialog is for, and everything under it — name, type,
+campaign, picture — is filing the thing that was just uploaded.
+
+That ordering is also what makes the name fill itself in. A sheet is nearly
+always saved under the character's name, so uploading `Bilbo Baggins.html` puts
+"Bilbo Baggins" in the field below it — the extension goes, and nothing else
+about the filename is second-guessed. It writes only into an empty field or over
+a name the last upload put there, tracked in a ref: a second file replaces its
+own suggestion, but never a name the game master typed, and never the name of a
+character being edited.
 
 **Wide screens get a dashboard, not a document.** A 16:9 monitor is much shorter
 relative to its width than a phone, so a page that stacks its panels makes the

@@ -342,11 +342,14 @@ export function FileDrop({
   name,
   accept,
   hint,
+  onFile,
 }: {
   label: ReactNode;
   name: string;
   accept?: string;
   hint?: ReactNode;
+  /** The file now in the field, however it arrived, for a form that wants to react. */
+  onFile?: (file: File) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [over, setOver] = useState(false);
@@ -360,6 +363,7 @@ export function FileDrop({
     transfer.items.add(file);
     input.files = transfer.files;
     setChosen(file.name);
+    onFile?.(file);
   };
 
   return (
@@ -389,7 +393,11 @@ export function FileDrop({
           type="file"
           name={name}
           accept={accept}
-          onChange={(event) => setChosen(event.target.files?.item(0)?.name ?? null)}
+          onChange={(event) => {
+            const file = event.target.files?.item(0) ?? null;
+            setChosen(file?.name ?? null);
+            if (file) onFile?.(file);
+          }}
           className="w-full text-sm text-stone-600 file:mr-3 file:rounded-md file:border-0 file:bg-stone-200 file:px-3 file:py-1.5 file:text-sm dark:text-stone-400 dark:file:bg-stone-800 dark:file:text-stone-200"
         />
         <span className="mt-2 block text-xs text-stone-500 dark:text-stone-400">

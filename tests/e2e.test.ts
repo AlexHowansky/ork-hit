@@ -197,6 +197,81 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     expect(await namesIn(player)).toEqual(["Elara", "Strahd", "Thorin"]);
   }, 60_000);
 
+  test("the character form asks for the sheet first", async () => {
+    if (!browser) return;
+    const gm = await signedInGm();
+
+    await gm.getByRole("button", { name: "New campaign" }).click();
+    await gm.getByLabel("Campaign name").fill(unique("Campaign"));
+    await gm.getByRole("button", { name: "Create campaign" }).click();
+    await gm.getByText(/^Characters in/).waitFor();
+    await gm.getByRole("button", { name: "Add character" }).click();
+
+    // Every field is a label whose first span is its caption, so reading them in
+    // document order is reading the form.
+    const captions = await gm
+      .locator("form label")
+      .evaluateAll((labels) =>
+        labels.map((label) => label.querySelector("span")?.textContent?.trim() ?? ""),
+      );
+    expect(captions).toEqual([
+      "Character sheet (HTML file)",
+      "Name",
+      "Type",
+      "Campaign",
+      "Background image (optional)",
+    ]);
+  }, 60_000);
+
+  test("uploading a sheet names the character after the file", async () => {
+    if (!browser) return;
+    const gm = await signedInGm();
+
+    await gm.getByRole("button", { name: "New campaign" }).click();
+    await gm.getByLabel("Campaign name").fill(unique("Campaign"));
+    await gm.getByRole("button", { name: "Create campaign" }).click();
+    await gm.getByText(/^Characters in/).waitFor();
+
+    await gm.getByRole("button", { name: "Add character" }).click();
+    await gm.getByLabel(/Character sheet/).setInputFiles({
+      name: "Bilbo Baggins.html",
+      mimeType: "text/html",
+      buffer: Buffer.from("<h1>Bilbo</h1>"),
+    });
+
+    // The name is filled in from the file, extension and all else left behind.
+    expect(await gm.getByLabel("Name").inputValue()).toBe("Bilbo Baggins");
+
+    // A second file replaces a name that only came from the first.
+    await gm.getByLabel(/Character sheet/).setInputFiles({
+      name: "Frodo Baggins.htm",
+      mimeType: "text/html",
+      buffer: Buffer.from("<h1>Frodo</h1>"),
+    });
+    expect(await gm.getByLabel("Name").inputValue()).toBe("Frodo Baggins");
+
+    // But not a name the game master typed themselves.
+    await gm.getByLabel("Name").fill("Samwise");
+    await gm.getByLabel(/Character sheet/).setInputFiles({
+      name: "Meriadoc.html",
+      mimeType: "text/html",
+      buffer: Buffer.from("<h1>Merry</h1>"),
+    });
+    expect(await gm.getByLabel("Name").inputValue()).toBe("Samwise");
+
+    await gm.getByRole("button", { name: "Add character" }).last().click();
+    await gm.getByRole("button", { name: "Samwise", exact: true }).waitFor();
+
+    // Replacing the sheet of a character that already has a name leaves it alone.
+    await gm.getByRole("button", { name: "Edit Samwise" }).click();
+    await gm.getByLabel(/Character sheet/).setInputFiles({
+      name: "Peregrin.html",
+      mimeType: "text/html",
+      buffer: Buffer.from("<h1>Pippin</h1>"),
+    });
+    expect(await gm.getByLabel("Name").inputValue()).toBe("Samwise");
+  }, 60_000);
+
   test("a character sheet can be dropped onto the form instead of picked", async () => {
     if (!browser) return;
     const gm = await signedInGm();

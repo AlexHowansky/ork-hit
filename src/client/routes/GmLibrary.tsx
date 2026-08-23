@@ -3,7 +3,7 @@
  * presented as cards, plus the controls for starting a session.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { api } from "../api.ts";
 import { useSessionSocket } from "../useSessionSocket.ts";
@@ -28,6 +28,9 @@ import { CharacterCard } from "../components/CharacterCard.tsx";
 import { SheetFrame } from "../components/SheetFrame.tsx";
 import { useToast } from "../components/Toast.tsx";
 import type { Campaign, Character, GameSession } from "../types.ts";
+
+/** Mirrors `limits.nameMaxLength` on the server, which is what rejects a longer one. */
+const NAME_MAX_LENGTH = 60;
 
 /* ------------------------------------------------------------------- dialogs */
 
@@ -147,6 +150,25 @@ function CharacterForm({
 }) {
   const toast = useToast();
   const [busy, setBusy] = useState(false);
+  const [name, setName] = useState(character?.name ?? "");
+  // What the last uploaded sheet put in the name field. Anything else in there is
+  // the game master's own typing, and a second upload must not overwrite it.
+  const suggested = useRef<string | null>(null);
+
+  /**
+   * Names the character after the file, since a sheet is nearly always saved
+   * under the character's name and retyping it is busywork.
+   *
+   * Only into an empty field, or over a name this same mechanism put there. The
+   * extension goes; nothing else about the filename is second-guessed.
+   */
+  const suggestNameFrom = (file: File) => {
+    if (name !== "" && name !== suggested.current) return;
+    const stripped = file.name.replace(/\.[^.]+$/, "").trim().slice(0, NAME_MAX_LENGTH);
+    if (!stripped) return;
+    suggested.current = stripped;
+    setName(stripped);
+  };
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -167,9 +189,38 @@ function CharacterForm({
   const selectClass =
     "w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100";
 
+  // The sheet leads: uploading it is the point of the dialog, and the fields
+  // below it are the filing — what this character is, where it belongs, what it
+  // looks like — in the order someone answers them.
   return (
     <form onSubmit={submit} className="space-y-4">
-      <Field label="Name" name="name" defaultValue={character?.name ?? ""} required />
+      <FileDrop
+        label={`Character sheet ${
+          character ? "(leave empty to keep the current one)" : "(HTML file)"
+        }`}
+        name="sheet"
+        accept=".html,.htm,text/html"
+        hint="Sheets keep their own scripts and styling. They are displayed in an isolated frame, so they cannot interact with the rest of this app."
+        onFile={suggestNameFrom}
+      />
+
+      <Field
+        label="Name"
+        name="name"
+        value={name}
+        onChange={(event) => setName(event.target.value)}
+        required
+      />
+
+      <label className="block">
+        <span className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">
+          Type
+        </span>
+        <select name="kind" defaultValue={character?.kind ?? "pc"} className={selectClass}>
+          <option value="pc">Player character</option>
+          <option value="npc">Non-player character</option>
+        </select>
+      </label>
 
       <label className="block">
         <span className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">
@@ -188,25 +239,6 @@ function CharacterForm({
           ))}
         </select>
       </label>
-
-      <label className="block">
-        <span className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">
-          Type
-        </span>
-        <select name="kind" defaultValue={character?.kind ?? "pc"} className={selectClass}>
-          <option value="pc">Player character</option>
-          <option value="npc">Non-player character</option>
-        </select>
-      </label>
-
-      <FileDrop
-        label={`Character sheet ${
-          character ? "(leave empty to keep the current one)" : "(HTML file)"
-        }`}
-        name="sheet"
-        accept=".html,.htm,text/html"
-        hint="Sheets keep their own scripts and styling. They are displayed in an isolated frame, so they cannot interact with the rest of this app."
-      />
 
       <FileDrop
         label="Background image (optional)"
