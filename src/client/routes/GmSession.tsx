@@ -23,6 +23,7 @@ import {
 import { InitiativeList } from "../components/InitiativeList.tsx";
 import { TurnControls } from "../components/TurnControls.tsx";
 import { SheetFrame } from "../components/SheetFrame.tsx";
+import { ThemeToggle } from "../components/ThemeToggle.tsx";
 import { useToast } from "../components/Toast.tsx";
 import type { Character, GameSession, SessionCharacter, Snapshot } from "../types.ts";
 
@@ -189,6 +190,7 @@ export function GmSessionConsole() {
           {connection === "reconnecting" ? (
             <span className="text-xs text-amber-700 dark:text-amber-400">Reconnecting…</span>
           ) : null}
+          <ThemeToggle />
           <Button variant="danger" onClick={() => void endSession()}>
             End session
           </Button>

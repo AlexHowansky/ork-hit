@@ -11,7 +11,8 @@ document explains the requirements that must be adhered to.
 * Use SQLite for local storage.
 
 * Use Tailwind for styling. Always offer light and dark mode for visual
-  elements.
+  elements. Every page carries the light/dark/system control, so the choice can
+  be made or changed wherever the reader happens to be.
 
 * Make good use of the screen. On a wide, short screen — a 16:9 monitor — a page
   should fill one viewport with its panels side by side, each scrolling its own

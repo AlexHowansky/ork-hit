@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { api } from "../api.ts";
 import { useSessionSocket } from "../useSessionSocket.ts";
+import { ThemeToggle } from "../components/ThemeToggle.tsx";
 import {
   AppPage,
   Button,
@@ -364,7 +365,10 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
           <h1 className="text-xl font-semibold text-stone-900 dark:text-stone-100">Your library</h1>
           <p className="text-sm text-stone-500 dark:text-stone-400">Signed in as {email}</p>
         </div>
-        <Button onClick={onSignOut}>Sign out</Button>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <Button onClick={onSignOut}>Sign out</Button>
+        </div>
       </header>
 
       {activeSessions.length > 0 ? (
