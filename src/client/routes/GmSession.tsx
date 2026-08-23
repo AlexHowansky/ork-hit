@@ -209,7 +209,11 @@ export function GmSessionConsole() {
       />
 
       <div className="grid gap-5 lg:grid-cols-2 wide:min-h-0 wide:flex-1 wide:grid-cols-3">
-        <Panel title={`Initiative order (${snapshot?.characters.length ?? 0})`} scroll>
+        <Panel
+          title={`Initiative order (${snapshot?.characters.length ?? 0})`}
+          scroll
+          className="wide:order-1"
+        >
           {snapshot && snapshot.characters.length > 0 ? (
             <>
               <p className="mb-2 text-xs text-stone-500 dark:text-stone-400">
@@ -227,13 +231,24 @@ export function GmSessionConsole() {
             </>
           ) : (
             <EmptyState>
-              No characters in the session yet. Add some from the library below.
+              No characters in the session yet. Add some from the library.
             </EmptyState>
           )}
         </Panel>
 
+        {/*
+          Stacked, these read in the order they are written: who is here, then who
+          could be added. Side by side, the library belongs next to the initiative
+          order it feeds, so the three columns are ordered rather than rewritten —
+          reading order is only out of step with the columns on a wide screen, and
+          only for these two.
+        */}
         <div className="space-y-5 wide:contents">
-          <Panel title={`Players (${snapshot?.players.length ?? 0})`} scroll>
+          <Panel
+            title={`Players (${snapshot?.players.length ?? 0})`}
+            scroll
+            className="wide:order-3"
+          >
             {snapshot && snapshot.players.length > 0 ? (
               <ul className="divide-y divide-stone-100 dark:divide-stone-800">
                 {snapshot.players.map((player) => {
@@ -281,7 +296,7 @@ export function GmSessionConsole() {
             )}
           </Panel>
 
-          <Panel title="Add from library" scroll>
+          <Panel title="Add from library" scroll className="wide:order-2">
             {availableCharacters.length === 0 ? (
               <EmptyState>Every character in this campaign is already in the session.</EmptyState>
             ) : (

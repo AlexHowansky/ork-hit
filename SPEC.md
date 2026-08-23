@@ -131,7 +131,9 @@ The app should have the following features:
 
 * The GM should be able to add and remove NPCs from the session. When this
   happens, the player's screens should update instantly without a refresh. Use
-  websockets or SSE for this.
+  websockets or SSE for this. Where the session console has room for three
+  columns, the library the GM adds from sits next to the initiative order it
+  feeds, with the players in the last column.
 
 * The GM should be able to indicate what PC or NPC is currently active, i.e.,
   whose turn it is. When the GM makes this selection, the player screens should
