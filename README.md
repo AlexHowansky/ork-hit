@@ -177,6 +177,35 @@ and let stylesheet order decide the winner. The page also swallows `dragover` an
 `drop` at the window: having invited a drag, a miss must not make the browser
 navigate away to render a character sheet as a bare page.
 
+**A sheet usually contains the portrait already.** Sheets are self-contained
+files, so the character's picture is already inside the HTML — and asking the
+game master to find and upload the same image a second time is work the app can
+do itself. `portraitFromSheet` (`src/server/uploads.ts`) reads the stored sheet,
+decodes what is embedded in it and keeps the largest image, which is stored as an
+ordinary image upload and becomes the character's picture.
+
+It looks for encoded bytes rather than for markup, because there is no agreeing
+on the markup: the same picture turns up in an `img` tag, in a CSS `url()`, and
+in a string a script assigns to `.src` at load time — that last one with no
+`data:` prefix anywhere in the file, just a long hex or base64 literal in a
+variable. So both encodings are scanned wherever they appear, and what identifies
+an image is what identifies every other upload: the bytes it starts with. Only
+the first few bytes of a candidate are decoded to decide that, since a sheet is
+full of long runs that are really a hash, a minified bundle, or an embedded font;
+megabytes are decoded only once the run is known to be an image. There is no
+convention for *which* image is the portrait either, but a portrait is reliably
+bigger than the dice icons and rules diagrams around it; anything under 2 KB is
+skipped as furniture.
+
+Two rules hold it in place. **Images linked by URL are never fetched.** Following
+a `src` an uploaded file names would let that file steer a request from the
+server, at whatever address it likes — the whole of SSRF — so only what is
+embedded in the sheet is considered. And **a picture the game master chose is
+never overruled**: an image uploaded in the same request wins, a new sheet fills
+an empty picture but never replaces an existing one, and a failed scan is logged
+and forgotten rather than failing the upload, since a portrait nobody asked for
+is not worth an error.
+
 **Wide screens get a dashboard, not a document.** A 16:9 monitor is much shorter
 relative to its width than a phone, so a page that stacks its panels makes the
 game master scroll away from the turn tracker mid-turn. A `wide` variant in

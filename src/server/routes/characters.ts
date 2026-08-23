@@ -11,8 +11,14 @@ import { parse, schemas } from "../../lib/validate.ts";
 import { errors } from "../../lib/errors.ts";
 import { requireGm } from "../middleware/auth.ts";
 import { campaigns, characters } from "../../db/queries.ts";
-import { collectOrphanedUploads, fileField, storeImage, storeSheet } from "../uploads.ts";
-import type { CharacterRow, GmRow } from "../../db/types.ts";
+import {
+  collectOrphanedUploads,
+  fileField,
+  portraitFromSheet,
+  storeImage,
+  storeSheet,
+} from "../uploads.ts";
+import type { CharacterRow, GmRow, UploadRow } from "../../db/types.ts";
 import { presentCharacter } from "../presenters.ts";
 import { sessionIdsWith } from "../session-state.ts";
 import { broadcastSession } from "../ws.ts";
@@ -32,6 +38,25 @@ function requireOwnedCampaignId(gm: GmRow, campaignId: string): void {
   const campaign = campaigns.byId(campaignId);
   if (!campaign || campaign.gm_id !== gm.id) {
     throw errors.badRequest("Please choose one of your own campaigns for this character.");
+  }
+}
+
+/**
+ * The portrait embedded in a freshly uploaded sheet, if there is one.
+ *
+ * A picture the game master did not ask for is a convenience, never a reason to
+ * fail: anything that goes wrong scanning the sheet leaves the character without
+ * one, which is exactly where it would have been anyway.
+ */
+async function portraitOrNone(
+  sheet: UploadRow,
+  logger: RequestContext["logger"],
+): Promise<UploadRow | null> {
+  try {
+    return await portraitFromSheet(sheet);
+  } catch (error) {
+    logger.warn("could not take a portrait from the sheet", { uploadId: sheet.id, error });
+    return null;
   }
 }
 
@@ -64,8 +89,11 @@ export const characterRoutes = {
       if (!sheetFile) throw errors.badRequest("Please choose an HTML character sheet to upload.");
       const sheet = await storeSheet(sheetFile);
 
+      // An image the game master chose wins; otherwise the sheet may carry one.
       const imageFile = fileField(form, "background");
-      const background = imageFile ? await storeImage(imageFile) : null;
+      const background = imageFile
+        ? await storeImage(imageFile)
+        : await portraitOrNone(sheet, logger);
 
       const character = characters.create({
         campaignId: input.campaignId,
@@ -74,7 +102,11 @@ export const characterRoutes = {
         sheetUploadId: sheet.id,
         backgroundUploadId: background?.id ?? null,
       });
-      logger.info("character created", { characterId: character.id, kind: character.kind });
+      logger.info("character created", {
+        characterId: character.id,
+        kind: character.kind,
+        portraitFromSheet: !imageFile && background !== null,
+      });
 
       return json({ character: presentCharacter(character) }, { status: 201 });
     }),
@@ -109,13 +141,19 @@ export const characterRoutes = {
         }
 
         const sheetFile = fileField(form, "sheet");
-        if (sheetFile) changes.sheetUploadId = (await storeSheet(sheetFile)).id;
+        const sheet = sheetFile ? await storeSheet(sheetFile) : null;
+        if (sheet) changes.sheetUploadId = sheet.id;
 
         const imageFile = fileField(form, "background");
         if (imageFile) {
           changes.backgroundUploadId = (await storeImage(imageFile)).id;
         } else if (form.get("removeBackground") === "true") {
           changes.backgroundUploadId = null;
+        } else if (sheet && !character.background_upload_id) {
+          // A new sheet fills an empty picture, and only an empty one: a portrait
+          // found in a file must not displace the image a game master chose.
+          const portrait = await portraitOrNone(sheet, logger);
+          if (portrait) changes.backgroundUploadId = portrait.id;
         }
 
         const updated = characters.update(character.id, changes);

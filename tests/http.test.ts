@@ -702,3 +702,111 @@ describe("a player who disconnects gives up their seat", () => {
     expect(await roster(cookie, session.id)).toEqual(["Alice"]);
   });
 });
+
+describe("a sheet's own picture becomes the character's", () => {
+  const PNG_HEADER = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0x0d];
+  const GIF_HEADER = [0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 1, 0, 1, 0, 0x80, 0];
+
+  function image(header: number[], bytes: number): Uint8Array<ArrayBuffer> {
+    const data = new Uint8Array(new ArrayBuffer(bytes));
+    data.set(header);
+    for (let i = header.length; i < bytes; i += 1) data[i] = (i * 7) % 251;
+    return data;
+  }
+
+  /** A sheet saved the way a browser saves one: the picture is inside it. */
+  function sheetWithPortrait(): File {
+    const portrait = Buffer.from(image(PNG_HEADER, 4096)).toString("base64");
+    return new File(
+      [`<h1>Hero</h1><img src="data:image/png;base64,${portrait}">`],
+      "hero.html",
+    );
+  }
+
+  async function addCharacter(cookie: string, campaignId: string, fields: FormData) {
+    fields.set("campaignId", campaignId);
+    fields.set("kind", "pc");
+    if (!fields.get("name")) fields.set("name", unique("Hero"));
+    const response = await fetch(
+      `${base}/api/characters`,
+      authed(cookie, { method: "POST", body: fields }),
+    );
+    expect(response.status).toBe(201);
+    return (await response.json()).character;
+  }
+
+  /** What the browser would actually receive for that character's picture. */
+  const pictureType = async (cookie: string, url: string) =>
+    (await fetch(base + url, authed(cookie))).headers.get("Content-Type");
+
+  test("a character uploaded with no image gets the one in its sheet", async () => {
+    const { cookie } = await signIn();
+    const { campaign } = await makeTable(cookie);
+
+    const form = new FormData();
+    form.set("sheet", sheetWithPortrait());
+    const character = await addCharacter(cookie, campaign.id, form);
+
+    expect(character.backgroundUrl).not.toBeNull();
+    expect(await pictureType(cookie, character.backgroundUrl)).toBe("image/png");
+  });
+
+  test("a sheet with no picture in it leaves the character without one", async () => {
+    const { cookie } = await signIn();
+    const { campaign } = await makeTable(cookie);
+
+    const form = new FormData();
+    form.set("sheet", new File(["<h1>Hero</h1>"], "hero.html"));
+    const character = await addCharacter(cookie, campaign.id, form);
+
+    expect(character.backgroundUrl).toBeNull();
+  });
+
+  test("an image the game master chose is not overruled by the sheet", async () => {
+    const { cookie } = await signIn();
+    const { campaign } = await makeTable(cookie);
+
+    const form = new FormData();
+    form.set("sheet", sheetWithPortrait());
+    form.set("background", new File([image(GIF_HEADER, 3000)], "chosen.gif"));
+    const character = await addCharacter(cookie, campaign.id, form);
+
+    // The GIF they picked, not the PNG in the sheet.
+    expect(await pictureType(cookie, character.backgroundUrl)).toBe("image/gif");
+  });
+
+  test("replacing the sheet fills an empty picture, and only an empty one", async () => {
+    const { cookie } = await signIn();
+    const { campaign } = await makeTable(cookie);
+
+    const bare = new FormData();
+    bare.set("sheet", new File(["<h1>Hero</h1>"], "hero.html"));
+    const character = await addCharacter(cookie, campaign.id, bare);
+    expect(character.backgroundUrl).toBeNull();
+
+    const patch = async (body: FormData) =>
+      (await (
+        await fetch(
+          `${base}/api/characters/${character.id}`,
+          authed(cookie, { method: "PATCH", body }),
+        )
+      ).json()).character;
+
+    // Nothing to lose, so the new sheet's portrait is taken.
+    const withPortrait = new FormData();
+    withPortrait.set("sheet", sheetWithPortrait());
+    const filled = await patch(withPortrait);
+    expect(filled.backgroundUrl).not.toBeNull();
+    expect(await pictureType(cookie, filled.backgroundUrl)).toBe("image/png");
+
+    // Now there is a picture, a later sheet must not replace it.
+    const gifSheet = new FormData();
+    const gif = Buffer.from(image(GIF_HEADER, 8000)).toString("base64");
+    gifSheet.set(
+      "sheet",
+      new File([`<img src="data:image/gif;base64,${gif}">`], "hero2.html"),
+    );
+    const kept = await patch(gifSheet);
+    expect(kept.backgroundUrl).toBe(filled.backgroundUrl);
+  });
+});

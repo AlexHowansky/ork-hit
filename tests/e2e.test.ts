@@ -62,10 +62,13 @@ async function gmWithSession(): Promise<{ page: Page; code: string }> {
   const page = await signedInGm();
 
   // A campaign and three characters, created through the dialogs.
+  const campaignName = unique("Campaign");
   await page.getByRole("button", { name: "New campaign" }).click();
-  await page.getByLabel("Campaign name").fill(unique("Campaign"));
+  await page.getByLabel("Campaign name").fill(campaignName);
   await page.getByRole("button", { name: "Create campaign" }).click();
-  await page.getByText(/^Characters in/).waitFor();
+  // The panel of *this* campaign: an account with campaigns already has one on
+  // screen, and it blinks out while the new campaign is being fetched.
+  await page.getByText(`Characters in ${campaignName}`).waitFor();
 
   for (const [name, kind] of [["Thorin", "pc"], ["Elara", "pc"], ["Strahd", "npc"]] as const) {
     await page.getByRole("button", { name: "Add character" }).click();
@@ -201,10 +204,11 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     if (!browser) return;
     const gm = await signedInGm();
 
+    const campaignName = unique("Campaign");
     await gm.getByRole("button", { name: "New campaign" }).click();
-    await gm.getByLabel("Campaign name").fill(unique("Campaign"));
+    await gm.getByLabel("Campaign name").fill(campaignName);
     await gm.getByRole("button", { name: "Create campaign" }).click();
-    await gm.getByText(/^Characters in/).waitFor();
+    await gm.getByText(`Characters in ${campaignName}`).waitFor();
     await gm.getByRole("button", { name: "Add character" }).click();
 
     // Every field is a label whose first span is its caption, so reading them in
@@ -227,21 +231,28 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     if (!browser) return;
     const gm = await signedInGm();
 
+    const campaignName = unique("Campaign");
     await gm.getByRole("button", { name: "New campaign" }).click();
-    await gm.getByLabel("Campaign name").fill(unique("Campaign"));
+    await gm.getByLabel("Campaign name").fill(campaignName);
     await gm.getByRole("button", { name: "Create campaign" }).click();
-    await gm.getByText(/^Characters in/).waitFor();
+    await gm.getByText(`Characters in ${campaignName}`).waitFor();
 
     // A real drop on the panel itself, nowhere near the dialog — which is not
-    // even open yet.
-    const panel = gm.locator("section", { hasText: /^Characters in/ }).first();
-    await panel.evaluate((element) => {
+    // even open yet. The panel is found and dropped on inside one evaluation:
+    // resolving it in an earlier round trip can hand back a node React has since
+    // replaced, and an event dispatched at a detached node reaches nothing.
+    await gm.evaluate(() => {
+      const panel = Array.from(document.querySelectorAll("section")).find((section) =>
+        section.textContent?.startsWith("Characters in"),
+      );
+      if (!panel) throw new Error("the character panel is not on the page");
+
       const transfer = new DataTransfer();
       transfer.items.add(
         new File(["<h1>Gimli</h1>"], "Gimli son of Gloin.html", { type: "text/html" }),
       );
-      element.dispatchEvent(new DragEvent("dragover", { bubbles: true, dataTransfer: transfer }));
-      element.dispatchEvent(new DragEvent("drop", { bubbles: true, dataTransfer: transfer }));
+      panel.dispatchEvent(new DragEvent("dragover", { bubbles: true, dataTransfer: transfer }));
+      panel.dispatchEvent(new DragEvent("drop", { bubbles: true, dataTransfer: transfer }));
     });
 
     // The dialog opens already holding the file, named after it.
@@ -259,10 +270,11 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     if (!browser) return;
     const gm = await signedInGm();
 
+    const campaignName = unique("Campaign");
     await gm.getByRole("button", { name: "New campaign" }).click();
-    await gm.getByLabel("Campaign name").fill(unique("Campaign"));
+    await gm.getByLabel("Campaign name").fill(campaignName);
     await gm.getByRole("button", { name: "Create campaign" }).click();
-    await gm.getByText(/^Characters in/).waitFor();
+    await gm.getByText(`Characters in ${campaignName}`).waitFor();
 
     await gm.getByRole("button", { name: "Add character" }).click();
     await gm.getByLabel(/Character sheet/).setInputFiles({
@@ -308,10 +320,11 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     if (!browser) return;
     const gm = await signedInGm();
 
+    const campaignName = unique("Campaign");
     await gm.getByRole("button", { name: "New campaign" }).click();
-    await gm.getByLabel("Campaign name").fill(unique("Campaign"));
+    await gm.getByLabel("Campaign name").fill(campaignName);
     await gm.getByRole("button", { name: "Create campaign" }).click();
-    await gm.getByText(/^Characters in/).waitFor();
+    await gm.getByText(`Characters in ${campaignName}`).waitFor();
 
     await gm.getByRole("button", { name: "Add character" }).click();
     await gm.getByLabel("Name").fill("Dropped");
@@ -347,7 +360,7 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     await other.getByRole("button", { name: "New campaign" }).click();
     await other.getByLabel("Campaign name").fill(name);
     await other.getByRole("button", { name: "Create campaign" }).click();
-    await other.getByText(/^Characters in/).waitFor();
+    await other.getByText(`Characters in ${name}`).waitFor();
 
     const listed = watcher
       .locator("section", { hasText: "Sessions in progress" })
