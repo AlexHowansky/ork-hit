@@ -17,7 +17,15 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "../api.ts";
 import { playDing } from "../ding.ts";
 import { useSessionSocket } from "../useSessionSocket.ts";
-import { AppPage, Button, EmptyState, KindBadge, Panel } from "../components/ui.tsx";
+import {
+  AppPage,
+  Button,
+  CARD_BASE,
+  CARD_GRID,
+  EmptyState,
+  KindBadge,
+  Panel,
+} from "../components/ui.tsx";
 import { InitiativeList } from "../components/InitiativeList.tsx";
 import { TurnControls } from "../components/TurnControls.tsx";
 import { SheetFrame } from "../components/SheetFrame.tsx";
@@ -127,9 +135,11 @@ export function PlayerSession({
 
   // Before anything else, a player picks which character they're playing.
   if (!myCharacterId) {
-    const available = snapshot.characters.filter(
-      (character) => character.kind === "pc" && character.claimedByPlayerId === null,
-    );
+    // The snapshot arrives in initiative order, which is the wrong order for
+    // finding your own character in a list of names.
+    const available = snapshot.characters
+      .filter((character) => character.kind === "pc" && character.claimedByPlayerId === null)
+      .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
 
     return (
       <div className="mx-auto max-w-2xl p-4 sm:p-6 wide:max-w-5xl">
@@ -147,34 +157,39 @@ export function PlayerSession({
               updates on its own.
             </EmptyState>
           ) : (
-            <div className="grid gap-3 sm:grid-cols-2 wide:grid-cols-4">
+            // Built from the same two constants as the library cards, so a player
+            // sees the shape the game master saw. The whole tile is the button
+            // here, since picking a character is all there is to do with one.
+            <div className={CARD_GRID}>
               {available.map((character) => (
                 <button
                   key={character.id}
                   type="button"
                   disabled={claiming}
                   onClick={() => void claim(character.id)}
-                  className="overflow-hidden rounded-xl border border-stone-200 bg-white text-left shadow-sm transition-shadow hover:shadow-md disabled:opacity-50 dark:border-stone-800 dark:bg-stone-900"
+                  className={`${CARD_BASE} border-stone-200 bg-white text-left disabled:opacity-50 dark:border-stone-800 dark:bg-stone-900`}
                 >
-                  <div className="h-28 bg-stone-200 dark:bg-stone-800">
+                  <div className="aspect-square w-full shrink-0 overflow-hidden bg-stone-200 dark:bg-stone-800">
                     {character.backgroundUrl ? (
                       <img
                         src={character.backgroundUrl}
                         alt=""
-                        className="h-full w-full object-cover"
+                        className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105 group-focus-within:scale-105"
                       />
                     ) : (
                       <div
-                        className="flex h-full items-center justify-center text-3xl opacity-30"
+                        className="flex h-full items-center justify-center text-4xl opacity-30"
                         aria-hidden
                       >
                         🛡
                       </div>
                     )}
                   </div>
-                  <p className="p-3 font-medium text-stone-900 dark:text-stone-100">
-                    {character.name}
-                  </p>
+                  <div className="shrink-0 p-3">
+                    <p className="truncate font-medium text-stone-900 dark:text-stone-100">
+                      {character.name}
+                    </p>
+                  </div>
                 </button>
               ))}
             </div>

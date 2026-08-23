@@ -105,8 +105,9 @@ The app should have the following features:
 
 * When a player joins a session, they should be prompted for their name. Ensure
   that names are unique in a session. They should also be presented with a list
-  of the active PCs that the GM has placed in this session. From this list, they
-  may choose one PC to play. This PC to player association must be maintained as
+  of the active PCs that the GM has placed in this session, in name order, as
+  cards of the same size and shape as the library's. From this list, they may choose one PC to
+  play. This PC to player association must be maintained as
   long as the session lasts.
 
 * An active PC that no player has claimed should be highlighted in an alert

@@ -75,7 +75,9 @@ reject a list built from a stale view instead of silently dropping a character.
 
 **Card styling is shared.** The campaign and character grids are different
 components, so their shape and hover treatment live in one place — `CARD_BASE`
-in `src/client/components/ui.tsx`. The picture is the square, not the card: the
+in `src/client/components/ui.tsx` — and the player's character picker is built
+from the same two, so a player sees the shape the game master saw. The picture is
+the square, not the card: the
 image well is a full-width square, edit and delete ride on the picture as icons in
 its lower right corner (`CardActions` and `IconButton`), and the name sits under it
 on its own. That keeps the card mostly picture, and since every caption is built
