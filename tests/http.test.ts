@@ -12,7 +12,7 @@ import { serverOptions } from "../src/server/app.ts";
 import { registerServer } from "../src/server/ws.ts";
 import sharp from "sharp";
 import { gms } from "../src/db/queries.ts";
-import { limits } from "../src/lib/config.ts";
+import { config, limits } from "../src/lib/config.ts";
 import { unique } from "./helpers.ts";
 
 let base: string;
@@ -845,7 +845,7 @@ describe("pictures are stored at the size a card shows them", () => {
     ).json()).character;
 
     const { width, height } = await served(cookie, character.backgroundUrl);
-    expect(height).toBe(limits.cardImagePx);
+    expect(height).toBe(limits.storedImagePx);
     expect(width! / height!).toBeCloseTo(2400 / 1800, 2);
   });
 
@@ -861,6 +861,22 @@ describe("pictures are stored at the size a card shows them", () => {
     ).json()).campaign;
 
     const { width, height } = await served(cookie, created.backgroundUrl);
-    expect([width, height]).toEqual([limits.cardImagePx, limits.cardImagePx]);
+    expect([width, height]).toEqual([limits.storedImagePx, limits.storedImagePx]);
+  });
+});
+
+describe("the deployment's card size reaches the browser", () => {
+  test("as a stylesheet anyone can load, before the first paint", async () => {
+    // No cookie: the document has to be able to lay itself out before anyone has
+    // signed in, on the login screen.
+    const response = await fetch(`${base}/appearance.css`);
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Content-Type")).toStartWith("text/css");
+    expect(await response.text()).toContain(`--card-image-size: ${config.cardImagePx}px`);
+  });
+
+  test("and the stored pictures follow it, so bigger cards stay sharp", () => {
+    expect(limits.storedImagePx).toBe(config.cardImagePx * 3);
   });
 });

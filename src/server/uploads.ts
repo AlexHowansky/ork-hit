@@ -126,7 +126,7 @@ export async function storeSheet(file: File): Promise<UploadRow> {
  * Every image the app shows ends up in a square card 176px across, so a 4000px
  * photograph costs a game master's phone several megabytes to draw a thumbnail.
  * The shorter side is what has to cover that square, so that is what is scaled —
- * to `limits.cardImagePx`, proportionally, with nothing cropped: the card takes
+ * to `limits.storedImagePx`, proportionally, with nothing cropped: the card takes
  * its square at display time, and the rest of the picture is still there for
  * anywhere it is shown differently.
  *
@@ -143,12 +143,12 @@ async function fitToCard(bytes: Uint8Array, mime: string): Promise<Uint8Array> {
   try {
     const { width, height } = await sharp(bytes).metadata();
     if (!width || !height) return bytes;
-    if (Math.min(width, height) <= limits.cardImagePx) return bytes;
+    if (Math.min(width, height) <= limits.storedImagePx) return bytes;
 
     const resized = await sharp(bytes, { animated })
       .resize({
-        width: limits.cardImagePx,
-        height: limits.cardImagePx,
+        width: limits.storedImagePx,
+        height: limits.storedImagePx,
         // `outside` fits the shorter side to the box and lets the longer one run
         // over, which is exactly what a cropping card needs.
         fit: "outside",

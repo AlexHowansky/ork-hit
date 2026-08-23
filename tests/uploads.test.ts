@@ -218,8 +218,8 @@ describe("images are stored at the size they are looked at", () => {
 
     // The shorter side is what has to cover the card, so that is what is fitted.
     expect(await sizeOf(upload.disk_path)).toEqual({
-      width: Math.round((2000 / 1500) * limits.cardImagePx),
-      height: limits.cardImagePx,
+      width: Math.round((2000 / 1500) * limits.storedImagePx),
+      height: limits.storedImagePx,
       format: "png",
     });
   });
@@ -228,7 +228,7 @@ describe("images are stored at the size they are looked at", () => {
     const tall = await storeImage(file("tall.png", await picture(900, 2700)));
     const { width, height } = await sizeOf(tall.disk_path);
 
-    expect(width).toBe(limits.cardImagePx);
+    expect(width).toBe(limits.storedImagePx);
     expect(height! / width!).toBeCloseTo(2700 / 900, 1);
   });
 
@@ -238,8 +238,8 @@ describe("images are stored at the size they are looked at", () => {
     const wide = await storeImage(file("wide.png", await picture(4000, 800)));
     const { width, height } = await sizeOf(wide.disk_path);
 
-    expect(height).toBe(limits.cardImagePx);
-    expect(width).toBe(4000 / (800 / limits.cardImagePx));
+    expect(height).toBe(limits.storedImagePx);
+    expect(width).toBe(Math.round(4000 * (limits.storedImagePx / 800)));
   });
 
   test("a picture already small enough is left exactly as it arrived", async () => {
@@ -256,7 +256,7 @@ describe("images are stored at the size they are looked at", () => {
 
     expect(upload.mime).toBe("image/gif");
     expect(await sizeOf(upload.disk_path)).toMatchObject({
-      height: limits.cardImagePx,
+      height: limits.storedImagePx,
       format: "gif",
     });
   });
@@ -268,6 +268,6 @@ describe("images are stored at the size they are looked at", () => {
     );
 
     const found = await portraitFromSheet(sheet);
-    expect(await sizeOf(found!.disk_path)).toMatchObject({ height: limits.cardImagePx });
+    expect(await sizeOf(found!.disk_path)).toMatchObject({ height: limits.storedImagePx });
   });
 });

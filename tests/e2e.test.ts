@@ -12,6 +12,7 @@ import type { Browser, Page } from "playwright";
 import { serverOptions } from "../src/server/app.ts";
 import { registerServer } from "../src/server/ws.ts";
 import { gms } from "../src/db/queries.ts";
+import { config } from "../src/lib/config.ts";
 import { unique } from "./helpers.ts";
 
 const PASSWORD = "a-sufficiently-long-password";
@@ -198,6 +199,31 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
 
     expect(await namesIn(gm)).toEqual(["Elara", "Strahd", "Thorin"]);
     expect(await namesIn(player)).toEqual(["Elara", "Strahd", "Thorin"]);
+  }, 60_000);
+
+  test("cards are drawn at the size the deployment asked for", async () => {
+    if (!browser) return;
+    const gm = await signedInGm();
+
+    const campaignName = unique("Campaign");
+    await gm.getByRole("button", { name: "New campaign" }).click();
+    await gm.getByLabel("Campaign name").fill(campaignName);
+    await gm.getByRole("button", { name: "Create campaign" }).click();
+    await gm.getByText(`Characters in ${campaignName}`).waitFor();
+
+    // The picture is what the setting measures, so the picture is what is
+    // measured here: the square image well of a card, in CSS pixels.
+    // The select button fills the card's image well exactly, so its box is the
+    // picture's box.
+    const well = gm.getByRole("button", { name: `Select ${campaignName}` });
+    const box = (await well.boundingBox())!;
+
+    expect(Math.round(box.width)).toBe(config.cardImagePx);
+    // Square, and the card around it is taller than its picture — the border and
+    // the name below it are extra, as the setting's documentation promises.
+    expect(Math.round(box.height)).toBe(config.cardImagePx);
+    const card = (await well.locator("xpath=ancestor::article[1]").boundingBox())!;
+    expect(card.height).toBeGreaterThan(box.height);
   }, 60_000);
 
   test("the character form asks for the sheet first", async () => {

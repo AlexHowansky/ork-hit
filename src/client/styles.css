@@ -41,6 +41,22 @@
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
+/*
+  How large a card's picture is drawn.
+
+  The deployment's own value arrives from /appearance.css, which is attached at
+  run time and therefore wins. This is the default, and what the page falls back
+  to if that request never lands.
+
+  The picture is what the setting measures. A card is its frame plus its picture
+  plus the name underneath, so it comes out larger — and by exactly how much on
+  each side is `--card-border`, which is why the grid track adds it back on.
+*/
+:root {
+  --card-image-size: 176px;
+  --card-border: 1px;
+}
+
 :root {
   color-scheme: light;
 }

@@ -206,6 +206,24 @@ an empty picture but never replaces an existing one, and a failed scan is logged
 and forgotten rather than failing the upload, since a portrait nobody asked for
 is not worth an error.
 
+**How big a card is, is a deployment setting.** `CARD_IMAGE_PX` (default 176)
+measures the *picture* on a card; the frame around it and the name underneath
+make the card itself larger. Getting that number into the browser takes a small
+detour: the client is a bundle built when the server starts, so the value cannot
+be compiled in, and fetching it as JSON would draw the first cards at one size
+and then resize them. Instead the server serves a two-line stylesheet
+(`server/routes/appearance.ts`) declaring `--card-image-size`, which is what the
+card grid is measured in — so nothing needs to re-render when it lands, and no
+component has to know the setting exists. `styles.css` declares the same property
+with the default, so a page whose request for it fails is still laid out
+correctly. The link is attached by `client/appearance.ts` at startup rather than
+written into `index.html`, because Bun resolves the document's links at build
+time and this one only exists at run time.
+
+The grid track adds the card's border back on (`--card-border`), so the picture
+is the size that was asked for rather than two pixels short of it — the one place
+those two variables meet, and the reason the border width is a variable at all.
+
 **Pictures are stored at the size they are looked at.** Every image the app shows
 — a campaign's, a character's, and the portrait lifted out of a sheet — ends up
 in a square card 176px across, so keeping the 4000px photograph that was uploaded

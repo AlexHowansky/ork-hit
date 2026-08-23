@@ -24,7 +24,7 @@ const BUTTON_BASE =
  * Callers supply the border and background colours, which vary with selection.
  */
 export const CARD_BASE =
-  "group flex flex-col overflow-hidden rounded-xl border shadow-sm transition duration-150 hover:-translate-y-0.5 hover:border-amber-400 hover:shadow-lg focus-within:-translate-y-0.5 focus-within:border-amber-400 focus-within:shadow-lg dark:hover:border-amber-500/70 dark:focus-within:border-amber-500/70";
+  "group flex flex-col overflow-hidden rounded-xl border-[length:var(--card-border)] shadow-sm transition duration-150 hover:-translate-y-0.5 hover:border-amber-400 hover:shadow-lg focus-within:-translate-y-0.5 focus-within:border-amber-400 focus-within:shadow-lg dark:hover:border-amber-500/70 dark:focus-within:border-amber-500/70";
 
 /**
  * The grid every card library sits in.
@@ -34,8 +34,15 @@ export const CARD_BASE =
  * the same width. The cost is some slack at the end of a row, which is the price
  * of the two libraries matching. Below `sm` there is only ever one column, and it
  * takes the full width rather than leaving most of a phone screen empty.
+ *
+ * The width itself is `--card-image-size`, which the deployment sets (see
+ * `server/routes/appearance.ts`) — and it names the picture rather than the card
+ * because that is what it measures: the image well is the full width of the
+ * track, and the border and the name below it make the card taller.
  */
-export const CARD_GRID = "grid grid-cols-1 gap-4 sm:grid-cols-[repeat(auto-fill,11rem)]";
+export const CARD_GRID =
+  "grid grid-cols-1 gap-4 " +
+  "sm:grid-cols-[repeat(auto-fill,calc(var(--card-image-size)+2*var(--card-border)))]";
 
 const VARIANTS = {
   primary:

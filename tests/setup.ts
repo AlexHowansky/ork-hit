@@ -17,6 +17,9 @@ process.env.LOG_LEVEL = "error";
 // A disconnected player is dropped after this long. Tests wait it out, so it is
 // short here; the deployed default is measured in seconds, not milliseconds.
 process.env.PLAYER_GRACE_MS = "300";
+// Deliberately not the default: a test that finds cards this size has shown that
+// the environment is what decides, rather than a number compiled into the app.
+process.env.CARD_IMAGE_PX = "208";
 
 // Imported after the environment is set, so the connection opens on the scratch file.
 const { migrate } = await import("../src/db/migrate.ts");

@@ -19,6 +19,10 @@ document explains the requirements that must be adhered to.
   content, rather than stacking them into a page that scrolls as a whole. Narrow
   or tall screens keep the stacked layout.
 
+* How large a card's picture is drawn is a deployment setting, not a constant in
+  the code. It measures the picture: the card comes out larger, since its border
+  and the name underneath are extra.
+
 * A card in a library shows its picture as a square, with the name below it and
   its controls as icons over the lower right of the picture: edit and delete,
   and on a character card an icon that opens its sheet.

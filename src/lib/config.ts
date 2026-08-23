@@ -16,6 +16,19 @@ function duration(value: string | undefined, fallback: number): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+/**
+ * A whole number of pixels within a range a layout can survive.
+ *
+ * Out-of-range is clamped rather than refused: a card is a matter of taste, and
+ * an odd number in the environment should give someone small or large cards, not
+ * a server that will not start.
+ */
+function pixels(value: string | undefined, fallback: number, min: number, max: number): number {
+  const parsed = Math.round(Number(value));
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+  return Math.min(Math.max(parsed, min), max);
+}
+
 const logLevels = ["debug", "info", "warn", "error"] as const;
 export type LogLevel = (typeof logLevels)[number];
 
@@ -44,6 +57,14 @@ export const config = {
    * short enough that a closed browser doesn't sit in the list all evening.
    */
   playerGraceMs: duration(process.env.PLAYER_GRACE_MS, 30_000),
+  /**
+   * How large the picture on a card is drawn, in CSS pixels.
+   *
+   * The card itself comes out taller: its border and the name underneath are
+   * extra. Reaches the browser as a custom property (see routes/appearance.ts),
+   * so changing it is a restart rather than a rebuild.
+   */
+  cardImagePx: pixels(process.env.CARD_IMAGE_PX, 176, 64, 640),
   isProduction: process.env.NODE_ENV === "production",
 } as const;
 
@@ -54,12 +75,13 @@ export const limits = {
   /**
    * The shorter side a stored image is scaled down to.
    *
-   * Every picture the app shows is a square card 11rem — 176px — across, cropped
-   * from whatever was uploaded, so the shorter side is what has to cover it.
-   * 512 leaves room for a card at three times that density, or the full-width
-   * card a phone shows, without keeping a 4000px photograph to draw a thumbnail.
+   * Every picture the app shows is cropped into a square card, so the shorter
+   * side is what has to cover it. Three times the card's own size leaves room for
+   * a high-density screen, or the full-width card a phone shows, without keeping
+   * a 4000px photograph to draw a thumbnail — and it follows the card, so making
+   * cards bigger keeps the pictures sharp rather than blowing them up.
    */
-  cardImagePx: 512,
+  storedImagePx: config.cardImagePx * 3,
   /** Sliding window before a GM has to log in again. */
   gmSessionTtlMs: 7 * 24 * 60 * 60 * 1000,
   /** Hard ceiling regardless of activity. */
