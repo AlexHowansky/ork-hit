@@ -26,6 +26,12 @@ document explains the requirements that must be adhered to.
   the code. It measures the picture: the card comes out larger, since its border
   and the name underneath are extra.
 
+* A character sheet is shown as it was written: it opens over the page in the
+  window's own aspect ratio, with nothing drawn around it — no title, no border,
+  no margin — save the control that closes it. How much of the window it takes is
+  a deployment setting; by default it is most of it, leaving the page dimmed
+  around the edges.
+
 * A card in a library shows its picture as a square, with the name below it and
   its controls as icons over the lower right of the picture: edit and delete,
   and on a character card an icon that opens its sheet.

@@ -22,7 +22,7 @@ import {
 } from "../components/ui.tsx";
 import { InitiativeList } from "../components/InitiativeList.tsx";
 import { TurnControls } from "../components/TurnControls.tsx";
-import { SheetFrame } from "../components/SheetFrame.tsx";
+import { SheetOverlay } from "../components/SheetFrame.tsx";
 import { ThemeToggle } from "../components/ThemeToggle.tsx";
 import { useToast } from "../components/Toast.tsx";
 import type { Character, GameSession, SessionCharacter, Snapshot } from "../types.ts";
@@ -325,26 +325,11 @@ export function GmSessionConsole() {
       </div>
 
       {viewingSheet ? (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 p-4">
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label={`${viewingSheet.name} character sheet`}
-            className="flex h-[85vh] w-full max-w-5xl flex-col overflow-hidden rounded-xl bg-white wide:h-[92vh] wide:max-w-7xl dark:bg-stone-900"
-          >
-            <header className="flex items-center justify-between border-b border-stone-200 px-5 py-3 dark:border-stone-800">
-              <h2 className="font-semibold text-stone-900 dark:text-stone-100">
-                {viewingSheet.name}
-              </h2>
-              <Button variant="ghost" onClick={() => setViewingSheet(null)} aria-label="Close">
-                ✕
-              </Button>
-            </header>
-            <div className="flex-1 p-4">
-              <SheetFrame src={viewingSheet.sheetUrl} title={viewingSheet.name} />
-            </div>
-          </div>
-        </div>
+        <SheetOverlay
+          src={viewingSheet.sheetUrl}
+          title={viewingSheet.name}
+          onClose={() => setViewingSheet(null)}
+        />
       ) : null}
     </AppPage>
   );

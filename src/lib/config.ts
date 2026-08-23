@@ -17,13 +17,13 @@ function duration(value: string | undefined, fallback: number): number {
 }
 
 /**
- * A whole number of pixels within a range a layout can survive.
+ * A whole number within a range a layout can survive.
  *
- * Out-of-range is clamped rather than refused: a card is a matter of taste, and
- * an odd number in the environment should give someone small or large cards, not
- * a server that will not start.
+ * Out-of-range is clamped rather than refused: how big a card or a sheet is drawn
+ * is a matter of taste, and an odd number in the environment should give someone
+ * an odd-looking page, not a server that will not start.
  */
-function pixels(value: string | undefined, fallback: number, min: number, max: number): number {
+function whole(value: string | undefined, fallback: number, min: number, max: number): number {
   const parsed = Math.round(Number(value));
   if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
   return Math.min(Math.max(parsed, min), max);
@@ -64,7 +64,16 @@ export const config = {
    * extra. Reaches the browser as a custom property (see routes/appearance.ts),
    * so changing it is a restart rather than a rebuild.
    */
-  cardImagePx: pixels(process.env.CARD_IMAGE_PX, 176, 64, 640),
+  cardImagePx: whole(process.env.CARD_IMAGE_PX, 176, 64, 640),
+  /**
+   * How much of the window a character sheet is opened over, as a percentage.
+   *
+   * It sets both dimensions, which is what keeps the sheet in the window's own
+   * aspect ratio: at 90 it is nine tenths of the window's width and nine tenths
+   * of its height, at 100 it fills the viewport outright. Reaches the browser the
+   * same way the card size does (see routes/appearance.ts).
+   */
+  sheetWidthPct: whole(process.env.SHEET_WIDTH_PCT, 90, 10, 100),
   isProduction: process.env.NODE_ENV === "production",
 } as const;
 

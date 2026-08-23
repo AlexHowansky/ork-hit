@@ -564,4 +564,109 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
 
     await page.close();
   }, 60_000);
+
+  test("a sheet opens over the window in the window's own shape", async () => {
+    if (!browser) return;
+    const page = await signedInGm();
+    await page.setViewportSize({ width: 1600, height: 900 });
+
+    const campaign = unique("Campaign");
+    await page.getByRole("button", { name: "New campaign" }).click();
+    await page.getByLabel("Campaign name").fill(campaign);
+    await page.getByRole("button", { name: "Create campaign" }).click();
+    await page.getByText(`Characters in ${campaign}`).waitFor();
+
+    await page.getByRole("button", { name: "Add character" }).click();
+    await page.getByLabel("Name").fill("Thorin");
+    await page.getByLabel(/Character sheet/).setInputFiles({
+      name: "thorin.html",
+      mimeType: "text/html",
+      buffer: Buffer.from("<h1>Thorin</h1>"),
+    });
+    await page.getByRole("button", { name: "Add character" }).last().click();
+    await page.getByRole("button", { name: "Thorin", exact: true }).waitFor();
+
+    await page.getByRole("button", { name: "View Thorin's sheet" }).click();
+    await page.locator("iframe").waitFor();
+
+    // Whatever shape the window is, the sheet is the same shape. Nothing of ours
+    // is drawn around it.
+    for (const [width, height] of [[1600, 900], [1200, 1000], [800, 1400]]) {
+      await page.setViewportSize({ width: width!, height: height! });
+      await page.waitForTimeout(150);
+      const shown = await page.evaluate(() => {
+        const frame = document.querySelector("iframe")!;
+        const box = frame.getBoundingClientRect();
+        const style = getComputedStyle(frame);
+        return {
+          size: [box.width, box.height],
+          window: [window.innerWidth, window.innerHeight],
+          border: style.borderTopWidth,
+          radius: style.borderTopLeftRadius,
+          headings: document.querySelectorAll('[role="dialog"] h2').length,
+        };
+      });
+      // The same ratio as the window, at whatever fraction of it the deployment
+      // asked for — asserted as a ratio so the default can move without this
+      // test having to know what it is.
+      const [frameW, frameH] = shown.size as [number, number];
+      const [windowW, windowH] = shown.window as [number, number];
+      expect(frameW / frameH).toBeCloseTo(windowW / windowH, 3);
+      expect(frameW).toBeLessThanOrEqual(windowW);
+      expect(shown.border).toBe("0px");
+      expect(shown.radius).toBe("0px");
+      expect(shown.headings).toBe(0);
+    }
+
+    // The setting is one number and it moves both dimensions together, so the
+    // shape survives whatever the deployment picks — including filling the window.
+    await page.setViewportSize({ width: 1600, height: 900 });
+    for (const [size, expected] of [[80, [1280, 720]], [100, [1600, 900]]] as const) {
+      await page.evaluate(
+        (value: string) => document.documentElement.style.setProperty("--sheet-size", value),
+        String(size),
+      );
+      await page.waitForTimeout(150);
+      const scaled = await page.evaluate(() => {
+        const box = document.querySelector("iframe")!.getBoundingClientRect();
+        return [box.width, box.height];
+      });
+      expect(scaled).toEqual([...expected]);
+    }
+
+    // The close control sits in the window's corner, not the sheet's, so it does
+    // not move when the sheet is drawn at a different size.
+    await page.evaluate(() => document.documentElement.style.setProperty("--sheet-size", "90"));
+    await page.waitForTimeout(150);
+    const corner = await page.evaluate(() => {
+      const button = document.querySelector('button[aria-label="Close"]')!.getBoundingClientRect();
+      const sheet = document.querySelector('[role="dialog"]')!.getBoundingClientRect();
+      return { top: button.top, right: window.innerWidth - button.right, sheetTop: sheet.top };
+    });
+    expect(corner.top).toBeLessThan(corner.sheetTop);
+    expect(corner.right).toBeLessThan(16);
+
+    // Escape closes it, while the keyboard is still this page's to hear. Once a
+    // reader clicks into the sheet the focus is inside a sandboxed cross-origin
+    // frame and no key reaches us again, which is why the button is always there.
+    expect(await page.getByRole("button", { name: "Close" }).count()).toBe(1);
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(200);
+    expect(await page.locator("iframe").count()).toBe(0);
+
+    // A click on the sheet itself is the sheet's own business...
+    await page.getByRole("button", { name: "View Thorin's sheet" }).click();
+    await page.locator("iframe").waitFor();
+    const sheetBox = (await page.locator('[role="dialog"]').boundingBox())!;
+    await page.mouse.click(sheetBox.x + sheetBox.width / 2, sheetBox.y + sheetBox.height / 2);
+    await page.waitForTimeout(200);
+    expect(await page.locator("iframe").count()).toBe(1);
+
+    // ...but a click on the dimmed page around it closes the sheet.
+    await page.mouse.click(4, 4);
+    await page.waitForTimeout(200);
+    expect(await page.locator("iframe").count()).toBe(0);
+
+    await page.close();
+  }, 60_000);
 });

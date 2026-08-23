@@ -74,6 +74,20 @@
   --campaign-col: minmax(0, 1fr);
 }
 
+/*
+  How much of the window a character sheet is opened over, as a percentage.
+
+  One number sets both dimensions, which is what puts the sheet in the window's
+  own aspect ratio rather than a shape of its own: at 90 it is nine tenths of the
+  window's width and nine tenths of its height, at 100 it fills the viewport.
+
+  The deployment's own value arrives from /appearance.css, as the card size does.
+  This is the default and the fallback.
+*/
+:root {
+  --sheet-size: 90;
+}
+
 :root {
   color-scheme: light;
 }

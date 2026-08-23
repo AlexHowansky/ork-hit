@@ -29,7 +29,7 @@ import {
   useFileDropTarget,
 } from "../components/ui.tsx";
 import { CharacterCard } from "../components/CharacterCard.tsx";
-import { SheetFrame } from "../components/SheetFrame.tsx";
+import { SheetOverlay } from "../components/SheetFrame.tsx";
 import { useToast } from "../components/Toast.tsx";
 import type { Campaign, Character, GameSession } from "../types.ts";
 
@@ -723,11 +723,11 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
       ) : null}
 
       {previewing ? (
-        <Modal title={previewing.name} onClose={() => setPreviewing(null)} wide>
-          <div className="h-[70vh] wide:h-[80vh]">
-            <SheetFrame src={previewing.sheetUrl} title={previewing.name} />
-          </div>
-        </Modal>
+        <SheetOverlay
+          src={previewing.sheetUrl}
+          title={previewing.name}
+          onClose={() => setPreviewing(null)}
+        />
       ) : null}
     </AppPage>
   );

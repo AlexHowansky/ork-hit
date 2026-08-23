@@ -873,7 +873,9 @@ describe("the deployment's card size reaches the browser", () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toStartWith("text/css");
-    expect(await response.text()).toContain(`--card-image-size: ${config.cardImagePx}px`);
+    const css = await response.text();
+    expect(css).toContain(`--card-image-size: ${config.cardImagePx}px`);
+    expect(css).toContain(`--sheet-size: ${config.sheetWidthPct}`);
   });
 
   test("and the stored pictures follow it, so bigger cards stay sharp", () => {

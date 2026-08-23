@@ -1,7 +1,8 @@
 /**
  * The handful of settings the browser has to know about, delivered as CSS.
  *
- * Card size is a deployment choice, and the client is a bundle built when the
+ * How large a card is drawn, and how much of the window a sheet opens over, are
+ * deployment choices, and the client is a bundle built when the
  * server starts — so the value cannot be baked into it, and fetching it as JSON
  * would draw the first cards at the wrong size and then resize them. A stylesheet
  * is the natural carrier: it is a custom property the layout already reads, the
@@ -13,7 +14,11 @@
 
 import { config } from "../../lib/config.ts";
 
-const css = `:root { --card-image-size: ${config.cardImagePx}px; }\n`;
+const css =
+  `:root {\n` +
+  `  --card-image-size: ${config.cardImagePx}px;\n` +
+  `  --sheet-size: ${config.sheetWidthPct};\n` +
+  `}\n`;
 
 export const appearanceRoutes = {
   "/appearance.css": () =>

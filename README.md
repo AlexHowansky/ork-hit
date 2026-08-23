@@ -337,6 +337,31 @@ or call the API as the signed-in user. A sheet that tries gets a `SecurityError`
 for `document.cookie` and a CORS rejection from `origin: null` for any fetch;
 both are asserted in `tests/e2e.test.ts`.
 
+**A sheet is shown as it was written.** Whichever of the three places it is opened
+from — the library preview, the session console, the player's `My sheet` — it goes
+through one `SheetOverlay` (`components/SheetFrame.tsx`), and there is nothing of
+ours around it: no title bar, no border, no rounding, no padding. A sheet is a
+whole page of somebody else's design, and a strip of our own chrome would both take
+the room and change the shape it is laid out in. The one thing over it is the close
+control, in the *window's* top right rather than the sheet's, so it stays in the
+same place whatever size the sheet is drawn at. It is an `IconButton`, the same
+one a card's icons are, because that is already built to stay readable over
+something we know nothing about — here either the dimmed page or the sheet itself.
+
+Escape closes the sheet, and so does a click on the dimmed page around it. The
+button is not a convenience on top of those two: a sandboxed cross-origin frame
+takes the focus when a reader clicks into a sheet, and no keystroke reaches this
+page again until they click back out, so Escape alone would strand them.
+
+It is drawn in the window's own aspect ratio, so a sheet written for a 16:9 screen
+gets one. `--sheet-size` is a single percentage and it sets *both* dimensions,
+which is what makes the ratio come out right without any measuring: at the default
+of 90 the sheet is nine tenths of the window's width and nine tenths of its height
+— the same shape, smaller, with the dimmed page still showing around it — and at
+100 it fills the viewport outright. The deployment picks the number with
+`SHEET_WIDTH_PCT`, which reaches the browser through `/appearance.css` exactly as
+the card size does.
+
 Who may read a sheet:
 
 | | Sheets they can open |
@@ -418,8 +443,8 @@ bun run typecheck
 
 The browser tests cover what only exists in a live page — dragging the
 initiative order with a mouse and with the keyboard, dragging a character card
-onto another campaign, player screens updating without a refresh, and the sheet
-sandbox holding. They need Playwright's
+onto another campaign, player screens updating without a refresh, a sheet opening
+in the window's own shape, and the sheet sandbox holding. They need Playwright's
 Chromium (`bunx playwright install chromium`) and are skipped without it.
 
 In development you may see a console warning that an inline script was blocked
