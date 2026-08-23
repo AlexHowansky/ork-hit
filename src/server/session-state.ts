@@ -8,8 +8,8 @@
  */
 
 import { db } from "../db/index.ts";
-import { gameSessions, players, sessionCharacters } from "../db/queries.ts";
-import { presentCharacter, presentPlayer } from "./presenters.ts";
+import { campaigns, gameSessions, players, sessionCharacters } from "../db/queries.ts";
+import { presentCharacter, presentPlayer, presentSessionForGm } from "./presenters.ts";
 
 export interface SessionSnapshot {
   session: {
@@ -56,6 +56,22 @@ export function buildSnapshot(sessionId: string): SessionSnapshot | null {
       };
     }),
   };
+}
+
+/**
+ * Every session belonging to a game master, as their library lists them.
+ *
+ * This is what `GET /api/sessions` answers with and what is published to the
+ * library socket when a session starts or ends, so a list that arrived over the
+ * socket is indistinguishable from one that was fetched. A session whose campaign
+ * has been deleted is left out rather than listed with no name.
+ */
+export function buildGmSessionList(gmId: string): ReturnType<typeof presentSessionForGm>[] {
+  const counts = players.countsForGm(gmId);
+  return gameSessions.listForGm(gmId).flatMap((session) => {
+    const campaign = campaigns.byId(session.campaign_id);
+    return campaign ? [presentSessionForGm(session, campaign, counts.get(session.id) ?? 0)] : [];
+  });
 }
 
 /** The active sessions a character currently appears in. */

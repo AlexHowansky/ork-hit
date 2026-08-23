@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { api } from "../api.ts";
 import { useSessionSocket } from "../useSessionSocket.ts";
+import { useLiveSessions } from "../useLiveSessions.ts";
 import { ThemeToggle } from "../components/ThemeToggle.tsx";
 import {
   AppPage,
@@ -258,7 +259,8 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
 
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [characters, setCharacters] = useState<Character[]>([]);
-  const [sessions, setSessions] = useState<GameSession[]>([]);
+  // Fetched with everything else below, then kept current by the library socket.
+  const { sessions, setSessions } = useLiveSessions();
   const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 

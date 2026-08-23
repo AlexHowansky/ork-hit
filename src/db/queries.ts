@@ -344,10 +344,23 @@ export const gameSessions = {
     ).get({ campaignId });
   },
 
+  /**
+   * The game master's sessions, by campaign name.
+   *
+   * A session is only ever named after its campaign on screen, so that is what
+   * the reader scans for; ordering by age instead made a list of them shuffle
+   * itself every time one was started. Campaign names are unique per game
+   * master, and a campaign runs one session at a time, so the name settles the
+   * order on its own — `created_at` only breaks the tie between an ended session
+   * and a later one on the same campaign.
+   */
   listForGm(gmId: string): GameSessionRow[] {
-    return db.query<GameSessionRow, { gmId: string }>(
-      "SELECT * FROM game_sessions WHERE gm_id = $gmId ORDER BY created_at DESC",
-    ).all({ gmId });
+    return db.query<GameSessionRow, { gmId: string }>(`
+      SELECT s.* FROM game_sessions s
+      JOIN campaigns cp ON cp.id = s.campaign_id
+      WHERE s.gm_id = $gmId
+      ORDER BY cp.name COLLATE NOCASE, s.created_at DESC
+    `).all({ gmId });
   },
 
   create(input: { campaignId: string; gmId: string; code: string }): GameSessionRow {

@@ -60,7 +60,23 @@ opens that session's socket, so the round and the player count follow the table
 without a reload — the same snapshots the console gets, read for two numbers. The
 list's own figures stand in until the first snapshot arrives, and again if the
 socket drops. A player who closes their browser without leaving is still a player,
-so the count only moves on a join, a leave, or a kick.
+so the count only moves on a join, a leave, or a kick. The rows sit in campaign
+name order, since the campaign is the only name a session is shown under; sorting
+by age instead reshuffled the list every time a session was started.
+
+**And which sessions there are is live as well.** A session socket cannot carry
+that: it is named after a session, and a session that has not started yet has no
+socket to watch. So the library opens a second kind — `/ws?scope=library`,
+authenticated as the game master and subscribed to a topic named after them —
+and the server republishes the whole list to it whenever the list changes:
+a session started or ended, a campaign renamed or deleted. The payload is what
+`GET /api/sessions` returns, built by one function (`buildGmSessionList`), so a
+list that arrived over the socket needs no separate handling on the client. Both
+socket kinds share their connection machinery, including reconnect-with-backoff,
+in `src/client/useLiveSocket.ts`; what differs is only how the messages are read.
+Changes *inside* a session are deliberately not published here — each row already
+follows its own session — so a busy table does not rebuild the whole list on
+every turn.
 
 **Every change republishes the whole session.** Rather than sending diffs, any
 mutation recomputes a complete snapshot — session, players, characters in

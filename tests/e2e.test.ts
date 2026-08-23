@@ -230,6 +230,34 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     await gm.getByRole("button", { name: "View Dropped's sheet" }).waitFor();
   }, 60_000);
 
+  test("the session list follows a session started and ended in another tab", async () => {
+    if (!browser) return;
+    // Two tabs of the same game master: one sitting on the library, one working.
+    const watcher = await signedInGm();
+    const other = await signedInGm();
+
+    const name = unique("Campaign");
+    await other.getByRole("button", { name: "New campaign" }).click();
+    await other.getByLabel("Campaign name").fill(name);
+    await other.getByRole("button", { name: "Create campaign" }).click();
+    await other.getByText(/^Characters in/).waitFor();
+
+    const listed = watcher
+      .locator("section", { hasText: "Sessions in progress" })
+      .getByText(name);
+    expect(await listed.count()).toBe(0);
+
+    // The watching tab is never reloaded, and never touched at all.
+    await other.getByRole("button", { name: "Start session" }).click();
+    await other.waitForURL("**/gm/sessions/**");
+    await listed.waitFor({ timeout: 5000 });
+
+    other.on("dialog", (dialog) => void dialog.accept());
+    await other.getByRole("button", { name: "End session" }).click();
+    await other.waitForURL("**/gm");
+    await listed.waitFor({ state: "detached", timeout: 5000 });
+  }, 60_000);
+
   test("a sheet's scripts run but cannot touch the app", async () => {
     if (!browser) return;
     const { page: gm, code } = await gmWithSession();

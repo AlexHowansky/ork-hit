@@ -10,6 +10,7 @@ import { requireGm, requireOwnedCampaign } from "../middleware/auth.ts";
 import { campaigns } from "../../db/queries.ts";
 import { collectOrphanedUploads, fileField, storeImage } from "../uploads.ts";
 import { presentCampaign as present } from "../presenters.ts";
+import { broadcastGmSessions } from "../ws.ts";
 
 export const campaignRoutes = {
   "/api/campaigns": {
@@ -70,6 +71,10 @@ export const campaignRoutes = {
       if (changes.backgroundUploadId !== undefined) await collectOrphanedUploads();
       logger.info("campaign updated", { campaignId: campaign.id });
 
+      // A session is listed under its campaign's name, and sorted by it, so a
+      // rename reorders the library's session list as well as relabelling it.
+      if (changes.name !== undefined) broadcastGmSessions(campaign.gm_id);
+
       return json({ campaign: present(updated!) });
     }),
 
@@ -81,6 +86,8 @@ export const campaignRoutes = {
         campaigns.remove(campaign.id);
         await collectOrphanedUploads();
         logger.info("campaign deleted", { campaignId: campaign.id });
+        // Deleting a campaign takes its running session with it.
+        broadcastGmSessions(campaign.gm_id);
         return noContent();
       },
     ),

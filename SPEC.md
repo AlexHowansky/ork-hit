@@ -104,9 +104,11 @@ The app should have the following features:
 * A game master may end a running session. Once the session is ended, the code
   should no longer work.
 
-* The game master's library lists the sessions in progress, each with the round
-  it has reached and how many players have joined. Both update live as players
-  join or leave, without the game master reloading the page.
+* The game master's library lists the sessions in progress in campaign name
+  order, each with the round it has reached and how many players have joined.
+  Both update live as players join or leave, without the game master reloading
+  the page. The list itself is live too: a session started or ended elsewhere —
+  another tab, another device — appears or disappears on its own.
 
 * Multiple sessions should be able to be active at the same time, but only one
   per campaign. Starting a second session on a campaign that is already playing

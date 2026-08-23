@@ -30,8 +30,13 @@ import {
 } from "../../db/queries.ts";
 import { db } from "../../db/index.ts";
 import { presentSessionForGm } from "../presenters.ts";
-import { buildSnapshot } from "../session-state.ts";
-import { broadcastSession, closeSessionSockets, disconnectPlayer } from "../ws.ts";
+import { buildGmSessionList, buildSnapshot } from "../session-state.ts";
+import {
+  broadcastGmSessions,
+  broadcastSession,
+  closeSessionSockets,
+  disconnectPlayer,
+} from "../ws.ts";
 
 /** The snapshot for a session, or a 404 if it vanished under us. */
 function snapshotOr404(sessionId: string) {
@@ -92,14 +97,7 @@ export const sessionRoutes = {
   "/api/sessions": {
     GET: handler((request: BunRequest) => {
       const gm = requireGm(request);
-      const counts = players.countsForGm(gm.id);
-      const list = gameSessions.listForGm(gm.id).flatMap((session) => {
-        const campaign = campaigns.byId(session.campaign_id);
-        return campaign
-          ? [presentSessionForGm(session, campaign, counts.get(session.id) ?? 0)]
-          : [];
-      });
-      return json({ sessions: list });
+      return json({ sessions: buildGmSessionList(gm.id) });
     }),
 
     POST: handler(async (request: BunRequest, { logger }: RequestContext) => {
@@ -135,6 +133,9 @@ export const sessionRoutes = {
         characters: sessionCharacters.list(session.id).length,
       });
 
+      // Any library this game master has open picks the new session up here.
+      broadcastGmSessions(gm.id);
+
       return json(
         {
           session: presentSessionForGm(session, campaign, 0),
@@ -162,7 +163,7 @@ export const sessionRoutes = {
 
   "/api/sessions/:id/end": {
     POST: handler((request: BunRequest<"/api/sessions/:id/end">, { logger }: RequestContext) => {
-      const { session } = requireOwnedSession(request, request.params.id);
+      const { gm, session } = requireOwnedSession(request, request.params.id);
 
       gameSessions.end(session.id);
       logger.info("session ended", { sessionId: session.id });
@@ -170,6 +171,7 @@ export const sessionRoutes = {
       // Tell everyone before dropping their connections, so the player screens
       // can explain what happened rather than just going quiet.
       closeSessionSockets(session.id);
+      broadcastGmSessions(gm.id);
 
       return noContent();
     }),

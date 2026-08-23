@@ -524,3 +524,98 @@ describe("ending a session", () => {
     expect(me.kind).toBe("anonymous");
   });
 });
+
+describe("the library socket", () => {
+  interface SessionList {
+    type: string;
+    sessions: { id: string; status: string; campaignName: string }[];
+  }
+
+  const wsBase = () => base.replace(/^http/, "ws");
+
+  /**
+   * Bun's WebSocket client accepts request headers, which is how a socket is
+   * given the cookie a browser would have sent. The DOM type in `lib` has no
+   * such argument, hence the cast.
+   */
+  function connect(cookie: string): WebSocket {
+    return new WebSocket(`${wsBase()}/ws?scope=library`, {
+      headers: { Cookie: cookie, Origin: base },
+    } as unknown as string[]);
+  }
+
+  /** The next message the socket delivers, parsed. */
+  function nextMessage(socket: WebSocket): Promise<SessionList> {
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error("the socket sent nothing")), 5000);
+      socket.addEventListener(
+        "message",
+        (event) => {
+          clearTimeout(timer);
+          resolve(JSON.parse(String((event as MessageEvent).data)));
+        },
+        { once: true },
+      );
+    });
+  }
+
+  test("sends the session list on open, and again whenever it changes", async () => {
+    const { cookie } = await signIn();
+    const { campaign, session } = await makeTable(cookie);
+
+    const socket = connect(cookie);
+
+    try {
+      const onOpen = await nextMessage(socket);
+      expect(onOpen.type).toBe("sessions");
+      expect(onOpen.sessions.map((entry) => entry.id)).toContain(session.id);
+
+      // Ending it republishes the list, which is what takes the row off a
+      // library open in another tab.
+      const afterEnd = nextMessage(socket);
+      await fetch(`${base}/api/sessions/${session.id}/end`, authed(cookie, { method: "POST" }));
+      expect(
+        (await afterEnd).sessions.find((entry) => entry.id === session.id)?.status,
+      ).toBe("ended");
+
+      // So does renaming the campaign a session is listed under.
+      const afterRename = nextMessage(socket);
+      const form = new FormData();
+      form.set("name", unique("Renamed"));
+      await fetch(
+        `${base}/api/campaigns/${campaign.id}`,
+        authed(cookie, { method: "PATCH", body: form }),
+      );
+      expect(
+        (await afterRename).sessions.find((entry) => entry.id === session.id)?.campaignName,
+      ).toMatch(/^Renamed-/);
+    } finally {
+      socket.close();
+    }
+  });
+
+  test("carries one game master's sessions and nobody else's", async () => {
+    const mine = await signIn();
+    const theirs = await signIn();
+    const { session } = await makeTable(theirs.cookie);
+
+    const socket = connect(mine.cookie);
+    try {
+      const list = await nextMessage(socket);
+      expect(list.sessions.map((entry) => entry.id)).not.toContain(session.id);
+    } finally {
+      socket.close();
+    }
+  });
+
+  test("refuses a caller who is not signed in", async () => {
+    const socket = new WebSocket(`${wsBase()}/ws?scope=library`);
+    const settled = new Promise<string>((resolve) => {
+      socket.addEventListener("open", () => resolve("open"), { once: true });
+      socket.addEventListener("close", () => resolve("closed"), { once: true });
+      socket.addEventListener("error", () => resolve("closed"), { once: true });
+    });
+    expect(await settled).toBe("closed");
+    socket.close();
+  });
+});

@@ -4,7 +4,7 @@
 
 import { describe, expect, test } from "bun:test";
 import { db } from "../src/db/index.ts";
-import { characters, gameSessions, players, sessionCharacters } from "../src/db/queries.ts";
+import { campaigns, characters, gameSessions, players, sessionCharacters } from "../src/db/queries.ts";
 import { generateSessionCode } from "../src/lib/ids.ts";
 import { makeCampaign, makeCharacter, makeGm, makePlayer, makeSession, unique } from "./helpers.ts";
 
@@ -261,5 +261,50 @@ describe("the character library", () => {
     makeCharacter(makeCampaign(gm.id).id, "pc", "Alwin");
 
     expect(characters.listForGm(gm.id).map((c) => c.name)).toEqual(["Alwin", "Yorick"]);
+  });
+});
+
+describe("the session list", () => {
+  test("comes back by campaign name, ignoring case", () => {
+    const gm = makeGm();
+    for (const name of ["ravenloft", "Avernus", "Waterdeep", "barovia"]) {
+      const campaign = campaigns.create({ gmId: gm.id, name, backgroundUploadId: null });
+      gameSessions.create({ campaignId: campaign.id, gmId: gm.id, code: generateSessionCode() });
+    }
+
+    const names = gameSessions
+      .listForGm(gm.id)
+      .map((session) => campaigns.byId(session.campaign_id)!.name);
+    expect(names).toEqual(["Avernus", "barovia", "ravenloft", "Waterdeep"]);
+  });
+
+  test("puts the newest first where one campaign has run more than one session", () => {
+    const gm = makeGm();
+    const campaign = campaigns.create({
+      gmId: gm.id,
+      name: unique("Campaign"),
+      backgroundUploadId: null,
+    });
+    // Only one session may be active at a time, so the older one is ended first.
+    const older = gameSessions.create({
+      campaignId: campaign.id,
+      gmId: gm.id,
+      code: generateSessionCode(),
+    });
+    gameSessions.end(older.id);
+    // Both rows can otherwise land in the same millisecond, which would leave
+    // the tie unbroken and the assertion up to chance.
+    db.query("UPDATE game_sessions SET created_at = '2020-01-01T00:00:00.000Z' WHERE id = $id")
+      .run({ id: older.id });
+    const newer = gameSessions.create({
+      campaignId: campaign.id,
+      gmId: gm.id,
+      code: generateSessionCode(),
+    });
+
+    expect(gameSessions.listForGm(gm.id).map((session) => session.id)).toEqual([
+      newer.id,
+      older.id,
+    ]);
   });
 });
