@@ -108,12 +108,22 @@ export const sessionRoutes = {
         throw errors.notFound("We couldn't find that campaign.");
       }
 
-      const session = gameSessions.create({
+      // The party comes along with the session: one transaction, so a session can
+      // never exist with the roster half built.
+      const session = db.transaction(() => {
+        const created = gameSessions.create({
+          campaignId: campaign.id,
+          gmId: gm.id,
+          code: generateSessionCode(),
+        });
+        sessionCharacters.addCampaignPcs(created.id, campaign.id);
+        return created;
+      })();
+      logger.info("session started", {
+        sessionId: session.id,
         campaignId: campaign.id,
-        gmId: gm.id,
-        code: generateSessionCode(),
+        characters: sessionCharacters.list(session.id).length,
       });
-      logger.info("session started", { sessionId: session.id, campaignId: campaign.id });
 
       return json(
         {

@@ -87,8 +87,9 @@ The app should have the following features:
   PC and NPC may have a background image. Present the character library as
   cards.
 
-* A game master may start a new session. This generates a unique unguessable
-  code. Provide a means to copy the code (and the URL target that receives the
+* A game master may start a new session. Every PC in the campaign joins the new
+  session automatically, in name order; the NPCs stay in the library until the
+  scene calls for them. This generates a unique unguessable code. Provide a means to copy the code (and the URL target that receives the
   code) to the clipboard so that the GM can easily send session invites to
   players. Once the players receive the code, they may use it to authenticate
   and join the session.

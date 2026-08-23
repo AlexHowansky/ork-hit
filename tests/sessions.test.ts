@@ -4,8 +4,9 @@
 
 import { describe, expect, test } from "bun:test";
 import { db } from "../src/db/index.ts";
-import { characters, gameSessions, players } from "../src/db/queries.ts";
-import { makeCharacter, makePlayer, makeSession, unique } from "./helpers.ts";
+import { characters, gameSessions, players, sessionCharacters } from "../src/db/queries.ts";
+import { generateSessionCode } from "../src/lib/ids.ts";
+import { makeCampaign, makeCharacter, makePlayer, makeSession, unique } from "./helpers.ts";
 
 describe("player names", () => {
   test("are unique within a session, ignoring case", () => {
@@ -142,5 +143,66 @@ describe("character names", () => {
 
     makeCharacter(first.campaign.id, "pc", name);
     expect(() => makeCharacter(second.campaign.id, "pc", name)).not.toThrow();
+  });
+});
+
+describe("the starting roster", () => {
+  /** Starts a session on a fresh campaign the way the POST handler does. */
+  const start = (campaignId: string, gmId: string) => {
+    const session = gameSessions.create({
+      campaignId,
+      gmId,
+      code: generateSessionCode(),
+    });
+    sessionCharacters.addCampaignPcs(session.id, campaignId);
+    return session;
+  };
+
+  test("holds every player character in the campaign, in name order", () => {
+    const campaign = makeCampaign();
+    makeCharacter(campaign.id, "pc", "Zarina");
+    makeCharacter(campaign.id, "pc", "elara");
+    makeCharacter(campaign.id, "pc", "Bruenor");
+
+    const session = start(campaign.id, campaign.gm_id);
+    const roster = sessionCharacters.list(session.id);
+
+    expect(roster.map((character) => character.name)).toEqual(["Bruenor", "elara", "Zarina"]);
+    expect(roster.map((character) => character.position)).toEqual([0, 1, 2]);
+  });
+
+  test("leaves the NPCs in the library", () => {
+    const campaign = makeCampaign();
+    makeCharacter(campaign.id, "pc", "Thorin");
+    makeCharacter(campaign.id, "npc", "Strahd");
+
+    const session = start(campaign.id, campaign.gm_id);
+    expect(sessionCharacters.list(session.id).map((c) => c.name)).toEqual(["Thorin"]);
+  });
+
+  test("is empty when the campaign has no player characters", () => {
+    const campaign = makeCampaign();
+    makeCharacter(campaign.id, "npc", "Strahd");
+
+    const session = start(campaign.id, campaign.gm_id);
+    expect(sessionCharacters.list(session.id)).toEqual([]);
+  });
+
+  test("appends rather than colliding when the session already has someone", () => {
+    const campaign = makeCampaign();
+    const early = makeCharacter(campaign.id, "pc", "Aaron");
+    const session = gameSessions.create({
+      campaignId: campaign.id,
+      gmId: campaign.gm_id,
+      code: generateSessionCode(),
+    });
+    sessionCharacters.add(session.id, early.id);
+    makeCharacter(campaign.id, "pc", "Beatrix");
+
+    sessionCharacters.addCampaignPcs(session.id, campaign.id);
+    const roster = sessionCharacters.list(session.id);
+
+    expect(roster.map((character) => character.name)).toEqual(["Aaron", "Beatrix"]);
+    expect(roster.map((character) => character.position)).toEqual([0, 1]);
   });
 });

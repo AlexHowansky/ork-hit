@@ -78,11 +78,11 @@ async function gmWithSession(): Promise<{ page: Page; code: string }> {
   await page.waitForURL("**/gm/sessions/**");
   const code = (await page.locator("code").first().innerText()).trim();
 
-  for (const name of ["Thorin", "Elara", "Strahd"]) {
-    await page.getByRole("listitem").filter({ hasText: name })
-      .getByRole("button", { name: "Add" }).click();
-    await page.waitForTimeout(150);
-  }
+  // Starting a session brings the campaign's player characters in by itself, in
+  // name order, so only the NPC is added by hand. The order is Elara, Thorin,
+  // Strahd.
+  await page.getByRole("listitem").filter({ hasText: "Strahd" })
+    .getByRole("button", { name: "Add" }).click();
   await page.getByText("Initiative order (3)").waitFor();
 
   return { page, code };
@@ -162,7 +162,7 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     const { page: gm, code } = await gmWithSession();
     const player = await playerIn(code, "Bob");
 
-    expect(await namesIn(gm)).toEqual(["Thorin", "Elara", "Strahd"]);
+    expect(await namesIn(gm)).toEqual(["Elara", "Thorin", "Strahd"]);
 
     // Drag the third row above the first.
     const handles = gm.locator('[aria-label^="Reorder"]');
@@ -174,9 +174,9 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     await gm.mouse.up();
     await gm.waitForTimeout(600);
 
-    expect(await namesIn(gm)).toEqual(["Strahd", "Thorin", "Elara"]);
+    expect(await namesIn(gm)).toEqual(["Strahd", "Elara", "Thorin"]);
     // The same order reached the player over the socket.
-    expect(await namesIn(player)).toEqual(["Strahd", "Thorin", "Elara"]);
+    expect(await namesIn(player)).toEqual(["Strahd", "Elara", "Thorin"]);
 
     // The keyboard path matters for anyone not using a mouse.
     await handles.nth(0).focus();
@@ -187,8 +187,8 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     await gm.keyboard.press("Space");
     await gm.waitForTimeout(600);
 
-    expect(await namesIn(gm)).toEqual(["Thorin", "Strahd", "Elara"]);
-    expect(await namesIn(player)).toEqual(["Thorin", "Strahd", "Elara"]);
+    expect(await namesIn(gm)).toEqual(["Elara", "Strahd", "Thorin"]);
+    expect(await namesIn(player)).toEqual(["Elara", "Strahd", "Thorin"]);
   }, 60_000);
 
   test("a sheet's scripts run but cannot touch the app", async () => {

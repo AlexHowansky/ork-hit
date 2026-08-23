@@ -375,6 +375,37 @@ export const sessionCharacters = {
     return row !== null;
   },
 
+  /**
+   * Puts every player character in the campaign into the session at once.
+   *
+   * A session all but always opens with the whole party present, so the game
+   * master shouldn't have to add them one at a time before the first turn. NPCs
+   * stay out — they arrive when the scene calls for them. Ordered by name so the
+   * starting initiative list is predictable, and appended after anything already
+   * in the session. Anyone already there is filtered out rather than left to
+   * `ON CONFLICT`, because a skipped row would leave a hole in the positions,
+   * which the rest of the code takes to be dense.
+   */
+  addCampaignPcs(sessionId: string, campaignId: string): void {
+    db.query(`
+      INSERT INTO session_characters (game_session_id, character_id, position, added_at)
+      SELECT
+        $sessionId,
+        c.id,
+        COALESCE(
+          (SELECT MAX(position) + 1 FROM session_characters WHERE game_session_id = $sessionId),
+          0
+        ) + ROW_NUMBER() OVER (ORDER BY c.name COLLATE NOCASE) - 1,
+        $ts
+      FROM characters c
+      WHERE c.campaign_id = $campaignId
+        AND c.kind = 'pc'
+        AND c.id NOT IN (
+          SELECT character_id FROM session_characters WHERE game_session_id = $sessionId
+        )
+    `).run({ sessionId, campaignId, ts: now() });
+  },
+
   /** Appends a character at the end of the initiative order. */
   add(sessionId: string, characterId: string): void {
     db.query(`

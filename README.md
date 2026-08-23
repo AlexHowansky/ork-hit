@@ -61,6 +61,13 @@ initiative order — and publishes it to everyone watching. The lists are a doze
 rows at most, and it means a client can never merge updates in the wrong order:
 a reorder racing a turn change cannot leave someone highlighting the wrong row.
 
+**A session opens with the party in it.** Starting one inserts every PC in the
+campaign into the initiative order in a single statement, inside the same
+transaction that creates the session — `sessionCharacters.addCampaignPcs` in
+`src/db/queries.ts`. Characters already in the session are filtered out of that
+statement rather than left to `ON CONFLICT DO NOTHING`, because a skipped row
+would leave a hole in the positions.
+
 **Initiative positions are dense.** `session_characters.position` is always
 `0..n-1`. Adds append, removes close the gap, and a reorder sends the entire
 ordered list rather than a move — which makes it idempotent and lets the server
