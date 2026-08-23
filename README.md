@@ -109,6 +109,19 @@ panels of different widths, and anything proportional makes a campaign card and 
 character card come out different sizes; a fixed track makes them identical at
 every window size, at the price of some slack at the end of a row.
 
+**File fields take a drop, and still are file fields.** Adding a character means
+handing over an HTML sheet and often a picture, and dragging a file from a folder
+is the shorter path — so both fields on the character form are `FileDrop`
+(`src/client/components/ui.tsx`), a dashed zone that names the file once it has
+one. The native `<input type="file">` stays inside it rather than being replaced
+by a div: it is what a keyboard reaches, what the `accept` filter belongs to, and
+what `FormData` reads on submit. A drop copies the file into that input through a
+`DataTransfer`, so the form submits exactly as it did before the zone existed and
+knows nothing about any of this. Dropped files are not type-checked in the
+browser — the server identifies an image by its magic bytes, not by what the
+client called it, so a wrong file comes back as the same error the picker would
+have produced.
+
 **Wide screens get a dashboard, not a document.** A 16:9 monitor is much shorter
 relative to its width than a phone, so a page that stacks its panels makes the
 game master scroll away from the turn tracker mid-turn. A `wide` variant in
@@ -192,7 +205,7 @@ location / {
     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
     add_header Content-Security-Policy   "frame-ancestors 'none'" always;
 
-    client_max_body_size 8m;                     # sheets are 2 MB, images 5 MB
+    client_max_body_size 12m;                    # a sheet and an image, 5 MB each
 }
 ```
 

@@ -37,7 +37,7 @@ export const config = {
 
 /** Upload limits, enforced during multipart intake. */
 export const limits = {
-  sheetBytes: 2 * 1024 * 1024,
+  sheetBytes: 5 * 1024 * 1024,
   imageBytes: 5 * 1024 * 1024,
   /** Sliding window before a GM has to log in again. */
   gmSessionTtlMs: 7 * 24 * 60 * 60 * 1000,

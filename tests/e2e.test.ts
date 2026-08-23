@@ -44,8 +44,8 @@ afterAll(async () => {
   server?.stop(true);
 });
 
-/** Signs in and builds a campaign with three characters, all through the UI. */
-async function gmWithSession(): Promise<{ page: Page; code: string }> {
+/** A fresh browser signed in as the game master, on the library. */
+async function signedInGm(): Promise<Page> {
   const page = await (await browser!.newContext()).newPage();
   await page.goto(base);
 
@@ -54,6 +54,12 @@ async function gmWithSession(): Promise<{ page: Page; code: string }> {
   await page.getByLabel("Password").fill(PASSWORD);
   await page.getByRole("button", { name: "Sign in" }).click();
   await page.waitForURL("**/gm");
+  return page;
+}
+
+/** Signs in and builds a campaign with three characters, all through the UI. */
+async function gmWithSession(): Promise<{ page: Page; code: string }> {
+  const page = await signedInGm();
 
   // A campaign and three characters, created through the dialogs.
   await page.getByRole("button", { name: "New campaign" }).click();
@@ -189,6 +195,39 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
 
     expect(await namesIn(gm)).toEqual(["Elara", "Strahd", "Thorin"]);
     expect(await namesIn(player)).toEqual(["Elara", "Strahd", "Thorin"]);
+  }, 60_000);
+
+  test("a character sheet can be dropped onto the form instead of picked", async () => {
+    if (!browser) return;
+    const gm = await signedInGm();
+
+    await gm.getByRole("button", { name: "New campaign" }).click();
+    await gm.getByLabel("Campaign name").fill(unique("Campaign"));
+    await gm.getByRole("button", { name: "Create campaign" }).click();
+    await gm.getByText(/^Characters in/).waitFor();
+
+    await gm.getByRole("button", { name: "Add character" }).click();
+    await gm.getByLabel("Name").fill("Dropped");
+
+    // A real drop, not `setInputFiles`: the point of the feature is that the
+    // dropped file ends up in the input the form submits. The event goes to the
+    // input and bubbles to the zone around it, as a drop on the zone would.
+    const zone = gm.getByLabel(/Character sheet/);
+    await zone.evaluate((element) => {
+      const transfer = new DataTransfer();
+      transfer.items.add(
+        new File(["<h1>Dropped</h1>"], "dropped.html", { type: "text/html" }),
+      );
+      element.dispatchEvent(new DragEvent("dragover", { bubbles: true, dataTransfer: transfer }));
+      element.dispatchEvent(new DragEvent("drop", { bubbles: true, dataTransfer: transfer }));
+    });
+    await gm.getByText("Ready to upload: dropped.html").waitFor();
+
+    await gm.getByRole("button", { name: "Add character" }).last().click();
+    await gm.getByRole("button", { name: "Dropped", exact: true }).waitFor();
+
+    // The sheet went up with it, so the card offers to open one.
+    await gm.getByRole("button", { name: "View Dropped's sheet" }).waitFor();
   }, 60_000);
 
   test("a sheet's scripts run but cannot touch the app", async () => {

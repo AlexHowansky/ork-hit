@@ -1,5 +1,6 @@
 /** Small shared primitives, so the pages stay about behaviour rather than classes. */
 
+import { useRef, useState } from "react";
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from "react";
 
 const BUTTON_BASE =
@@ -319,5 +320,85 @@ export function CopyButton({ value, label }: { value: string; label: string }) {
     >
       {label}
     </Button>
+  );
+}
+
+/**
+ * A file field you can also drop a file onto.
+ *
+ * The native input stays — visible, clickable, and still the thing the form
+ * reads — because a drop zone built out of a div is invisible to a keyboard and
+ * to `FormData`. A drop copies the file into that input through a `DataTransfer`,
+ * so submitting works exactly as it did before there was a drop zone, and the
+ * form has nothing to know about this.
+ *
+ * Only the first file is taken: every field here holds one. The type is not
+ * checked on the way in — `accept` filters the picker, and the server checks
+ * content rather than names — so a wrong file is reported by the same error the
+ * picker would have produced.
+ */
+export function FileDrop({
+  label,
+  name,
+  accept,
+  hint,
+}: {
+  label: ReactNode;
+  name: string;
+  accept?: string;
+  hint?: ReactNode;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [over, setOver] = useState(false);
+  const [chosen, setChosen] = useState<string | null>(null);
+
+  const take = (files: FileList) => {
+    const file = files.item(0);
+    const input = inputRef.current;
+    if (!file || !input) return;
+    const transfer = new DataTransfer();
+    transfer.items.add(file);
+    input.files = transfer.files;
+    setChosen(file.name);
+  };
+
+  return (
+    <label className="block">
+      <span className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">
+        {label}
+      </span>
+      <div
+        onDragOver={(event) => {
+          event.preventDefault();
+          setOver(true);
+        }}
+        onDragLeave={() => setOver(false)}
+        onDrop={(event) => {
+          event.preventDefault();
+          setOver(false);
+          take(event.dataTransfer.files);
+        }}
+        className={`rounded-lg border border-dashed p-3 transition-colors ${
+          over
+            ? "border-amber-500 bg-amber-50 dark:border-amber-500 dark:bg-amber-950/30"
+            : "border-stone-300 dark:border-stone-700"
+        }`}
+      >
+        <input
+          ref={inputRef}
+          type="file"
+          name={name}
+          accept={accept}
+          onChange={(event) => setChosen(event.target.files?.item(0)?.name ?? null)}
+          className="w-full text-sm text-stone-600 file:mr-3 file:rounded-md file:border-0 file:bg-stone-200 file:px-3 file:py-1.5 file:text-sm dark:text-stone-400 dark:file:bg-stone-800 dark:file:text-stone-200"
+        />
+        <span className="mt-2 block text-xs text-stone-500 dark:text-stone-400">
+          {chosen ? `Ready to upload: ${chosen}` : "…or drop a file here."}
+        </span>
+      </div>
+      {hint ? (
+        <span className="mt-1 block text-xs text-stone-500 dark:text-stone-400">{hint}</span>
+      ) : null}
+    </label>
   );
 }

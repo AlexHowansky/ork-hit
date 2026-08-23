@@ -18,6 +18,7 @@ import {
   EditIcon,
   EmptyState,
   Field,
+  FileDrop,
   IconButton,
   Panel,
   SheetIcon,
@@ -164,8 +165,6 @@ function CharacterForm({
 
   const selectClass =
     "w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100";
-  const fileClass =
-    "w-full text-sm text-stone-600 file:mr-3 file:rounded-md file:border-0 file:bg-stone-200 file:px-3 file:py-1.5 file:text-sm dark:text-stone-400 dark:file:bg-stone-800 dark:file:text-stone-200";
 
   return (
     <form onSubmit={submit} className="space-y-4">
@@ -199,28 +198,20 @@ function CharacterForm({
         </select>
       </label>
 
-      <label className="block">
-        <span className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">
-          Character sheet {character ? "(leave empty to keep the current one)" : "(HTML file)"}
-        </span>
-        <input type="file" name="sheet" accept=".html,.htm,text/html" className={fileClass} />
-        <span className="mt-1 block text-xs text-stone-500 dark:text-stone-400">
-          Sheets keep their own scripts and styling. They are displayed in an isolated frame, so
-          they cannot interact with the rest of this app.
-        </span>
-      </label>
+      <FileDrop
+        label={`Character sheet ${
+          character ? "(leave empty to keep the current one)" : "(HTML file)"
+        }`}
+        name="sheet"
+        accept=".html,.htm,text/html"
+        hint="Sheets keep their own scripts and styling. They are displayed in an isolated frame, so they cannot interact with the rest of this app."
+      />
 
-      <label className="block">
-        <span className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">
-          Background image (optional)
-        </span>
-        <input
-          type="file"
-          name="background"
-          accept="image/png,image/jpeg,image/gif,image/webp"
-          className={fileClass}
-        />
-      </label>
+      <FileDrop
+        label="Background image (optional)"
+        name="background"
+        accept="image/png,image/jpeg,image/gif,image/webp"
+      />
 
       <Button variant="primary" type="submit" disabled={busy} className="w-full">
         {busy ? "Saving…" : character ? "Save changes" : "Add character"}
