@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { api } from "../api.ts";
+import { useSessionSocket } from "../useSessionSocket.ts";
 import {
   AppPage,
   Button,
@@ -228,6 +229,36 @@ function CharacterForm({
 
 /* ---------------------------------------------------------------------- page */
 
+/**
+ * One line in "sessions in progress".
+ *
+ * It opens the session's socket so the player count is live: the server
+ * republishes the session whenever anyone joins, leaves, or is kicked, and the
+ * count comes from that rather than from the list, which is only as fresh as the
+ * last time the page loaded. Until the first snapshot arrives — and if the socket
+ * drops — the count from the list stands in.
+ */
+function SessionRow({ session, onOpen }: { session: GameSession; onOpen: () => void }) {
+  const { snapshot } = useSessionSocket(session.id);
+  const playerCount = snapshot?.players.length ?? session.playerCount;
+  const round = snapshot?.session.round ?? session.round;
+
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span className="text-sm text-stone-700 dark:text-stone-300">
+        {session.campaignName}
+        <span className="ml-2 text-xs text-stone-500 dark:text-stone-400">
+          round {round} ·{" "}
+          {playerCount === 0
+            ? "nobody has joined"
+            : `${playerCount} player${playerCount === 1 ? "" : "s"}`}
+        </span>
+      </span>
+      <Button onClick={onOpen}>Open console</Button>
+    </div>
+  );
+}
+
 export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () => void }) {
   const toast = useToast();
   const navigate = useNavigate();
@@ -339,14 +370,11 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
         <Panel title={`Sessions in progress (${activeSessions.length})`} className="shrink-0">
           <ul className="space-y-2">
             {activeSessions.map((session) => (
-              <li key={session.id} className="flex items-center justify-between gap-3">
-                <span className="text-sm text-stone-700 dark:text-stone-300">
-                  {session.campaignName}
-                  <span className="ml-2 text-xs text-stone-500 dark:text-stone-400">
-                    round {session.round}
-                  </span>
-                </span>
-                <Button onClick={() => navigate(`/gm/sessions/${session.id}`)}>Open console</Button>
+              <li key={session.id}>
+                <SessionRow
+                  session={session}
+                  onOpen={() => navigate(`/gm/sessions/${session.id}`)}
+                />
               </li>
             ))}
           </ul>

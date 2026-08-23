@@ -55,6 +55,13 @@ data/        SQLite database and uploads (gitignored, never served statically)
 
 Three things are worth knowing before reading the code.
 
+**The library watches the sessions it lists.** Each row in "sessions in progress"
+opens that session's socket, so the round and the player count follow the table
+without a reload — the same snapshots the console gets, read for two numbers. The
+list's own figures stand in until the first snapshot arrives, and again if the
+socket drops. A player who closes their browser without leaving is still a player,
+so the count only moves on a join, a leave, or a kick.
+
 **Every change republishes the whole session.** Rather than sending diffs, any
 mutation recomputes a complete snapshot — session, players, characters in
 initiative order — and publishes it to everyone watching. The lists are a dozen

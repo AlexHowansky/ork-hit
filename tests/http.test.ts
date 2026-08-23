@@ -394,6 +394,45 @@ describe("a player leaving", () => {
   });
 });
 
+describe("the session list counts the players in each", () => {
+  const listSessions = async (cookie: string) =>
+    (await (await fetch(`${base}/api/sessions`, authed(cookie))).json()).sessions;
+
+  test("a new session starts at nobody, and the count follows who joins and leaves", async () => {
+    const { cookie } = await signIn();
+    const { session } = await makeTable(cookie);
+
+    const found = async () =>
+      (await listSessions(cookie)).find((entry: { id: string }) => entry.id === session.id);
+
+    expect((await found()).playerCount).toBe(0);
+
+    await joinAs(session.code, "Alice");
+    const bob = await joinAs(session.code, "Bob");
+    expect((await found()).playerCount).toBe(2);
+
+    await fetch(`${base}/api/auth/player/leave`, authed(bob, { method: "POST" }));
+    expect((await found()).playerCount).toBe(1);
+  });
+
+  test("each session is counted separately", async () => {
+    const { cookie } = await signIn();
+    const first = await makeTable(cookie);
+    const second = await makeTable(cookie);
+
+    await joinAs(first.session.code, "Alice");
+
+    const byId = new Map(
+      (await listSessions(cookie)).map((entry: { id: string; playerCount: number }) => [
+        entry.id,
+        entry.playerCount,
+      ]),
+    );
+    expect(byId.get(first.session.id)).toBe(1);
+    expect(byId.get(second.session.id)).toBe(0);
+  });
+});
+
 describe("a campaign runs one session at a time", () => {
   const start = (cookie: string, campaignId: string) =>
     fetch(

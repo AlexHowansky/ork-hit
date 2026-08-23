@@ -505,6 +505,24 @@ export const players = {
     ).all({ sessionId });
   },
 
+  /**
+   * How many players are in each of a game master's sessions.
+   *
+   * One grouped query rather than a count per row, so the library page costs the
+   * same whether the game master has two sessions behind them or two hundred.
+   * Sessions nobody has joined are absent, so read a missing key as zero.
+   */
+  countsForGm(gmId: string): Map<string, number> {
+    const rows = db.query<{ sessionId: string; total: number }, { gmId: string }>(`
+      SELECT p.game_session_id AS sessionId, COUNT(*) AS total
+      FROM players p
+      JOIN game_sessions s ON s.id = p.game_session_id
+      WHERE s.gm_id = $gmId
+      GROUP BY p.game_session_id
+    `).all({ gmId });
+    return new Map(rows.map((row) => [row.sessionId, row.total]));
+  },
+
   byId(id: string): PlayerRow | null {
     return db.query<PlayerRow, { id: string }>("SELECT * FROM players WHERE id = $id").get({ id });
   },

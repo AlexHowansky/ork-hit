@@ -92,9 +92,12 @@ export const sessionRoutes = {
   "/api/sessions": {
     GET: handler((request: BunRequest) => {
       const gm = requireGm(request);
+      const counts = players.countsForGm(gm.id);
       const list = gameSessions.listForGm(gm.id).flatMap((session) => {
         const campaign = campaigns.byId(session.campaign_id);
-        return campaign ? [presentSessionForGm(session, campaign)] : [];
+        return campaign
+          ? [presentSessionForGm(session, campaign, counts.get(session.id) ?? 0)]
+          : [];
       });
       return json({ sessions: list });
     }),
@@ -134,7 +137,7 @@ export const sessionRoutes = {
 
       return json(
         {
-          session: presentSessionForGm(session, campaign),
+          session: presentSessionForGm(session, campaign, 0),
           joinUrl: `${config.appOrigin}/join?code=${encodeURIComponent(session.code)}`,
         },
         { status: 201 },

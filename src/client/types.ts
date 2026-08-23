@@ -37,6 +37,7 @@ export interface GameSession {
   code: string;
   status: "active" | "ended";
   round: number;
+  playerCount: number;
   activeCharacterId: string | null;
   createdAt: string;
   endedAt: string | null;

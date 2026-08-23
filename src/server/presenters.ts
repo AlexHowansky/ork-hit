@@ -32,8 +32,17 @@ export function presentCharacter(character: CharacterRow) {
   };
 }
 
-/** The game master's view of a session, including the code they hand out. */
-export function presentSessionForGm(session: GameSessionRow, campaign: CampaignRow) {
+/**
+ * The game master's view of a session, including the code they hand out.
+ *
+ * `playerCount` is passed in rather than looked up here, so a list of sessions
+ * can count them all in one query.
+ */
+export function presentSessionForGm(
+  session: GameSessionRow,
+  campaign: CampaignRow,
+  playerCount: number,
+) {
   return {
     id: session.id,
     campaignId: session.campaign_id,
@@ -41,6 +50,7 @@ export function presentSessionForGm(session: GameSessionRow, campaign: CampaignR
     code: session.code,
     status: session.status,
     round: session.round,
+    playerCount,
     activeCharacterId: session.active_character_id,
     createdAt: session.created_at,
     endedAt: session.ended_at,
