@@ -18,11 +18,12 @@ document explains the requirements that must be adhered to.
   content, rather than stacking them into a page that scrolls as a whole. Narrow
   or tall screens keep the stacked layout.
 
-* A card in a library shows its picture as a square, with the name and buttons
-  below it. Cards must come out the same size as each other whatever the length
-  of the name they carry, and in every library. They must show a clear highlight
-  when hovered, and give the same feedback to anyone arriving by keyboard rather
-  than mouse.
+* A card in a library shows its picture as a square, with the name below it and
+  its edit and delete controls as icons over the lower right of the picture.
+  Cards must come out the same size as each other whatever the length of the name
+  they carry, and in every library. They must show a clear highlight when
+  hovered, and give the same feedback to anyone arriving by keyboard rather than
+  mouse.
 
 * Observe OWASP Top Ten guidelines.
 

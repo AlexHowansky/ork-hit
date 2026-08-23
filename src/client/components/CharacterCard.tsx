@@ -1,7 +1,7 @@
 /** A character in the library, presented as a card with its background image. */
 
 import type { Character } from "../types.ts";
-import { CARD_BASE, KindBadge } from "./ui.tsx";
+import { CARD_BASE, CardActions, KindBadge } from "./ui.tsx";
 
 export function CharacterCard({
   character,
@@ -16,7 +16,7 @@ export function CharacterCard({
     <article
       className={`${CARD_BASE} border-stone-200 bg-white dark:border-stone-800 dark:bg-stone-900`}
     >
-      <div className="relative aspect-square w-full shrink-0 bg-stone-200 dark:bg-stone-800">
+      <div className="relative aspect-square w-full shrink-0 overflow-hidden bg-stone-200 dark:bg-stone-800">
         {character.backgroundUrl ? (
           <img
             src={character.backgroundUrl}
@@ -32,6 +32,7 @@ export function CharacterCard({
         <div className="absolute top-2 left-2">
           <KindBadge kind={character.kind} />
         </div>
+        {actions ? <CardActions>{actions}</CardActions> : null}
       </div>
 
       <div className="shrink-0 p-3">
@@ -48,7 +49,6 @@ export function CharacterCard({
             {character.name}
           </h3>
         )}
-        {actions ? <div className="mt-3 flex flex-wrap gap-2">{actions}</div> : null}
       </div>
     </article>
   );

@@ -6,7 +6,19 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { api } from "../api.ts";
-import { AppPage, Button, CARD_BASE, CARD_GRID, EmptyState, Field, Panel } from "../components/ui.tsx";
+import {
+  AppPage,
+  Button,
+  CARD_BASE,
+  CARD_GRID,
+  CardActions,
+  DeleteIcon,
+  EditIcon,
+  EmptyState,
+  Field,
+  IconButton,
+  Panel,
+} from "../components/ui.tsx";
 import { CharacterCard } from "../components/CharacterCard.tsx";
 import { SheetFrame } from "../components/SheetFrame.tsx";
 import { useToast } from "../components/Toast.tsx";
@@ -364,44 +376,49 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
                         : "border-stone-200 dark:border-stone-800"
                     } bg-white dark:bg-stone-900`}
                   >
-                    <button
-                      type="button"
-                      onClick={() => setSelectedCampaignId(campaign.id)}
-                      className="aspect-square w-full shrink-0 overflow-hidden bg-stone-200 text-left dark:bg-stone-800"
-                      aria-pressed={isSelected}
-                      aria-label={`Select ${campaign.name}`}
-                    >
-                      {campaign.backgroundUrl ? (
-                        <img
-                          src={campaign.backgroundUrl}
-                          alt=""
-                          className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105 group-focus-within:scale-105"
-                          loading="lazy"
+                    <div className="relative aspect-square w-full shrink-0 overflow-hidden bg-stone-200 dark:bg-stone-800">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedCampaignId(campaign.id)}
+                        className="absolute inset-0 h-full w-full text-left"
+                        aria-pressed={isSelected}
+                        aria-label={`Select ${campaign.name}`}
+                      >
+                        {campaign.backgroundUrl ? (
+                          <img
+                            src={campaign.backgroundUrl}
+                            alt=""
+                            className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105 group-focus-within:scale-105"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div
+                            className="flex h-full items-center justify-center text-4xl opacity-30"
+                            aria-hidden
+                          >
+                            📜
+                          </div>
+                        )}
+                      </button>
+                      <CardActions>
+                        <IconButton
+                          label={`Edit ${campaign.name}`}
+                          icon={<EditIcon />}
+                          onClick={() => setCampaignDialog({ open: true, editing: campaign })}
                         />
-                      ) : (
-                        <div
-                          className="flex h-full items-center justify-center text-4xl opacity-30"
-                          aria-hidden
-                        >
-                          📜
-                        </div>
-                      )}
-                    </button>
+                        <IconButton
+                          label={`Delete ${campaign.name}`}
+                          icon={<DeleteIcon />}
+                          danger
+                          onClick={() => void deleteCampaign(campaign)}
+                        />
+                      </CardActions>
+                    </div>
 
                     <div className="shrink-0 p-3">
                       <h3 className="truncate font-medium text-stone-900 dark:text-stone-100">
                         {campaign.name}
                       </h3>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <Button
-                          onClick={() => setCampaignDialog({ open: true, editing: campaign })}
-                        >
-                          Edit
-                        </Button>
-                        <Button variant="danger" onClick={() => void deleteCampaign(campaign)}>
-                          Delete
-                        </Button>
-                      </div>
                     </div>
                   </article>
                 );
@@ -439,14 +456,17 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
                     onOpen={() => setPreviewing(character)}
                     actions={
                       <>
-                        <Button
+                        <IconButton
+                          label={`Edit ${character.name}`}
+                          icon={<EditIcon />}
                           onClick={() => setCharacterDialog({ open: true, editing: character })}
-                        >
-                          Edit
-                        </Button>
-                        <Button variant="danger" onClick={() => void deleteCharacter(character)}>
-                          Delete
-                        </Button>
+                        />
+                        <IconButton
+                          label={`Delete ${character.name}`}
+                          icon={<DeleteIcon />}
+                          danger
+                          onClick={() => void deleteCharacter(character)}
+                        />
                       </>
                     }
                   />

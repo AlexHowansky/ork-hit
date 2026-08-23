@@ -69,9 +69,12 @@ reject a list built from a stale view instead of silently dropping a character.
 **Card styling is shared.** The campaign and character grids are different
 components, so their shape and hover treatment live in one place — `CARD_BASE`
 in `src/client/components/ui.tsx`. The picture is the square, not the card: the
-image well is a full-width square and the caption sits under it at whatever height
-its name and buttons need. Every caption is built the same way, so a row still
-lines up whatever the names are. Every hover rule is paired with a `focus-within` one,
+image well is a full-width square, edit and delete ride on the picture as icons in
+its lower right corner (`CardActions` and `IconButton`), and the name sits under it
+on its own. That keeps the card mostly picture, and since every caption is built
+the same way a row still lines up whatever the names are. An icon button always
+carries a label — it is the tooltip and the only thing a screen reader has to go
+on. Every hover rule is paired with a `focus-within` one,
 because a card is a box of buttons and a keyboard user would otherwise get no
 feedback at all.
 

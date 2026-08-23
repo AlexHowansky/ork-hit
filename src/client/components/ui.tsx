@@ -140,6 +140,94 @@ export function Panel({
   );
 }
 
+/**
+ * The edit and delete controls for a card, laid over the bottom right of its
+ * picture.
+ *
+ * They sit on the image rather than in a row beneath the name so the card stays
+ * mostly picture. Position it inside the card's image well, which must be
+ * `relative`.
+ */
+export function CardActions({ children }: { children: ReactNode }) {
+  return <div className="absolute right-1 bottom-1 z-10 flex gap-1">{children}</div>;
+}
+
+/**
+ * A square button carrying an icon instead of a word.
+ *
+ * The label is required and never drawn: an icon on its own says nothing to a
+ * screen reader, and it doubles as the tooltip. The dark translucent pill is what
+ * keeps the icon readable over a picture we know nothing about, in either theme.
+ */
+export function IconButton({
+  label,
+  icon,
+  danger = false,
+  className = "",
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement> & {
+  label: string;
+  icon: ReactNode;
+  danger?: boolean;
+}) {
+  return (
+    <button
+      {...props}
+      type="button"
+      title={label}
+      aria-label={label}
+      className={`flex h-7 w-7 items-center justify-center rounded-md bg-stone-900/60 text-white shadow-sm backdrop-blur-sm transition-colors ${
+        danger ? "hover:bg-red-600" : "hover:bg-stone-900/90"
+      } ${className}`}
+    >
+      <span aria-hidden="true">{icon}</span>
+    </button>
+  );
+}
+
+/**
+ * The two card icons.
+ *
+ * Drawn inline rather than written as glyphs — the rest of the app uses text
+ * symbols, but those are decorative, and a pencil and a bin have no pair of
+ * characters that render alike across platforms.
+ */
+export function EditIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+    </svg>
+  );
+}
+
+export function DeleteIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M3 6h18" />
+      <path d="M8 6V4h8v2" />
+      <path d="M19 6l-1 14H6L5 6" />
+      <path d="M10 11v6M14 11v6" />
+    </svg>
+  );
+}
+
 export function EmptyState({ children }: { children: ReactNode }) {
   return (
     <p className="py-8 text-center text-sm text-stone-500 dark:text-stone-400">{children}</p>
