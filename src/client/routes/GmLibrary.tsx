@@ -23,6 +23,7 @@ import {
   IconButton,
   Panel,
   SheetIcon,
+  useFileDropTarget,
 } from "../components/ui.tsx";
 import { CharacterCard } from "../components/CharacterCard.tsx";
 import { SheetFrame } from "../components/SheetFrame.tsx";
@@ -141,11 +142,14 @@ function CharacterForm({
   campaigns,
   character,
   defaultCampaignId,
+  droppedFile,
   onDone,
 }: {
   campaigns: Campaign[];
   character: Character | null;
   defaultCampaignId: string;
+  /** Set when the dialog was opened by dropping a sheet on the panel. */
+  droppedFile: File | null;
   onDone: (character: Character) => void;
 }) {
   const toast = useToast();
@@ -202,6 +206,7 @@ function CharacterForm({
         accept=".html,.htm,text/html"
         hint="Sheets keep their own scripts and styling. They are displayed in an isolated frame, so they cannot interact with the rest of this app."
         onFile={suggestNameFrom}
+        initialFile={droppedFile}
       />
 
       <Field
@@ -302,7 +307,9 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
   const [characterDialog, setCharacterDialog] = useState<{
     open: boolean;
     editing: Character | null;
-  }>({ open: false, editing: null });
+    /** The sheet a drop on the panel arrived with, if that is how this opened. */
+    file: File | null;
+  }>({ open: false, editing: null, file: null });
   const [previewing, setPreviewing] = useState<Character | null>(null);
 
   const load = useCallback(async () => {
@@ -326,6 +333,32 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
   useEffect(() => {
     void load();
   }, [load]);
+
+  /**
+   * Dropping a sheet on the character panel opens the add dialog holding it, so
+   * a folder of sheets can be filed without opening the dialog first each time.
+   * The panel only exists while a campaign is selected, so there is never a
+   * question of which campaign a dropped character belongs to.
+   *
+   * One file: the dialog files one character, as the field inside it does.
+   */
+  const { over: sheetOver, dropProps: sheetDrop } = useFileDropTarget((files) => {
+    const file = files.item(0);
+    if (file) setCharacterDialog({ open: true, editing: null, file });
+  });
+
+  // Having invited a drag onto the page, catch the ones that miss: a file dropped
+  // anywhere else would otherwise be opened by the browser, throwing the library
+  // away to show a character sheet as a bare page.
+  useEffect(() => {
+    const swallow = (event: Event) => event.preventDefault();
+    window.addEventListener("dragover", swallow);
+    window.addEventListener("drop", swallow);
+    return () => {
+      window.removeEventListener("dragover", swallow);
+      window.removeEventListener("drop", swallow);
+    };
+  }, []);
 
   const selectedCampaign = campaigns.find((campaign) => campaign.id === selectedCampaignId) ?? null;
   const visibleCharacters = characters.filter(
@@ -493,12 +526,17 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
         {selectedCampaign ? (
           <Panel
             scroll
+            {...sheetDrop}
+            // A ring rather than a border or a background tint: those would fight
+            // the panel's own `border-stone-200` and `bg-white` for the same
+            // property, and which wins is down to stylesheet order.
+            className={sheetOver ? "ring-2 ring-amber-500" : ""}
             title={`Characters in ${selectedCampaign.name}`}
             actions={
               <div className="flex gap-2">
                 <Button
                   variant="primary"
-                  onClick={() => setCharacterDialog({ open: true, editing: null })}
+                  onClick={() => setCharacterDialog({ open: true, editing: null, file: null })}
                 >
                   Add character
                 </Button>
@@ -514,7 +552,8 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
           >
             {visibleCharacters.length === 0 ? (
               <EmptyState>
-                No characters in this campaign yet. Add one by uploading its HTML sheet.
+                No characters in this campaign yet. Drop an HTML sheet here, or add one with
+                the button above.
               </EmptyState>
             ) : (
               <div className={CARD_GRID}>
@@ -533,7 +572,7 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
                         <IconButton
                           label={`Edit ${character.name}`}
                           icon={<EditIcon />}
-                          onClick={() => setCharacterDialog({ open: true, editing: character })}
+                          onClick={() => setCharacterDialog({ open: true, editing: character, file: null })}
                         />
                         <IconButton
                           label={`Delete ${character.name}`}
@@ -570,14 +609,15 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
       {characterDialog.open && selectedCampaign ? (
         <Modal
           title={characterDialog.editing ? "Edit character" : "Add character"}
-          onClose={() => setCharacterDialog({ open: false, editing: null })}
+          onClose={() => setCharacterDialog({ open: false, editing: null, file: null })}
         >
           <CharacterForm
             campaigns={campaigns}
             character={characterDialog.editing}
             defaultCampaignId={selectedCampaign.id}
+            droppedFile={characterDialog.file}
             onDone={async () => {
-              setCharacterDialog({ open: false, editing: null });
+              setCharacterDialog({ open: false, editing: null, file: null });
               await load();
             }}
           />

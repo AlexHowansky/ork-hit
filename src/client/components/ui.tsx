@@ -1,7 +1,13 @@
 /** Small shared primitives, so the pages stay about behaviour rather than classes. */
 
-import { useRef, useState } from "react";
-import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
+import type {
+  ButtonHTMLAttributes,
+  DragEvent,
+  HTMLAttributes,
+  InputHTMLAttributes,
+  ReactNode,
+} from "react";
 
 const BUTTON_BASE =
   "inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50";
@@ -117,7 +123,8 @@ export function Panel({
   children,
   className = "",
   scroll = false,
-}: {
+  ...rest
+}: HTMLAttributes<HTMLElement> & {
   title: ReactNode;
   actions?: ReactNode;
   children: ReactNode;
@@ -126,6 +133,7 @@ export function Panel({
 }) {
   return (
     <section
+      {...rest}
       className={`rounded-xl border border-stone-200 bg-white shadow-sm dark:border-stone-800 dark:bg-stone-900 ${
         scroll ? "flex min-h-0 flex-col" : ""
       } ${className}`}
@@ -324,6 +332,42 @@ export function CopyButton({ value, label }: { value: string; label: string }) {
 }
 
 /**
+ * Makes any element something a file can be dragged onto.
+ *
+ * The handlers are the whole of it — a drop target is three event listeners and
+ * a flag saying whether something is hovering over it — but both the file field
+ * below and the character panel in the library need exactly those, and a drop
+ * target that forgets to `preventDefault` on `dragover` silently never fires.
+ *
+ * `over` is for the caller to draw with; nothing here is styled.
+ */
+export function useFileDropTarget(onFiles: (files: FileList) => void) {
+  const [over, setOver] = useState(false);
+
+  const dropProps = {
+    onDragOver: (event: DragEvent<HTMLElement>) => {
+      event.preventDefault();
+      setOver(true);
+    },
+    // Moving onto a child counts as leaving the element it bubbles from, which
+    // would make the highlight flicker across a panel full of cards. A leave that
+    // lands somewhere still inside is not a leave.
+    onDragLeave: (event: DragEvent<HTMLElement>) => {
+      const to = event.relatedTarget;
+      if (to instanceof Node && event.currentTarget.contains(to)) return;
+      setOver(false);
+    },
+    onDrop: (event: DragEvent<HTMLElement>) => {
+      event.preventDefault();
+      setOver(false);
+      onFiles(event.dataTransfer.files);
+    },
+  };
+
+  return { over, dropProps };
+}
+
+/**
  * A file field you can also drop a file onto.
  *
  * The native input stays — visible, clickable, and still the thing the form
@@ -343,6 +387,7 @@ export function FileDrop({
   accept,
   hint,
   onFile,
+  initialFile = null,
 }: {
   label: ReactNode;
   name: string;
@@ -350,13 +395,13 @@ export function FileDrop({
   hint?: ReactNode;
   /** The file now in the field, however it arrived, for a form that wants to react. */
   onFile?: (file: File) => void;
+  /** A file the field starts out holding, for a form opened by a drop elsewhere. */
+  initialFile?: File | null;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [over, setOver] = useState(false);
   const [chosen, setChosen] = useState<string | null>(null);
 
-  const take = (files: FileList) => {
-    const file = files.item(0);
+  const take = (file: File | null) => {
     const input = inputRef.current;
     if (!file || !input) return;
     const transfer = new DataTransfer();
@@ -366,22 +411,24 @@ export function FileDrop({
     onFile?.(file);
   };
 
+  const { over, dropProps } = useFileDropTarget((files) => take(files.item(0)));
+
+  // A file the form was opened with is put through the same path a dropped one
+  // takes, so the field, the input the form reads, and anything listening on
+  // `onFile` all see it arrive the usual way.
+  const takeRef = useRef(take);
+  takeRef.current = take;
+  useEffect(() => {
+    if (initialFile) takeRef.current(initialFile);
+  }, [initialFile]);
+
   return (
     <label className="block">
       <span className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">
         {label}
       </span>
       <div
-        onDragOver={(event) => {
-          event.preventDefault();
-          setOver(true);
-        }}
-        onDragLeave={() => setOver(false)}
-        onDrop={(event) => {
-          event.preventDefault();
-          setOver(false);
-          take(event.dataTransfer.files);
-        }}
+        {...dropProps}
         className={`rounded-lg border border-dashed p-3 transition-colors ${
           over
             ? "border-amber-500 bg-amber-50 dark:border-amber-500 dark:bg-amber-950/30"

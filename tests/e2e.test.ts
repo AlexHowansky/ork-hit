@@ -223,6 +223,38 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     ]);
   }, 60_000);
 
+  test("a sheet dropped on the character panel opens the form holding it", async () => {
+    if (!browser) return;
+    const gm = await signedInGm();
+
+    await gm.getByRole("button", { name: "New campaign" }).click();
+    await gm.getByLabel("Campaign name").fill(unique("Campaign"));
+    await gm.getByRole("button", { name: "Create campaign" }).click();
+    await gm.getByText(/^Characters in/).waitFor();
+
+    // A real drop on the panel itself, nowhere near the dialog — which is not
+    // even open yet.
+    const panel = gm.locator("section", { hasText: /^Characters in/ }).first();
+    await panel.evaluate((element) => {
+      const transfer = new DataTransfer();
+      transfer.items.add(
+        new File(["<h1>Gimli</h1>"], "Gimli son of Gloin.html", { type: "text/html" }),
+      );
+      element.dispatchEvent(new DragEvent("dragover", { bubbles: true, dataTransfer: transfer }));
+      element.dispatchEvent(new DragEvent("drop", { bubbles: true, dataTransfer: transfer }));
+    });
+
+    // The dialog opens already holding the file, named after it.
+    await gm.getByRole("dialog", { name: "Add character" }).waitFor();
+    await gm.getByText("Ready to upload: Gimli son of Gloin.html").waitFor();
+    expect(await gm.getByLabel("Name").inputValue()).toBe("Gimli son of Gloin");
+
+    // And that file is the one the form submits.
+    await gm.getByRole("button", { name: "Add character" }).last().click();
+    await gm.getByRole("button", { name: "Gimli son of Gloin", exact: true }).waitFor();
+    await gm.getByRole("button", { name: "View Gimli son of Gloin's sheet" }).waitFor();
+  }, 60_000);
+
   test("uploading a sheet names the character after the file", async () => {
     if (!browser) return;
     const gm = await signedInGm();

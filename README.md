@@ -164,6 +164,19 @@ a name the last upload put there, tracked in a ref: a second file replaces its
 own suggestion, but never a name the game master typed, and never the name of a
 character being edited.
 
+The panel behind the dialog is a drop target too: a sheet dropped anywhere on
+"Characters in …" opens the add dialog already holding it, so a folder of sheets
+can be filed without opening the dialog first each time. Both targets are the
+same three handlers — `useFileDropTarget` in `ui.tsx` — and the file reaches the
+dialog as `initialFile`, which puts it through exactly the path a drop on the
+field itself takes, so the name fills in and the form submits with no idea where
+the file came from. `Panel` learns nothing about files: it spreads unknown props
+onto its `<section>` the way `Button` does, and the highlight is a `ring`, since a
+border or background utility would fight the panel's own for the same property
+and let stylesheet order decide the winner. The page also swallows `dragover` and
+`drop` at the window: having invited a drag, a miss must not make the browser
+navigate away to render a character sheet as a bare page.
+
 **Wide screens get a dashboard, not a document.** A 16:9 monitor is much shorter
 relative to its width than a phone, so a page that stacks its panels makes the
 game master scroll away from the turn tracker mid-turn. A `wide` variant in
