@@ -68,11 +68,18 @@ reject a list built from a stale view instead of silently dropping a character.
 
 **Card styling is shared.** The campaign and character grids are different
 components, so their shape and hover treatment live in one place — `CARD_BASE`
-in `src/client/components/ui.tsx`. Cards are square: the caption and its buttons
-take the height they need and the image absorbs the rest, so a row lines up
-whatever the names are. Every hover rule is paired with a `focus-within` one,
+in `src/client/components/ui.tsx`. The picture is the square, not the card: the
+image well is a full-width square and the caption sits under it at whatever height
+its name and buttons need. Every caption is built the same way, so a row still
+lines up whatever the names are. Every hover rule is paired with a `focus-within` one,
 because a card is a box of buttons and a keyboard user would otherwise get no
 feedback at all.
+
+**So is the grid the cards sit in.** `CARD_GRID`, alongside it, lays them out on
+a fixed-width track rather than a fraction of the panel. The two libraries sit in
+panels of different widths, and anything proportional makes a campaign card and a
+character card come out different sizes; a fixed track makes them identical at
+every window size, at the price of some slack at the end of a row.
 
 **Wide screens get a dashboard, not a document.** A 16:9 monitor is much shorter
 relative to its width than a phone, so a page that stacks its panels makes the
@@ -81,8 +88,8 @@ game master scroll away from the turn tracker mid-turn. A `wide` variant in
 portrait monitor is left alone — switches the session and library pages to a
 frame exactly one viewport high, panels side by side, each scrolling its own
 list. `AppPage` and `Panel`'s `scroll` prop in `src/client/components/ui.tsx`
-carry this; the routes only choose the grid tracks. Anything narrower or taller
-keeps the stacked layout unchanged.
+carry this; the routes only choose how the panels divide the frame. Anything
+narrower or taller keeps the stacked layout unchanged.
 
 ## The turn chime
 

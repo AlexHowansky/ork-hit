@@ -8,15 +8,27 @@ const BUTTON_BASE =
 /**
  * The shape and behaviour shared by every card in the library.
  *
- * Cards are square tiles: the caption and its buttons take the height they need
- * and the image absorbs the rest, so a row of cards lines up whatever their names
- * are. `focus-within` repeats the hover lift for anyone arriving by keyboard,
+ * The picture is the square, not the card: the image well is a full-width square
+ * and the caption sits under it at whatever height its name and buttons need. Since
+ * every caption is built the same way, a row of cards still lines up whatever the
+ * names are. `focus-within` repeats the hover lift for anyone arriving by keyboard,
  * since a card is a box of buttons and hover alone would leave them out.
  *
  * Callers supply the border and background colours, which vary with selection.
  */
 export const CARD_BASE =
-  "group flex aspect-square flex-col overflow-hidden rounded-xl border shadow-sm transition duration-150 hover:-translate-y-0.5 hover:border-amber-400 hover:shadow-lg focus-within:-translate-y-0.5 focus-within:border-amber-400 focus-within:shadow-lg dark:hover:border-amber-500/70 dark:focus-within:border-amber-500/70";
+  "group flex flex-col overflow-hidden rounded-xl border shadow-sm transition duration-150 hover:-translate-y-0.5 hover:border-amber-400 hover:shadow-lg focus-within:-translate-y-0.5 focus-within:border-amber-400 focus-within:shadow-lg dark:hover:border-amber-500/70 dark:focus-within:border-amber-500/70";
+
+/**
+ * The grid every card library sits in.
+ *
+ * The track is a fixed width rather than a fraction, so a card is the same size
+ * in the campaign panel and the character panel even though those panels are not
+ * the same width. The cost is some slack at the end of a row, which is the price
+ * of the two libraries matching. Below `sm` there is only ever one column, and it
+ * takes the full width rather than leaving most of a phone screen empty.
+ */
+export const CARD_GRID = "grid grid-cols-1 gap-4 sm:grid-cols-[repeat(auto-fill,11rem)]";
 
 const VARIANTS = {
   primary:

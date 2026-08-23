@@ -16,7 +16,7 @@ export function CharacterCard({
     <article
       className={`${CARD_BASE} border-stone-200 bg-white dark:border-stone-800 dark:bg-stone-900`}
     >
-      <div className="relative min-h-0 flex-1 bg-stone-200 dark:bg-stone-800">
+      <div className="relative aspect-square w-full shrink-0 bg-stone-200 dark:bg-stone-800">
         {character.backgroundUrl ? (
           <img
             src={character.backgroundUrl}
