@@ -93,9 +93,10 @@ components, so their shape and hover treatment live in one place — `CARD_BASE`
 in `src/client/components/ui.tsx` — and the player's character picker is built
 from the same two, so a player sees the shape the game master saw. The picture is
 the square, not the card: the
-image well is a full-width square, edit and delete ride on the picture as icons in
-its lower right corner (`CardActions` and `IconButton`), and the name sits under it
-on its own. That keeps the card mostly picture, and since every caption is built
+image well is a full-width square, the card's controls ride on the picture as
+icons in its lower right corner (`CardActions` and `IconButton`) — edit, delete,
+and on a character card one that opens its sheet — and the name sits under it on
+its own. That keeps the card mostly picture, and since every caption is built
 the same way a row still lines up whatever the names are. An icon button always
 carries a label — it is the tooltip and the only thing a screen reader has to go
 on. Every hover rule is paired with a `focus-within` one,

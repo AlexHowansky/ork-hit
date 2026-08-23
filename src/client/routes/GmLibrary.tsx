@@ -19,6 +19,7 @@ import {
   Field,
   IconButton,
   Panel,
+  SheetIcon,
 } from "../components/ui.tsx";
 import { CharacterCard } from "../components/CharacterCard.tsx";
 import { SheetFrame } from "../components/SheetFrame.tsx";
@@ -495,6 +496,11 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
                     onOpen={() => setPreviewing(character)}
                     actions={
                       <>
+                        <IconButton
+                          label={`View ${character.name}'s sheet`}
+                          icon={<SheetIcon />}
+                          onClick={() => setPreviewing(character)}
+                        />
                         <IconButton
                           label={`Edit ${character.name}`}
                           icon={<EditIcon />}

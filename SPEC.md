@@ -19,7 +19,8 @@ document explains the requirements that must be adhered to.
   or tall screens keep the stacked layout.
 
 * A card in a library shows its picture as a square, with the name below it and
-  its edit and delete controls as icons over the lower right of the picture.
+  its controls as icons over the lower right of the picture: edit and delete,
+  and on a character card an icon that opens its sheet.
   Cards must come out the same size as each other whatever the length of the name
   they carry, and in every library. They must show a clear highlight when
   hovered, and give the same feedback to anyone arriving by keyboard rather than

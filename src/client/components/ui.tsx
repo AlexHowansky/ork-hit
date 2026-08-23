@@ -186,11 +186,11 @@ export function IconButton({
 }
 
 /**
- * The two card icons.
+ * The card icons.
  *
  * Drawn inline rather than written as glyphs — the rest of the app uses text
- * symbols, but those are decorative, and a pencil and a bin have no pair of
- * characters that render alike across platforms.
+ * symbols, but those are decorative, and a sheet, a pencil and a bin have no set
+ * of characters that render alike across platforms.
  */
 export function EditIcon() {
   return (
@@ -205,6 +205,24 @@ export function EditIcon() {
     >
       <path d="M12 20h9" />
       <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+    </svg>
+  );
+}
+
+export function SheetIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z" />
+      <path d="M14 3v5h5" />
+      <path d="M9 13h6M9 17h4" />
     </svg>
   );
 }
