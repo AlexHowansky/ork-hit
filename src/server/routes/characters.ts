@@ -127,17 +127,32 @@ export const characterRoutes = {
           changes.campaignId = rawCampaign;
         }
 
+        // Refiling a character out of a campaign it is currently playing in would
+        // leave it in that campaign's running session, which is neither what the
+        // game master asked for nor something the players could make sense of.
+        if (changes.campaignId && sessionIdsWith(character.id).length > 0) {
+          throw errors.conflict(
+            "This character is playing in a session that is still running. End that " +
+              "session before moving them to another campaign.",
+          );
+        }
+
         const rawKind = form.get("kind");
         if (rawKind === "pc" || rawKind === "npc") changes.kind = rawKind;
 
         const rawName = form.get("name");
-        if (typeof rawName === "string") {
-          const name = parse(schemas.displayName, rawName);
+        if (typeof rawName === "string") changes.name = parse(schemas.displayName, rawName);
+
+        // Names are unique within a campaign, so the question is about the name and
+        // the campaign this character is going to end up with — not about which of
+        // the two the form happened to carry. A move alone can collide just as a
+        // rename can, and a drop sends nothing but the campaign.
+        if (changes.name !== undefined || changes.campaignId !== undefined) {
+          const name = changes.name ?? character.name;
           const targetCampaign = changes.campaignId ?? character.campaign_id;
           if (characters.nameTaken(targetCampaign, name, character.id)) {
             throw errors.conflict(`This campaign already has a character called “${name}”.`);
           }
-          changes.name = name;
         }
 
         const sheetFile = fileField(form, "sheet");

@@ -349,20 +349,38 @@ export function CopyButton({ value, label }: { value: string; label: string }) {
 }
 
 /**
- * Makes any element something a file can be dragged onto.
+ * The `dataTransfer` type a dragged character card carries.
+ *
+ * A type of its own rather than `text/plain`, so a character cannot be dropped
+ * into a text field somewhere — and because during `dragover` the payload itself
+ * is unreadable, so the type list is all a target has to go on.
+ */
+export const CHARACTER_DRAG = "application/x-ttrpg-character";
+
+/**
+ * Makes any element something can be dragged onto.
  *
  * The handlers are the whole of it — a drop target is three event listeners and
- * a flag saying whether something is hovering over it — but both the file field
- * below and the character panel in the library need exactly those, and a drop
- * target that forgets to `preventDefault` on `dragover` silently never fires.
+ * a flag saying whether something is hovering over it — but the file field below,
+ * the character panel in the library and the campaign cards all need exactly
+ * those, and a drop target that forgets to `preventDefault` on `dragover`
+ * silently never fires.
+ *
+ * A target names the payload it takes: `"Files"` for a file, `CHARACTER_DRAG` for
+ * a character card. A drag carrying anything else is left entirely alone —
+ * unclaimed, so it passes through to whatever is behind, and the browser shows a
+ * no-drop cursor rather than an invitation this element cannot honour. That is
+ * what keeps a character dragged across the character panel from being read as
+ * another sheet to upload.
  *
  * `over` is for the caller to draw with; nothing here is styled.
  */
-export function useFileDropTarget(onFiles: (files: FileList) => void) {
+export function useDropTarget(type: string, onDrop: (transfer: DataTransfer) => void) {
   const [over, setOver] = useState(false);
 
   const dropProps = {
     onDragOver: (event: DragEvent<HTMLElement>) => {
+      if (!event.dataTransfer.types.includes(type)) return;
       event.preventDefault();
       setOver(true);
     },
@@ -375,13 +393,19 @@ export function useFileDropTarget(onFiles: (files: FileList) => void) {
       setOver(false);
     },
     onDrop: (event: DragEvent<HTMLElement>) => {
+      if (!event.dataTransfer.types.includes(type)) return;
       event.preventDefault();
       setOver(false);
-      onFiles(event.dataTransfer.files);
+      onDrop(event.dataTransfer);
     },
   };
 
   return { over, dropProps };
+}
+
+/** A drop target for files, which is what most of them are. */
+export function useFileDropTarget(onFiles: (files: FileList) => void) {
+  return useDropTarget("Files", (transfer) => onFiles(transfer.files));
 }
 
 /**

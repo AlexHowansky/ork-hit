@@ -191,6 +191,41 @@ and let stylesheet order decide the winner. The page also swallows `dragover` an
 `drop` at the window: having invited a drag, a miss must not make the browser
 navigate away to render a character sheet as a bare page.
 
+**A drop target names what it accepts.** `useDropTarget` (`ui.tsx`) is keyed on a
+`dataTransfer` type — `"Files"` for the file fields and the character panel,
+`CHARACTER_DRAG` for a campaign card — and a drag carrying anything else is left
+entirely alone: not `preventDefault`ed, so it passes through to whatever is behind
+and the browser draws a no-drop cursor rather than an invitation the element cannot
+honour. That one guard is what lets card drags and file drags share a page: before
+it, the character panel claimed every drag that crossed it, so a character dragged
+back onto its own panel opened the add dialog as though a sheet had arrived. The
+window-level swallow is narrowed the same way, for the same reason.
+
+**Dragging a character onto a campaign refiles it.** Both libraries are on screen
+together on the wide layout, so the shortest way to move a character is to drop its
+card on the campaign it belongs to. It is native HTML5 drag rather than `@dnd-kit`,
+which the initiative order uses: the two panels are separate `overflow-y-auto` scroll
+containers that would clip a dragged card, and the accessible path here already
+exists — the edit dialog's campaign field — so the drag is an accelerator rather
+than the only way in. During `dragover` the payload is unreadable, only its type, so
+`GmLibrary` holds the dragged character in state as well: a campaign card has to know
+while the drag is still in the air whether letting go would move anything, and the
+card of the campaign the character is already in stays dark. The cue on the one that
+would take it is a ring with an offset — a different shape from both the selection
+ring a campaign card may already wear and the ring the character panel draws for a
+file, so the three never read as each other.
+
+The selection does not follow the character: it leaves the list and the panel stays
+where it was, so a run of characters can be filed out of one campaign without
+re-selecting it between each. Two rules are the server's, since they are about the
+data rather than the gesture. A name is unique within a campaign, so the PATCH asks
+whether the character's *effective* name and campaign collide rather than which
+fields the form carried — a move alone can collide just as a rename can, and a drop
+sends nothing but the campaign. And a character playing in a session that is still
+running cannot be moved at all: refiling it would leave it in the running session of
+a campaign it no longer belongs to, which is not something the players could make
+sense of, so the drop is refused and says to end the session first.
+
 **A sheet usually contains the portrait already.** Sheets are self-contained
 files, so the character's picture is already inside the HTML — and asking the
 game master to find and upload the same image a second time is work the app can
@@ -382,8 +417,9 @@ bun run typecheck
 ```
 
 The browser tests cover what only exists in a live page — dragging the
-initiative order with a mouse and with the keyboard, player screens updating
-without a refresh, and the sheet sandbox holding. They need Playwright's
+initiative order with a mouse and with the keyboard, dragging a character card
+onto another campaign, player screens updating without a refresh, and the sheet
+sandbox holding. They need Playwright's
 Chromium (`bunx playwright install chromium`) and are skipped without it.
 
 In development you may see a console warning that an inline script was blocked

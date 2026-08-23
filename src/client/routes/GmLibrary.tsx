@@ -15,6 +15,7 @@ import {
   Button,
   CARD_BASE,
   CARD_GRID,
+  CHARACTER_DRAG,
   CardActions,
   DeleteIcon,
   EditIcon,
@@ -24,6 +25,7 @@ import {
   IconButton,
   Panel,
   SheetIcon,
+  useDropTarget,
   useFileDropTarget,
 } from "../components/ui.tsx";
 import { CharacterCard } from "../components/CharacterCard.tsx";
@@ -291,6 +293,91 @@ function SessionRow({ session, onOpen }: { session: GameSession; onOpen: () => v
   );
 }
 
+/**
+ * A campaign in the library, and the thing a character is refiled by being dropped
+ * onto it.
+ *
+ * It is a component of its own rather than markup inside the map because the drop
+ * target is a hook. `takes` is the character that would move if it were let go here
+ * — null when nothing is being dragged, and null on the card of the campaign the
+ * character is already in, so its own campaign never invites a move that would do
+ * nothing.
+ *
+ * The drop cue is a ring with an offset, which is a different shape from both the
+ * selection ring this card may already be wearing and the one the character panel
+ * draws for a file, so the three never read as each other.
+ */
+function CampaignCard({
+  campaign,
+  selected,
+  onSelect,
+  onEdit,
+  onDelete,
+  takes,
+  onTake,
+}: {
+  campaign: Campaign;
+  selected: boolean;
+  onSelect: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  takes: Character | null;
+  onTake: (character: Character) => void;
+}) {
+  const { over, dropProps } = useDropTarget(CHARACTER_DRAG, () => takes && onTake(takes));
+  const inviting = over && takes !== null;
+
+  return (
+    <article
+      {...(takes ? dropProps : {})}
+      className={`${CARD_BASE} ${
+        inviting
+          ? "border-amber-500 ring-2 ring-amber-500 ring-offset-2 ring-offset-stone-100 dark:ring-offset-stone-950"
+          : selected
+            ? "border-amber-500 ring-2 ring-amber-500/30"
+            : "border-stone-200 dark:border-stone-800"
+      } bg-white dark:bg-stone-900`}
+    >
+      <div className="relative aspect-square w-full shrink-0 overflow-hidden bg-stone-200 dark:bg-stone-800">
+        <button
+          type="button"
+          onClick={onSelect}
+          className="absolute inset-0 h-full w-full text-left"
+          aria-pressed={selected}
+          aria-label={`Select ${campaign.name}`}
+        >
+          {campaign.backgroundUrl ? (
+            <img
+              src={campaign.backgroundUrl}
+              alt=""
+              draggable={false}
+              className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105 group-focus-within:scale-105"
+              loading="lazy"
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center text-4xl opacity-30" aria-hidden>
+              📜
+            </div>
+          )}
+        </button>
+        <CardActions>
+          <IconButton label={`Edit ${campaign.name}`} icon={<EditIcon />} onClick={onEdit} />
+          <IconButton
+            label={`Delete ${campaign.name}`}
+            icon={<DeleteIcon />}
+            danger
+            onClick={onDelete}
+          />
+        </CardActions>
+      </div>
+
+      <div className="shrink-0 p-3">
+        <h3 className="truncate font-medium text-stone-900 dark:text-stone-100">{campaign.name}</h3>
+      </div>
+    </article>
+  );
+}
+
 export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () => void }) {
   const toast = useToast();
   const navigate = useNavigate();
@@ -312,6 +399,14 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
     file: File | null;
   }>({ open: false, editing: null, file: null });
   const [previewing, setPreviewing] = useState<Character | null>(null);
+  /**
+   * The character being dragged, if one is.
+   *
+   * `dataTransfer` carries the marker type and the id, but during `dragover` the
+   * payload is unreadable — and a campaign card has to know, while the drag is
+   * still in the air, whether letting go here would move anything at all.
+   */
+  const [dragging, setDragging] = useState<Character | null>(null);
 
   // Trims the campaign panel to whole card columns, giving the leftover to the
   // characters beside it.
@@ -355,8 +450,14 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
   // Having invited a drag onto the page, catch the ones that miss: a file dropped
   // anywhere else would otherwise be opened by the browser, throwing the library
   // away to show a character sheet as a bare page.
+  // A character dragged onto nothing in particular is left alone, so the browser
+  // shows a no-drop cursor over everything that isn't a campaign and the gesture
+  // simply ends where it started.
   useEffect(() => {
-    const swallow = (event: Event) => event.preventDefault();
+    const swallow = (event: Event) => {
+      const transfer = (event as globalThis.DragEvent).dataTransfer;
+      if (transfer?.types.includes("Files")) event.preventDefault();
+    };
     window.addEventListener("dragover", swallow);
     window.addEventListener("drop", swallow);
     return () => {
@@ -400,6 +501,31 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
       await api.delete(`/api/characters/${character.id}`);
       setCharacters((current) => current.filter((entry) => entry.id !== character.id));
       toast.show(`Deleted “${character.name}”.`, "success");
+    } catch (error) {
+      toast.showError(error);
+    }
+  };
+
+  /**
+   * Refiles a character under another campaign, which is what a drop onto a
+   * campaign card means.
+   *
+   * The selection stays where it is: the character simply leaves the list, so a
+   * run of characters can be filed out of one campaign without re-selecting it
+   * between each. The server may refuse — a name the destination already has, or
+   * a character still playing in a running session — and says why in a message
+   * the toast can show as it stands.
+   */
+  const moveCharacter = async (character: Character, campaign: Campaign) => {
+    const form = new FormData();
+    form.set("campaignId", campaign.id);
+    try {
+      const { character: moved } = await api.patchForm<{ character: Character }>(
+        `/api/characters/${character.id}`,
+        form,
+      );
+      setCharacters((current) => current.map((entry) => (entry.id === moved.id ? moved : entry)));
+      toast.show(`Moved “${moved.name}” to “${campaign.name}”.`, "success");
     } catch (error) {
       toast.showError(error);
     }
@@ -470,64 +596,18 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
             <EmptyState>No campaigns yet. Create one to get started.</EmptyState>
           ) : (
             <div ref={gridRef} className={CARD_GRID}>
-              {campaigns.map((campaign) => {
-                const isSelected = campaign.id === selectedCampaignId;
-                return (
-                  <article
-                    key={campaign.id}
-                    className={`${CARD_BASE} ${
-                      isSelected
-                        ? "border-amber-500 ring-2 ring-amber-500/30"
-                        : "border-stone-200 dark:border-stone-800"
-                    } bg-white dark:bg-stone-900`}
-                  >
-                    <div className="relative aspect-square w-full shrink-0 overflow-hidden bg-stone-200 dark:bg-stone-800">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedCampaignId(campaign.id)}
-                        className="absolute inset-0 h-full w-full text-left"
-                        aria-pressed={isSelected}
-                        aria-label={`Select ${campaign.name}`}
-                      >
-                        {campaign.backgroundUrl ? (
-                          <img
-                            src={campaign.backgroundUrl}
-                            alt=""
-                            className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105 group-focus-within:scale-105"
-                            loading="lazy"
-                          />
-                        ) : (
-                          <div
-                            className="flex h-full items-center justify-center text-4xl opacity-30"
-                            aria-hidden
-                          >
-                            📜
-                          </div>
-                        )}
-                      </button>
-                      <CardActions>
-                        <IconButton
-                          label={`Edit ${campaign.name}`}
-                          icon={<EditIcon />}
-                          onClick={() => setCampaignDialog({ open: true, editing: campaign })}
-                        />
-                        <IconButton
-                          label={`Delete ${campaign.name}`}
-                          icon={<DeleteIcon />}
-                          danger
-                          onClick={() => void deleteCampaign(campaign)}
-                        />
-                      </CardActions>
-                    </div>
-
-                    <div className="shrink-0 p-3">
-                      <h3 className="truncate font-medium text-stone-900 dark:text-stone-100">
-                        {campaign.name}
-                      </h3>
-                    </div>
-                  </article>
-                );
-              })}
+              {campaigns.map((campaign) => (
+                <CampaignCard
+                  key={campaign.id}
+                  campaign={campaign}
+                  selected={campaign.id === selectedCampaignId}
+                  onSelect={() => setSelectedCampaignId(campaign.id)}
+                  onEdit={() => setCampaignDialog({ open: true, editing: campaign })}
+                  onDelete={() => void deleteCampaign(campaign)}
+                  takes={dragging && dragging.campaignId !== campaign.id ? dragging : null}
+                  onTake={(character) => void moveCharacter(character, campaign)}
+                />
+              ))}
             </div>
           )}
         </Panel>
@@ -571,6 +651,15 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
                     key={character.id}
                     character={character}
                     onOpen={() => setPreviewing(character)}
+                    dragProps={{
+                      draggable: true,
+                      onDragStart: (event) => {
+                        event.dataTransfer.setData(CHARACTER_DRAG, character.id);
+                        event.dataTransfer.effectAllowed = "move";
+                        setDragging(character);
+                      },
+                      onDragEnd: () => setDragging(null),
+                    }}
                     actions={
                       <>
                         <IconButton

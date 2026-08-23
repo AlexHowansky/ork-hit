@@ -880,3 +880,95 @@ describe("the deployment's card size reaches the browser", () => {
     expect(limits.storedImagePx).toBe(config.cardImagePx * 3);
   });
 });
+
+describe("a character is refiled by being moved to another campaign", () => {
+  /** A campaign with nothing running on it, and one character filed under it. */
+  async function bareCampaign(cookie: string, characterName?: string) {
+    const campaignForm = new FormData();
+    campaignForm.set("name", unique("Campaign"));
+    const { campaign } = await (
+      await fetch(`${base}/api/campaigns`, authed(cookie, { method: "POST", body: campaignForm }))
+    ).json();
+
+    const form = new FormData();
+    form.set("campaignId", campaign.id);
+    form.set("kind", "pc");
+    form.set("name", characterName ?? unique("Hero"));
+    form.set("sheet", new File(["<h1>sheet</h1>"], "sheet.html"));
+    const { character } = await (
+      await fetch(`${base}/api/characters`, authed(cookie, { method: "POST", body: form }))
+    ).json();
+
+    return { campaign, character };
+  }
+
+  /** The move as the library sends it: the destination campaign and nothing else. */
+  const move = (cookie: string, characterId: string, campaignId: string) => {
+    const body = new FormData();
+    body.set("campaignId", campaignId);
+    return fetch(
+      `${base}/api/characters/${characterId}`,
+      authed(cookie, { method: "PATCH", body }),
+    );
+  };
+
+  const namesIn = async (cookie: string, campaignId: string) =>
+    (await (await fetch(`${base}/api/characters?campaignId=${campaignId}`, authed(cookie))).json())
+      .characters.map((character: { name: string }) => character.name);
+
+  test("the campaign alone is enough to move them", async () => {
+    const { cookie } = await signIn();
+    const from = await bareCampaign(cookie);
+    const to = await bareCampaign(cookie);
+
+    const response = await move(cookie, from.character.id, to.campaign.id);
+    expect(response.status).toBe(200);
+    expect((await response.json()).character.campaignId).toBe(to.campaign.id);
+
+    expect(await namesIn(cookie, from.campaign.id)).not.toContain(from.character.name);
+    expect(await namesIn(cookie, to.campaign.id)).toContain(from.character.name);
+  });
+
+  test("but not into a campaign that already has that name", async () => {
+    const { cookie } = await signIn();
+    const name = unique("Thorin");
+    const from = await bareCampaign(cookie, name);
+    const to = await bareCampaign(cookie, name);
+
+    const response = await move(cookie, from.character.id, to.campaign.id);
+    expect(response.status).toBe(409);
+    expect((await response.json()).error.code).toBe("conflict");
+
+    // Refused outright: the character has not gone anywhere.
+    expect(await namesIn(cookie, from.campaign.id)).toEqual([name]);
+    expect(await namesIn(cookie, to.campaign.id)).toEqual([name]);
+  });
+
+  test("and not out of a session that is still running", async () => {
+    const { cookie } = await signIn();
+    // `makeTable` leaves its campaign with an active session holding both characters.
+    const playing = await makeTable(cookie);
+    const elsewhere = await bareCampaign(cookie);
+
+    const response = await move(cookie, playing.pc.id, elsewhere.campaign.id);
+    expect(response.status).toBe(409);
+    expect((await response.json()).error.code).toBe("conflict");
+    expect(await namesIn(cookie, elsewhere.campaign.id)).not.toContain(playing.pc.name);
+  });
+
+  test("though a rename still works while they are playing", async () => {
+    const { cookie } = await signIn();
+    const playing = await makeTable(cookie);
+
+    const body = new FormData();
+    const renamed = unique("Renamed");
+    body.set("name", renamed);
+    const response = await fetch(
+      `${base}/api/characters/${playing.pc.id}`,
+      authed(cookie, { method: "PATCH", body }),
+    );
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).character.name).toBe(renamed);
+  });
+});

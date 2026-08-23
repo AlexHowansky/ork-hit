@@ -118,6 +118,30 @@ const namesIn = (page: Page) =>
     .locator("li")
     .evaluateAll((rows) => rows.map((row) => row.querySelector("span.truncate")?.textContent ?? ""));
 
+/**
+ * Drives a real HTML5 drag from one element to another.
+ *
+ * Playwright's own `dragAndDrop` works in pointer events, which native drag and
+ * drop does not see; the sequence has to be dispatched by hand, sharing one
+ * `DataTransfer` across it the way the browser would.
+ */
+async function dragCard(page: Page, from: string, to: string | "the character panel") {
+  await page.evaluate(([source, target]: [string, string]) => {
+    const panel = () =>
+      [...document.querySelectorAll("section")].find((section) =>
+        section.querySelector("h2")?.textContent?.startsWith("Characters in"),
+      )!.children[1]!;
+    const src = document.querySelector(source)!;
+    const dst = target === "the character panel" ? panel() : document.querySelector(target)!;
+    const dataTransfer = new DataTransfer();
+    src.dispatchEvent(new DragEvent("dragstart", { bubbles: true, dataTransfer }));
+    for (const type of ["dragenter", "dragover", "drop"]) {
+      dst.dispatchEvent(new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer }));
+    }
+    src.dispatchEvent(new DragEvent("dragend", { bubbles: true, dataTransfer }));
+  }, [from, to] as [string, string]);
+}
+
 describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => {
   test("a player's screen follows the game master with no refresh", async () => {
     if (!browser) return;
@@ -459,5 +483,85 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     expect(cookieAccess.blocked).toBe(true);
 
     await gm.close();
+  }, 60_000);
+
+  test("a character is refiled by dragging its card onto a campaign", async () => {
+    if (!browser) return;
+    const page = await signedInGm();
+    await page.setViewportSize({ width: 1600, height: 900 });
+
+    const [alpha, beta] = [unique("Alpha"), unique("Beta")];
+    for (const name of [alpha, beta]) {
+      await page.getByRole("button", { name: "New campaign" }).click();
+      await page.getByLabel("Campaign name").fill(name);
+      await page.getByRole("button", { name: "Create campaign" }).click();
+      await page.getByText(`Characters in ${name}`).waitFor();
+    }
+
+    await page.getByRole("button", { name: `Select ${alpha}` }).click();
+    await page.getByRole("button", { name: "Add character" }).click();
+    await page.getByLabel("Name").fill("Thorin");
+    await page.getByLabel(/Character sheet/).setInputFiles({
+      name: "thorin.html",
+      mimeType: "text/html",
+      buffer: Buffer.from("<h1>Thorin</h1>"),
+    });
+    await page.getByRole("button", { name: "Add character" }).last().click();
+    await page.getByRole("button", { name: "Thorin", exact: true }).waitFor();
+
+    const card = `article:has(button[aria-label="View Thorin's sheet"])`;
+    const cardOf = (name: string) => `article:has(button[aria-label="Select ${name}"])`;
+
+    // The campaign it is already in must not offer to take it.
+    await page.evaluate(([source, target]: [string, string]) => {
+      const dataTransfer = new DataTransfer();
+      document.querySelector(source)!
+        .dispatchEvent(new DragEvent("dragstart", { bubbles: true, dataTransfer }));
+      document.querySelector(target)!
+        .dispatchEvent(new DragEvent("dragover", { bubbles: true, cancelable: true, dataTransfer }));
+    }, [card, cardOf(alpha)] as [string, string]);
+    expect(await page.locator(cardOf(alpha)).getAttribute("class")).not.toContain("ring-offset-2");
+
+    // Another one lights up while the drag is over it.
+    await page.evaluate(([source, target]: [string, string]) => {
+      const dataTransfer = new DataTransfer();
+      document.querySelector(source)!
+        .dispatchEvent(new DragEvent("dragstart", { bubbles: true, dataTransfer }));
+      document.querySelector(target)!
+        .dispatchEvent(new DragEvent("dragover", { bubbles: true, cancelable: true, dataTransfer }));
+    }, [card, cardOf(beta)] as [string, string]);
+    await page.waitForTimeout(100);
+    expect(await page.locator(cardOf(beta)).getAttribute("class")).toContain("ring-offset-2");
+
+    // Dropping moves it: it leaves the panel it was in and turns up in the other.
+    await dragCard(page, card, cardOf(beta));
+    await page.getByText(`Moved “Thorin” to “${beta}”`).waitFor({ timeout: 5000 });
+    expect(await page.getByRole("button", { name: "Thorin", exact: true }).count()).toBe(0);
+    await page.getByRole("button", { name: `Select ${beta}` }).click();
+    await page.getByRole("button", { name: "Thorin", exact: true }).waitFor();
+
+    // A card let go over the character panel is not a sheet being uploaded.
+    await dragCard(page, card, "the character panel");
+    await page.waitForTimeout(400);
+    expect(await page.getByLabel("Type").count()).toBe(0);
+    expect(await page.getByRole("button", { name: "Thorin", exact: true }).count()).toBe(1);
+
+    // ...and a file let go there still is.
+    await page.evaluate(() => {
+      const dataTransfer = new DataTransfer();
+      dataTransfer.items.add(
+        new File(["<h1>Bilbo</h1>"], "Bilbo Baggins.html", { type: "text/html" }),
+      );
+      const panel = [...document.querySelectorAll("section")].find((section) =>
+        section.querySelector("h2")?.textContent?.startsWith("Characters in"),
+      )!.children[1]!;
+      for (const type of ["dragover", "drop"]) {
+        panel.dispatchEvent(new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer }));
+      }
+    });
+    await page.getByLabel("Name").waitFor({ timeout: 5000 });
+    expect(await page.getByLabel("Name").inputValue()).toBe("Bilbo Baggins");
+
+    await page.close();
   }, 60_000);
 });

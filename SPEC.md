@@ -105,6 +105,9 @@ The app should have the following features:
   becomes the character's image. A picture the game master chose is never
   replaced by one found in a file. Present the character library as cards,
   ordered by name whatever their kind.
+  A character may be refiled into another campaign by dragging its card onto that
+  campaign's card. A character playing in a session that is still running may not
+  be moved until that session ends.
 
 * A game master may start a new session on a campaign that has none running.
   Every PC in the campaign joins the new session automatically, in name order; the NPCs stay in the library until the
