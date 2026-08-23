@@ -272,9 +272,6 @@ export function PlayerSession({
               characters={snapshot.characters}
               activeCharacterId={snapshot.session.activeCharacterId}
               yourCharacterId={myCharacterId}
-              // Players may open only the sheet of the character they play.
-              onOpenSheet={() => setSheetOpen(true)}
-              canOpenSheet={(character) => character.id === myCharacterId}
             />
           )}
         </Panel>

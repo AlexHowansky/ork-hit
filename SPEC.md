@@ -129,6 +129,8 @@ The app should have the following features:
 * Once a session is joined, players should see two panels. One should contain a
   list of all the joined players, and one should contain a list of all active
   PCs and NPCs. For the PCs, the list should include which player is associated.
+  No row in that list offers to open a sheet; a player reaches their own through
+  a single `My sheet` control above it, and no other sheet is theirs to open.
 
 * Each PC and NPC on a session page should be shown with a small picture of
   itself — in the scene, and in the list the game master adds them from —

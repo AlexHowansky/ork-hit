@@ -185,7 +185,6 @@ export function InitiativeList({
   onSetTurn,
   onRemove,
   onOpenSheet,
-  canOpenSheet,
 }: {
   characters: SessionCharacter[];
   activeCharacterId: string | null;
@@ -194,9 +193,12 @@ export function InitiativeList({
   onReorder?: (orderedIds: string[]) => void;
   onSetTurn?: (characterId: string) => void;
   onRemove?: (characterId: string) => void;
+  /**
+   * Gives every row a "Sheet" button. The game master passes it; a player's list
+   * has none, since the only sheet they may open is their own and "My sheet"
+   * above the list is where they open it.
+   */
   onOpenSheet?: (character: SessionCharacter) => void;
-  /** Which rows offer a "Sheet" button; players may only open their own. */
-  canOpenSheet?: (character: SessionCharacter) => boolean;
 }) {
   const sensors = useSensors(
     // A small activation distance so a click on a row button isn't read as a drag.
@@ -225,11 +227,7 @@ export function InitiativeList({
       isYours={character.id === yourCharacterId}
       onSetTurn={onSetTurn ? () => onSetTurn(character.id) : undefined}
       onRemove={onRemove ? () => onRemove(character.id) : undefined}
-      onOpenSheet={
-        onOpenSheet && (canOpenSheet?.(character) ?? true)
-          ? () => onOpenSheet(character)
-          : undefined
-      }
+      onOpenSheet={onOpenSheet ? () => onOpenSheet(character) : undefined}
     />
   ));
 

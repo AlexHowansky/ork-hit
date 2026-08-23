@@ -158,7 +158,7 @@ Who may read a sheet:
 | | Sheets they can open |
 | --- | --- |
 | Game master | every character in their own campaigns |
-| Player | only the character they have claimed |
+| Player | only the character they have claimed, through `My sheet` |
 | Anyone else | none — the route returns 404, never 403 |
 
 ## Deployment
