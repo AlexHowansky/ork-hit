@@ -53,14 +53,13 @@ src/
 data/        SQLite database and uploads (gitignored, never served statically)
 ```
 
-Three things are worth knowing before reading the code.
+A few things are worth knowing before reading the code.
 
 **The library watches the sessions it lists.** Each row in "sessions in progress"
 opens that session's socket, so the round and the player count follow the table
 without a reload — the same snapshots the console gets, read for two numbers. The
 list's own figures stand in until the first snapshot arrives, and again if the
-socket drops. A player who closes their browser without leaving is still a player,
-so the count only moves on a join, a leave, or a kick. The rows sit in campaign
+socket drops. The rows sit in campaign
 name order, since the campaign is the only name a session is shown under; sorting
 by age instead reshuffled the list every time a session was started.
 
@@ -77,6 +76,23 @@ in `src/client/useLiveSocket.ts`; what differs is only how the messages are read
 Changes *inside* a session are deliberately not published here — each row already
 follows its own session — so a busy table does not rebuild the whole list on
 every turn.
+
+**A player is present for as long as they are connected.** Closing the tab is how
+people actually leave a table — few of them find the button first — and someone
+who is gone still holds their character, so the seat has to come free on its own.
+But a socket closing is not the same as a player leaving: a reload, a dropped
+tunnel, or a phone locking itself close it too, and the client comes straight
+back. So a closed socket only starts a clock (`PLAYER_GRACE_MS`, 30 seconds by
+default), any new socket for that player stops it, and only a player who is still
+absent when it runs out is removed — releasing their claim and republishing the
+session. The asymmetry is deliberate: dropping someone who was reloading takes
+their character away mid-scene, while holding a seat a little too long is a stale
+row in a list. An ended session is exempt, keeping the roster it finished with.
+
+Since a removed player's socket is refused rather than told why, a page that was
+left open would otherwise retry behind "Reconnecting…" for ever. While the socket
+is away, the player screen asks `/api/auth/me` who it is; an answer that is no
+longer this player means the seat is gone, and it says so instead of spinning.
 
 **Every change republishes the whole session.** Rather than sending diffs, any
 mutation recomputes a complete snapshot — session, players, characters in

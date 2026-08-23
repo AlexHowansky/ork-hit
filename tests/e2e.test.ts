@@ -258,6 +258,27 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     await listed.waitFor({ state: "detached", timeout: 5000 });
   }, 60_000);
 
+  test("a player who closes their browser leaves the table", async () => {
+    if (!browser) return;
+    const { page: gm, code } = await gmWithSession();
+    const player = await playerIn(code, "Erin");
+
+    await gm.getByText("Erin").first().waitFor({ timeout: 5000 });
+
+    // No goodbye of any kind: the window simply goes, as it does when someone
+    // shuts their laptop at the end of the evening.
+    await player.context().close();
+
+    // The game master's console empties the seat on its own, and Thorin — the
+    // character Erin was holding — is free for someone else to take.
+    await gm.getByText("Erin").first().waitFor({ state: "detached", timeout: 10_000 });
+    await gm
+      .getByRole("listitem")
+      .filter({ hasText: "Thorin" })
+      .getByText("Unclaimed")
+      .waitFor({ timeout: 10_000 });
+  }, 60_000);
+
   test("a sheet's scripts run but cannot touch the app", async () => {
     if (!browser) return;
     const { page: gm, code } = await gmWithSession();

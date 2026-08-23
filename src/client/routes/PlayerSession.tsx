@@ -62,6 +62,30 @@ export function PlayerSession({
   const { snapshot, connection, applySnapshot } = useSessionSocket(sessionId);
   const [claiming, setClaiming] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [dropped, setDropped] = useState(false);
+
+  /**
+   * A player who is away long enough is removed from the session, and a removed
+   * player's socket is refused rather than told why. Without this, a laptop
+   * opened again after an hour would retry behind "Reconnecting…" forever, so
+   * while the socket is away we ask who we are: an answer that is no longer this
+   * player means the seat is gone and there is nothing to reconnect to.
+   */
+  useEffect(() => {
+    if (connection !== "reconnecting") return;
+
+    const check = async () => {
+      try {
+        const identity = await api.get<{ kind: string }>("/api/auth/me");
+        if (identity.kind !== "player") setDropped(true);
+      } catch {
+        // Offline, or the server is down. Either way the socket keeps trying.
+      }
+    };
+
+    const timer = setInterval(() => void check(), 5000);
+    return () => clearInterval(timer);
+  }, [connection]);
 
   // Identifies this player's turn, changing again if the order comes back round
   // to them — with one character in the scene the id alone would never change.
@@ -92,6 +116,16 @@ export function PlayerSession({
       <Notice
         title="The session has ended"
         body="Your game master closed this session. The code will no longer work."
+        onLeave={onLeave}
+      />
+    );
+  }
+
+  if (dropped) {
+    return (
+      <Notice
+        title="You were away too long"
+        body="Your seat was given up while you were disconnected. Join again with the same code — your game master can hand your character back."
         onLeave={onLeave}
       />
     );

@@ -14,6 +14,9 @@ process.env.DATABASE_PATH = join(directory, "test.db");
 process.env.UPLOAD_DIR = join(directory, "uploads");
 process.env.APP_ORIGIN = "http://localhost:3000";
 process.env.LOG_LEVEL = "error";
+// A disconnected player is dropped after this long. Tests wait it out, so it is
+// short here; the deployed default is measured in seconds, not milliseconds.
+process.env.PLAYER_GRACE_MS = "300";
 
 // Imported after the environment is set, so the connection opens on the scratch file.
 const { migrate } = await import("../src/db/migrate.ts");

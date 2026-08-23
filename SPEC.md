@@ -119,7 +119,12 @@ The app should have the following features:
   of the active PCs that the GM has placed in this session, in name order, as
   cards of the same size and shape as the library's. From this list, they may choose one PC to
   play. This PC to player association must be maintained as
-  long as the session lasts.
+  long as the player stays in the session.
+
+* A player who closes their browser leaves the session: their seat is given up
+  and their PC becomes free for someone else to claim. A brief disconnection —
+  a reload, a flaky connection, a phone locking itself — must not count as
+  leaving, so this only takes effect after a grace period.
 
 * An active PC that no player has claimed should be highlighted in an alert
   colour on the session page, so that both the game master and the players can

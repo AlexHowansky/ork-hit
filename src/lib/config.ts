@@ -10,6 +10,12 @@ function bool(value: string | undefined, fallback = false): boolean {
   return value === "1" || value.toLowerCase() === "true";
 }
 
+/** A positive number, or the fallback: a misconfigured duration is worse than none. */
+function duration(value: string | undefined, fallback: number): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
 const logLevels = ["debug", "info", "warn", "error"] as const;
 export type LogLevel = (typeof logLevels)[number];
 
@@ -32,6 +38,12 @@ export const config = {
   logLevel: logLevel(process.env.LOG_LEVEL),
   /** Development escape hatch: serve cookies without the Secure flag over plain HTTP. */
   insecureCookies: bool(process.env.INSECURE_COOKIES),
+  /**
+   * How long a player may have no connection open before they are dropped from
+   * the session. Long enough to cover a reload, a tunnel, or a phone waking up;
+   * short enough that a closed browser doesn't sit in the list all evening.
+   */
+  playerGraceMs: duration(process.env.PLAYER_GRACE_MS, 30_000),
   isProduction: process.env.NODE_ENV === "production",
 } as const;
 

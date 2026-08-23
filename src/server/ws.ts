@@ -18,10 +18,11 @@
  */
 
 import type { BunRequest, Server, ServerWebSocket } from "bun";
+import { config } from "../lib/config.ts";
 import { log } from "../lib/log.ts";
 import { currentGm, currentPlayer } from "./middleware/auth.ts";
 import { buildGmSessionList, buildSnapshot } from "./session-state.ts";
-import { gameSessions } from "../db/queries.ts";
+import { gameSessions, players } from "../db/queries.ts";
 
 /** What a socket is allowed to see, decided once at upgrade and never re-read. */
 interface SocketData {
@@ -102,6 +103,65 @@ export function disconnectPlayer(playerId: string): void {
   }
 }
 
+/* ----------------------------------------------------------------- presence */
+
+/**
+ * A player is in the session for as long as they are connected to it.
+ *
+ * Closing the tab, or the browser, is how someone leaves a table in practice —
+ * few people find the button first — and a player who is gone still holds their
+ * character, so the seat has to be freed for them to come back to. But a socket
+ * closing is not the same as a player leaving: a reload, a dropped tunnel, or a
+ * phone locking itself all close it too, and the client comes straight back. So a
+ * closed socket only starts a clock, and any new socket for that player stops it.
+ * Only if they are still absent when it runs out are they actually removed.
+ *
+ * The consequence of getting it wrong is not symmetrical, which is why the grace
+ * period is generous: dropping someone who was reloading takes their character
+ * away mid-scene, whereas holding a seat too long is a stale row in a list.
+ */
+const pendingRemoval = new Map<string, ReturnType<typeof setTimeout>>();
+
+function stillConnected(playerId: string): boolean {
+  for (const socket of sockets) {
+    if (socket.data.playerId === playerId) return true;
+  }
+  return false;
+}
+
+/** Called when a player's socket opens: they are back, so call off the clock. */
+function cancelRemoval(playerId: string): void {
+  const timer = pendingRemoval.get(playerId);
+  if (!timer) return;
+  clearTimeout(timer);
+  pendingRemoval.delete(playerId);
+}
+
+function schedulePlayerRemoval(playerId: string, sessionId: string): void {
+  cancelRemoval(playerId);
+
+  const timer = setTimeout(() => {
+    pendingRemoval.delete(playerId);
+    // They reconnected on another socket, or were already removed — by their own
+    // hand, by a kick, or with the session they were in.
+    if (stillConnected(playerId)) return;
+    if (!players.byId(playerId)) return;
+
+    // An ended session keeps its roster: nobody is coming back to it, and the
+    // game master may still be looking at who was there.
+    const session = gameSessions.byId(sessionId);
+    if (!session || session.status !== "active") return;
+
+    players.remove(playerId);
+    log.info("player dropped after disconnect", { sessionId, playerId });
+    broadcastSession(sessionId);
+  }, config.playerGraceMs);
+
+  // Nothing should be kept alive by a clock that is waiting on an absence.
+  timer.unref?.();
+  pendingRemoval.set(playerId, timer);
+}
+
 /* ------------------------------------------------------------------ upgrade */
 
 /**
@@ -175,6 +235,9 @@ export const websocket = {
     sockets.add(socket);
     socket.subscribe(socket.data.topic);
 
+    // Whatever closed their last socket, they are plainly still here.
+    if (socket.data.playerId) cancelRemoval(socket.data.playerId);
+
     // Send the current state immediately, so a reconnecting client is correct
     // before the next mutation happens to come along.
     if (socket.data.role === "library") {
@@ -205,6 +268,13 @@ export const websocket = {
   close(socket: AppSocket) {
     sockets.delete(socket);
     socket.unsubscribe(socket.data.topic);
+
+    // Deleted from `sockets` first, so the check for another connection of the
+    // same player cannot see the one that has just gone.
+    if (socket.data.playerId && socket.data.sessionId && !stillConnected(socket.data.playerId)) {
+      schedulePlayerRemoval(socket.data.playerId, socket.data.sessionId);
+    }
+
     log.debug("socket closed", { topic: socket.data.topic, sockets: sockets.size });
   },
 

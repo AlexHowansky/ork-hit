@@ -619,3 +619,86 @@ describe("the library socket", () => {
     socket.close();
   });
 });
+
+describe("a player who disconnects gives up their seat", () => {
+  const GRACE_MS = Number(process.env.PLAYER_GRACE_MS);
+
+  /** A player's socket, carrying the cookie their browser would have sent. */
+  function watch(cookie: string, sessionId: string): Promise<WebSocket> {
+    const socket = new WebSocket(
+      `${base.replace(/^http/, "ws")}/ws?sessionId=${encodeURIComponent(sessionId)}`,
+      { headers: { Cookie: cookie, Origin: base } } as unknown as string[],
+    );
+    return new Promise((resolve, reject) => {
+      socket.addEventListener("open", () => resolve(socket), { once: true });
+      socket.addEventListener("error", () => reject(new Error("the socket was refused")), {
+        once: true,
+      });
+    });
+  }
+
+  const roster = async (cookie: string, sessionId: string): Promise<string[]> => {
+    const body = await (await fetch(`${base}/api/sessions/${sessionId}`, authed(cookie))).json();
+    return body.snapshot.players.map((player: { name: string }) => player.name);
+  };
+
+  test("closing the last connection removes them, once the grace period is up", async () => {
+    const { cookie } = await signIn();
+    const { session } = await makeTable(cookie);
+    const alice = await joinAs(session.code, "Alice");
+    await joinAs(session.code, "Bob");
+
+    const socket = await watch(alice, session.id);
+    socket.close();
+
+    // Still seated while the clock runs — closing a socket is not leaving.
+    expect(await roster(cookie, session.id)).toContain("Alice");
+
+    await Bun.sleep(GRACE_MS * 3);
+    expect(await roster(cookie, session.id)).toEqual(["Bob"]);
+  });
+
+  test("coming straight back keeps the seat", async () => {
+    const { cookie } = await signIn();
+    const { session } = await makeTable(cookie);
+    const alice = await joinAs(session.code, "Alice");
+
+    // What a reload looks like from here: the socket goes, another arrives.
+    const first = await watch(alice, session.id);
+    first.close();
+    const second = await watch(alice, session.id);
+
+    await Bun.sleep(GRACE_MS * 3);
+    expect(await roster(cookie, session.id)).toEqual(["Alice"]);
+    second.close();
+  });
+
+  test("a second connection of the same player is not one player leaving", async () => {
+    const { cookie } = await signIn();
+    const { session } = await makeTable(cookie);
+    const alice = await joinAs(session.code, "Alice");
+
+    // Two tabs open on the same session; shutting one is not going away.
+    const phone = await watch(alice, session.id);
+    const laptop = await watch(alice, session.id);
+    phone.close();
+
+    await Bun.sleep(GRACE_MS * 3);
+    expect(await roster(cookie, session.id)).toEqual(["Alice"]);
+    laptop.close();
+  });
+
+  test("an ended session keeps the roster it finished with", async () => {
+    const { cookie } = await signIn();
+    const { session } = await makeTable(cookie);
+    const alice = await joinAs(session.code, "Alice");
+    await watch(alice, session.id);
+
+    // Ending the session disconnects everyone, which must not then empty it:
+    // nobody is coming back, and the game master may still be reading it.
+    await fetch(`${base}/api/sessions/${session.id}/end`, authed(cookie, { method: "POST" }));
+
+    await Bun.sleep(GRACE_MS * 3);
+    expect(await roster(cookie, session.id)).toEqual(["Alice"]);
+  });
+});
