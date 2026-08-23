@@ -108,6 +108,13 @@ export const sessionRoutes = {
         throw errors.notFound("We couldn't find that campaign.");
       }
 
+      const running = gameSessions.activeForCampaign(campaign.id);
+      if (running) {
+        throw errors.conflict(
+          "That campaign already has a session running. End it before starting another.",
+        );
+      }
+
       // The party comes along with the session: one transaction, so a session can
       // never exist with the roster half built.
       const session = db.transaction(() => {

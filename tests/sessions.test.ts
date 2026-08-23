@@ -112,7 +112,7 @@ describe("session codes and lifetime", () => {
     expect(gameSessions.byId(session.id)!.ended_at).not.toBeNull();
   });
 
-  test("several sessions can run at once, each with its own code", () => {
+  test("several sessions can run at once, one per campaign, each with its own code", () => {
     const sessions = [makeSession(1), makeSession(1), makeSession(1)];
     const codes = new Set(sessions.map((entry) => entry.session.code));
     expect(codes.size).toBe(3);
@@ -122,6 +122,38 @@ describe("session codes and lifetime", () => {
     expect(gameSessions.activeByCode(sessions[0]!.session.code)).not.toBeNull();
     expect(gameSessions.activeByCode(sessions[1]!.session.code)).toBeNull();
     expect(gameSessions.activeByCode(sessions[2]!.session.code)).not.toBeNull();
+  });
+});
+
+describe("one active session per campaign", () => {
+  test("the database refuses a second one even if a check is skipped", () => {
+    const { campaign } = makeSession(1);
+
+    expect(() =>
+      gameSessions.create({
+        campaignId: campaign.id,
+        gmId: campaign.gm_id,
+        code: generateSessionCode(),
+      }),
+    ).toThrow(/UNIQUE constraint/i);
+  });
+
+  test("ending the first frees the campaign for another", () => {
+    const { campaign, session } = makeSession(1);
+    gameSessions.end(session.id);
+
+    const next = gameSessions.create({
+      campaignId: campaign.id,
+      gmId: campaign.gm_id,
+      code: generateSessionCode(),
+    });
+
+    expect(gameSessions.activeForCampaign(campaign.id)!.id).toBe(next.id);
+  });
+
+  test("a campaign with nothing running has no active session", () => {
+    const campaign = makeCampaign();
+    expect(gameSessions.activeForCampaign(campaign.id)).toBeNull();
   });
 });
 

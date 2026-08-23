@@ -87,8 +87,8 @@ The app should have the following features:
   PC and NPC may have a background image. Present the character library as
   cards, ordered by name whatever their kind.
 
-* A game master may start a new session. Every PC in the campaign joins the new
-  session automatically, in name order; the NPCs stay in the library until the
+* A game master may start a new session on a campaign that has none running.
+  Every PC in the campaign joins the new session automatically, in name order; the NPCs stay in the library until the
   scene calls for them. This generates a unique unguessable code. Provide a means to copy the code (and the URL target that receives the
   code) to the clipboard so that the GM can easily send session invites to
   players. Once the players receive the code, they may use it to authenticate
@@ -101,7 +101,9 @@ The app should have the following features:
 * A game master may end a running session. Once the session is ended, the code
   should no longer work.
 
-* Multiple sessions should be able to be active at the same time.
+* Multiple sessions should be able to be active at the same time, but only one
+  per campaign. Starting a second session on a campaign that is already playing
+  must be refused; the game master ends the first one to start another.
 
 * When a player joins a session, they should be prompted for their name. Ensure
   that names are unique in a session. They should also be presented with a list

@@ -332,6 +332,18 @@ export const gameSessions = {
     ).get({ code });
   },
 
+  /**
+   * The campaign's running session, if it has one.
+   *
+   * A campaign runs one session at a time — enforced by a partial unique index,
+   * so this can never be the first of several.
+   */
+  activeForCampaign(campaignId: string): GameSessionRow | null {
+    return db.query<GameSessionRow, { campaignId: string }>(
+      "SELECT * FROM game_sessions WHERE campaign_id = $campaignId AND status = 'active'",
+    ).get({ campaignId });
+  },
+
   listForGm(gmId: string): GameSessionRow[] {
     return db.query<GameSessionRow, { gmId: string }>(
       "SELECT * FROM game_sessions WHERE gm_id = $gmId ORDER BY created_at DESC",

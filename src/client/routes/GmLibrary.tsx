@@ -274,6 +274,11 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
     (character) => character.campaignId === selectedCampaignId,
   );
   const activeSessions = sessions.filter((session) => session.status === "active");
+  // A campaign runs one session at a time, so the button that would start a
+  // second one opens the first instead.
+  const runningHere = activeSessions.find(
+    (session) => session.campaignId === selectedCampaignId,
+  );
 
   const deleteCampaign = async (campaign: Campaign) => {
     if (
@@ -439,7 +444,13 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
                 >
                   Add character
                 </Button>
-                <Button onClick={() => void startSession()}>Start session</Button>
+                {runningHere ? (
+                  <Button onClick={() => navigate(`/gm/sessions/${runningHere.id}`)}>
+                    Open console
+                  </Button>
+                ) : (
+                  <Button onClick={() => void startSession()}>Start session</Button>
+                )}
               </div>
             }
           >

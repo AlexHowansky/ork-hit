@@ -394,6 +394,40 @@ describe("a player leaving", () => {
   });
 });
 
+describe("a campaign runs one session at a time", () => {
+  const start = (cookie: string, campaignId: string) =>
+    fetch(
+      `${base}/api/sessions`,
+      authed(cookie, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaignId }),
+      }),
+    );
+
+  test("starting a second one is refused, and says why", async () => {
+    const { cookie } = await signIn();
+    const { campaign } = await makeTable(cookie);
+
+    const response = await start(cookie, campaign.id);
+    expect(response.status).toBe(409);
+    const body = await response.json();
+    expect(body.error.code).toBe("conflict");
+    expect(body.error.message).toMatch(/already has a session running/i);
+  });
+
+  test("ending the first lets the next one start", async () => {
+    const { cookie } = await signIn();
+    const { campaign, session } = await makeTable(cookie);
+
+    await fetch(`${base}/api/sessions/${session.id}/end`, authed(cookie, { method: "POST" }));
+
+    const response = await start(cookie, campaign.id);
+    expect(response.status).toBe(201);
+    expect((await response.json()).session.id).not.toBe(session.id);
+  });
+});
+
 describe("ending a session", () => {
   test("freezes it against every further change", async () => {
     const gm = await signIn();

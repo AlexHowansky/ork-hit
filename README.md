@@ -61,6 +61,14 @@ initiative order — and publishes it to everyone watching. The lists are a doze
 rows at most, and it means a client can never merge updates in the wrong order:
 a reorder racing a turn change cannot leave someone highlighting the wrong row.
 
+**One live session per campaign.** Two would give the same characters two
+initiative orders and two turn markers, and a code would not say which table a
+player had joined. The rule is a partial unique index on `game_sessions`
+(`002_one_active_session_per_campaign.sql`) covering active rows only, so a
+campaign can still be played again and again; the start handler checks first and
+answers 409 with something a game master can act on, and the index is what makes
+that check impossible to get around.
+
 **A session opens with the party in it.** Starting one inserts every PC in the
 campaign into the initiative order in a single statement, inside the same
 transaction that creates the session — `sessionCharacters.addCampaignPcs` in
