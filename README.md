@@ -141,6 +141,20 @@ panels of different widths, and anything proportional makes a campaign card and 
 character card come out different sizes; a fixed track makes them identical at
 every window size, at the price of some slack at the end of a row.
 
+**The campaign panel gives that slack away.** On the wide layout it is trimmed to
+the width that holds a whole number of card columns and no part of another, so its
+edge sits flush against the last column and the character panel beside it takes
+what is left. `useCardFit` (`src/client/useCardFit.ts`) measures the panel, works
+out how many columns its natural share holds — never more than there are campaigns
+to fill them, never fewer than one — and writes that width into `--campaign-col`,
+which the split's grid template reads (`styles.css` declares the fluid default, so
+unpinned it is the ordinary `1 : 1.4` split). It only ever narrows: what the
+campaign panel gives up, the `1.4fr` next to it absorbs. Nothing there assumes a
+card size, a gap or a padding — all of them are read back from the rendered
+layout, so a deployment drawing larger cards needs no matching change. The
+scrolling panel body keeps a stable scrollbar gutter for the same reason: the
+measurement has to mean the same thing before and after the panel is trimmed.
+
 **File fields take a drop, and still are file fields.** Adding a character means
 handing over an HTML sheet and often a picture, and dragging a file from a folder
 is the shorter path — so both fields on the character form are `FileDrop`

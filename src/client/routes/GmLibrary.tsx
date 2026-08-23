@@ -8,6 +8,7 @@ import { useNavigate } from "react-router";
 import { api } from "../api.ts";
 import { useSessionSocket } from "../useSessionSocket.ts";
 import { useLiveSessions } from "../useLiveSessions.ts";
+import { useCardFit } from "../useCardFit.ts";
 import { ThemeToggle } from "../components/ThemeToggle.tsx";
 import {
   AppPage,
@@ -312,6 +313,10 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
   }>({ open: false, editing: null, file: null });
   const [previewing, setPreviewing] = useState<Character | null>(null);
 
+  // Trims the campaign panel to whole card columns, giving the leftover to the
+  // characters beside it.
+  const { containerRef, panelRef, gridRef } = useCardFit({ count: campaigns.length });
+
   const load = useCallback(async () => {
     try {
       const [campaignData, characterData, sessionData] = await Promise.all([
@@ -444,8 +449,12 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
         </Panel>
       ) : null}
 
-      <div className="space-y-6 wide:grid wide:min-h-0 wide:flex-1 wide:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] wide:gap-6 wide:space-y-0">
+      <div
+        ref={containerRef}
+        className="space-y-6 wide:grid wide:min-h-0 wide:flex-1 wide:grid-cols-[var(--campaign-col)_minmax(0,1.4fr)] wide:gap-6 wide:space-y-0"
+      >
         <Panel
+          ref={panelRef}
           title="Campaigns"
           scroll
           actions={
@@ -460,7 +469,7 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
           {campaigns.length === 0 ? (
             <EmptyState>No campaigns yet. Create one to get started.</EmptyState>
           ) : (
-            <div className={CARD_GRID}>
+            <div ref={gridRef} className={CARD_GRID}>
               {campaigns.map((campaign) => {
                 const isSelected = campaign.id === selectedCampaignId;
                 return (

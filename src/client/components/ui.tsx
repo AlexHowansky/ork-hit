@@ -7,6 +7,7 @@ import type {
   HTMLAttributes,
   InputHTMLAttributes,
   ReactNode,
+  Ref,
 } from "react";
 
 const BUTTON_BASE =
@@ -32,8 +33,10 @@ export const CARD_BASE =
  * The track is a fixed width rather than a fraction, so a card is the same size
  * in the campaign panel and the character panel even though those panels are not
  * the same width. The cost is some slack at the end of a row, which is the price
- * of the two libraries matching. Below `sm` there is only ever one column, and it
- * takes the full width rather than leaving most of a phone screen empty.
+ * of the two libraries matching — on the campaign panel `useCardFit` takes that
+ * slack back by trimming the panel to whole columns. Below `sm` there is only ever
+ * one column, and it takes the full width rather than leaving most of a phone
+ * screen empty.
  *
  * The width itself is `--card-image-size`, which the deployment sets (see
  * `server/routes/appearance.ts`) — and it names the picture rather than the card
@@ -130,6 +133,7 @@ export function Panel({
   children,
   className = "",
   scroll = false,
+  ref,
   ...rest
 }: HTMLAttributes<HTMLElement> & {
   title: ReactNode;
@@ -137,10 +141,12 @@ export function Panel({
   children: ReactNode;
   className?: string;
   scroll?: boolean;
+  ref?: Ref<HTMLElement>;
 }) {
   return (
     <section
       {...rest}
+      ref={ref}
       className={`rounded-xl border border-stone-200 bg-white shadow-sm dark:border-stone-800 dark:bg-stone-900 ${
         scroll ? "flex min-h-0 flex-col" : ""
       } ${className}`}
@@ -151,7 +157,11 @@ export function Panel({
         </h2>
         {actions}
       </header>
-      <div className={`p-4 ${scroll ? "min-h-0 flex-1 overflow-y-auto" : ""}`}>{children}</div>
+      <div
+        className={`p-4 ${scroll ? "min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable]" : ""}`}
+      >
+        {children}
+      </div>
     </section>
   );
 }

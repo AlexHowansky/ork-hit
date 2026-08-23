@@ -17,7 +17,10 @@ document explains the requirements that must be adhered to.
 * Make good use of the screen. On a wide, short screen — a 16:9 monitor — a page
   should fill one viewport with its panels side by side, each scrolling its own
   content, rather than stacking them into a page that scrolls as a whole. Narrow
-  or tall screens keep the stacked layout.
+  or tall screens keep the stacked layout. Where cards sit side by side with
+  another panel, as the campaigns do, the panel holding them is no wider than the
+  whole number of cards it can show — never part of a further column — and the
+  panel beside it takes the room that leaves.
 
 * How large a card's picture is drawn is a deployment setting, not a constant in
   the code. It measures the picture: the card comes out larger, since its border

@@ -57,6 +57,23 @@
   --card-border: 1px;
 }
 
+/*
+  The width of the campaign panel in the GM library's wide, two-panel layout.
+
+  The default is the panel's natural share of the split — a fraction, against the
+  character panel's `1.4fr`, so unset this is an ordinary fluid `1 : 1.4` grid.
+  `useCardFit` overrides it with a pixel width once it has measured the panel: the
+  width that holds a whole number of card columns and no part of another. The lone
+  remaining `1.4fr` then takes everything left over, so the slack the fixed card
+  track would have wasted goes to the character panel instead.
+
+  It lives here, rather than being written into the template inline, so the ratio
+  itself stays in the stylesheet and the hook only ever has to supply a number.
+*/
+:root {
+  --campaign-col: minmax(0, 1fr);
+}
+
 :root {
   color-scheme: light;
 }
