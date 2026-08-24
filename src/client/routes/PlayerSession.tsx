@@ -277,7 +277,7 @@ export function PlayerSession({
           <ul className="divide-y divide-stone-100 dark:divide-stone-800">
             {snapshot.players.map((player) => {
               const character = snapshot.characters.find(
-                (entry) => entry.id === player.claimedCharacterId,
+                (entry) => entry.characterId === player.claimedCharacterId,
               );
               return (
                 <li key={player.id} className="py-2.5">

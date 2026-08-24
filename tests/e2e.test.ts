@@ -109,6 +109,12 @@ async function playerIn(code: string, name: string): Promise<Page> {
   // The session page is headed by the player, and says which character they hold.
   await page.getByRole("heading", { name, exact: true }).waitFor();
   await page.getByText("Playing as Thorin").waitFor();
+  // The players panel names the character each player holds, which is a different
+  // id from the slot it sits in and was once matched against the wrong one.
+  await page
+    .locator("section", { hasText: /Players \(/ })
+    .getByText("Playing Thorin")
+    .waitFor();
   return page;
 }
 
