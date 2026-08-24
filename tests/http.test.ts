@@ -237,6 +237,10 @@ describe("players are read-only", () => {
           body: JSON.stringify({ characterId: pc.id }),
         }),
       ),
+      fetch(
+        `${base}/api/sessions/${session.id}/turn/restart`,
+        authed(player, { method: "POST" }),
+      ),
       fetch(`${base}/api/sessions/${session.id}/end`, authed(player, { method: "POST" })),
       fetch(`${base}/api/campaigns`, authed(player)),
       fetch(`${base}/api/characters/${pc.id}`, authed(player, { method: "DELETE" })),
@@ -469,6 +473,73 @@ describe("a campaign runs one session at a time", () => {
   });
 });
 
+describe("restarting the turn order", () => {
+  /** Walks the tracker forward `steps` times and reports where it ended up. */
+  async function advance(cookie: string, sessionId: string, steps: number) {
+    let body!: { snapshot: { session: { round: number; activeCharacterId: string | null } } };
+    for (let i = 0; i < steps; i += 1) {
+      const response = await fetch(
+        `${base}/api/sessions/${sessionId}/turn/advance`,
+        authed(cookie, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ direction: "next" }),
+        }),
+      );
+      body = await response.json();
+    }
+    return body.snapshot.session;
+  }
+
+  test("goes back to round one with no turn set, leaving the stage alone", async () => {
+    const gm = await signIn();
+    const { session } = await makeTable(gm.cookie);
+
+    const { snapshot: opening } = await (
+      await fetch(`${base}/api/sessions/${session.id}`, authed(gm.cookie))
+    ).json();
+    const staged = opening.characters.map((character: { id: string }) => character.id);
+    expect(staged.length).toBeGreaterThan(0);
+
+    // Two characters on the stage, so five steps is two full rounds and one over.
+    const before = await advance(gm.cookie, session.id, 5);
+    expect(before.round).toBe(3);
+    expect(before.activeCharacterId).not.toBeNull();
+
+    const response = await fetch(
+      `${base}/api/sessions/${session.id}/turn/restart`,
+      authed(gm.cookie, { method: "POST" }),
+    );
+    expect(response.status).toBe(200);
+
+    const { snapshot } = await response.json();
+    expect(snapshot.session.round).toBe(1);
+    expect(snapshot.session.activeCharacterId).toBeNull();
+    // The fight restarts, not the session: the same characters are on the stage,
+    // in the same order they were in before.
+    expect(snapshot.characters.map((character: { id: string }) => character.id)).toEqual(staged);
+  });
+
+  test("leaves the next step opening round one at the top of the order", async () => {
+    const gm = await signIn();
+    const { session } = await makeTable(gm.cookie);
+
+    await advance(gm.cookie, session.id, 3);
+    await fetch(
+      `${base}/api/sessions/${session.id}/turn/restart`,
+      authed(gm.cookie, { method: "POST" }),
+    );
+
+    const after = await advance(gm.cookie, session.id, 1);
+    expect(after.round).toBe(1);
+
+    const { snapshot } = await (
+      await fetch(`${base}/api/sessions/${session.id}`, authed(gm.cookie))
+    ).json();
+    expect(after.activeCharacterId).toBe(snapshot.characters[0].id);
+  });
+});
+
 describe("ending a session", () => {
   test("freezes it against every further change", async () => {
     const gm = await signIn();
@@ -496,6 +567,10 @@ describe("ending a session", () => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ direction: "next" }),
         }),
+      ),
+      fetch(
+        `${base}/api/sessions/${session.id}/turn/restart`,
+        authed(gm.cookie, { method: "POST" }),
       ),
     ]);
 

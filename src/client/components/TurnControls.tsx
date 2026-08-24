@@ -18,6 +18,7 @@ export function TurnControls({
   activeCharacterName,
   editable,
   onAdvance,
+  onRestart,
   disabled = false,
   className = "",
 }: {
@@ -25,6 +26,8 @@ export function TurnControls({
   activeCharacterName: string | null;
   editable: boolean;
   onAdvance?: (direction: "next" | "prev") => void;
+  /** Omitted where there is nothing to restart — the player screens. */
+  onRestart?: () => void;
   disabled?: boolean;
   className?: string;
 }) {
@@ -73,6 +76,20 @@ export function TurnControls({
 
       {editable && onAdvance ? (
         <div className="flex items-center gap-2">
+          {onRestart ? (
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={onRestart}
+              // Nothing to go back to at the very start, and the disabled state
+              // says so more usefully than a dialog asking about a no-op would.
+              disabled={disabled || (round === 1 && activeCharacterName === null)}
+              title="Back to round 1, with no turn set"
+              className="mr-1"
+            >
+              ↺ Restart
+            </Button>
+          ) : null}
           <Button
             type="button"
             onClick={() => onAdvance("prev")}

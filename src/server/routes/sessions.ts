@@ -291,6 +291,33 @@ export const sessionRoutes = {
     ),
   },
 
+  /**
+   * Back to the top of the order, at round one.
+   *
+   * The turn marker is cleared rather than parked on the first character, which
+   * puts the session in exactly the state it started in: "No turn set yet", and
+   * the first press of Next opens round one with whoever leads the order. That
+   * matters because the order may well have been rearranged since the fight
+   * began, and restarting should not quietly decide the new leader has already
+   * acted.
+   *
+   * Nothing else is touched — the characters on the stage, their order, and who
+   * has claimed what all survive, since this restarts the fight rather than the
+   * session.
+   */
+  "/api/sessions/:id/turn/restart": {
+    POST: handler(
+      (request: BunRequest<"/api/sessions/:id/turn/restart">, { logger }: RequestContext) => {
+        const { session } = requireOwnedActiveSession(request, request.params.id);
+
+        gameSessions.setTurn(session.id, null, 1);
+        logger.info("turn restarted", { sessionId: session.id });
+
+        return publish(session.id);
+      },
+    ),
+  },
+
   /* ---------------------------------------------------------- joining, PCs */
 
   "/api/sessions/join": {

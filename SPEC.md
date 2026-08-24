@@ -192,6 +192,12 @@ The app should have the following features:
   whose turn it is. When the GM makes this selection, the player screens should
   instantly update without a refresh.
 
+* The GM should be able to restart the turn order, taking the session back to
+  round one with no turn set, as though the fight had not begun. The characters
+  on the stage, their initiative order and the players' claims are all left
+  alone: this restarts the fight, not the session. Since it throws away however
+  many rounds have been tracked, it asks before doing it.
+
 * When the turn reaches a player's character, that player should get a toast and
   an audible chime. Only that player: the turn passing to anyone else must stay
   silent.

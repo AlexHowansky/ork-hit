@@ -100,6 +100,25 @@ export function GmSessionConsole() {
     [mutate, sessionId],
   );
 
+  /**
+   * Starts the fight over: round one, no turn set.
+   *
+   * It asks first because it is the one turn control that throws work away —
+   * several rounds of tracking gone on one click, and the only way back is to
+   * press Next as many times as it took to get there.
+   */
+  const restartTurns = async () => {
+    const ok = await confirm({
+      title: "Start over at round 1?",
+      body: "The turn goes back to the top of the order. Characters and initiative stay as they are.",
+      confirmLabel: "Restart",
+    });
+    if (!ok) return;
+    void mutate(() =>
+      api.post<{ snapshot: Snapshot }>(`/api/sessions/${sessionId}/turn/restart`),
+    );
+  };
+
   const reorder = (orderedIds: string[]) => {
     // Apply the drop immediately so the list doesn't snap back under the cursor;
     // if the write is rejected, the broadcast snapshot restores the real order.
@@ -215,6 +234,7 @@ export function GmSessionConsole() {
         activeCharacterName={activeCharacter?.name ?? null}
         editable
         onAdvance={advanceTurn}
+        onRestart={() => void restartTurns()}
         disabled={busy || (snapshot?.characters.length ?? 0) === 0}
       />
 

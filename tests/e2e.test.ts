@@ -170,6 +170,44 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     await player.getByText("In the scene (2)").waitFor({ timeout: 5000 });
   }, 60_000);
 
+  test("restarting takes both screens back to round 1", async () => {
+    if (!browser) return;
+    const { page: gm, code } = await gmWithSession();
+    const player = await playerIn(code, "Fran");
+
+    // Into round 2, with a turn set, so there is something to go back from.
+    for (let i = 0; i < 4; i += 1) {
+      await gm.getByRole("button", { name: "Next →" }).click();
+      await gm.waitForTimeout(120);
+    }
+    await player.getByText("Round 2").waitFor({ timeout: 5000 });
+
+    // Restarting asks first, and backing out of the question changes nothing.
+    await gm.getByRole("button", { name: "Restart" }).click();
+    await gm.getByRole("dialog", { name: "Start over at round 1?" })
+      .getByRole("button", { name: "Cancel" }).click();
+    await gm.waitForTimeout(200);
+    expect(await gm.getByText("Round 2").count()).toBe(1);
+
+    await gm.getByRole("button", { name: "Restart" }).click();
+    await gm.getByRole("dialog", { name: "Start over at round 1?" })
+      .getByRole("button", { name: "Restart" }).click();
+
+    // Round one, nobody up, and the player sees it without a refresh.
+    await gm.getByText("No turn set yet").waitFor({ timeout: 5000 });
+    await player.getByText("Round 1").waitFor({ timeout: 5000 });
+    await player.getByText("No turn set yet").waitFor({ timeout: 5000 });
+
+    // The stage is untouched: the same three are still in the scene.
+    expect(await namesIn(gm)).toEqual(["Elara", "Thorin", "Strahd"]);
+
+    // And the next step opens round one at the top of the order.
+    await gm.getByRole("button", { name: "Next →" }).click();
+    await gm.locator("p", { hasText: "Up now:" }).getByText("Elara")
+      .waitFor({ timeout: 5000 });
+    expect(await gm.getByText("Round 1").count()).toBe(1);
+  }, 60_000);
+
   test("the player whose turn it is gets told", async () => {
     if (!browser) return;
     const { page: gm, code } = await gmWithSession();

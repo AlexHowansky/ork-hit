@@ -115,6 +115,19 @@ transaction that creates the session — `sessionCharacters.addCampaignPcs` in
 statement rather than left to `ON CONFLICT DO NOTHING`, because a skipped row
 would leave a hole in the positions.
 
+**Restarting the fight clears the turn rather than parking it.** `POST
+/api/sessions/:id/turn/restart` sets the round to one and the active character to
+`null`, which is the state a session opens in — "No turn set yet", with the first
+press of Next opening round one on whoever leads the order. Putting the marker on
+the first character instead would look equivalent and is not: the order may well
+have been rearranged since the fight began, and it would quietly decide the new
+leader had already acted. Nothing else is touched, so the stage, the initiative
+order and the players' claims all survive a restart; it restarts the fight, not
+the session. The button asks first (`Confirm.tsx`), since it is the one turn
+control that throws work away and the only way back is to press Next as many
+times as it took to get there — and it is disabled outright at round one with no
+turn set, where there is nothing to go back to.
+
 **Initiative positions are dense.** `session_characters.position` is always
 `0..n-1`. Adds append, removes close the gap, and a reorder sends the entire
 ordered list rather than a move — which makes it idempotent and lets the server
