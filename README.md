@@ -385,10 +385,15 @@ game master scroll away from the turn tracker mid-turn. A `wide` variant in
 portrait monitor is left alone — switches the session and library pages to a
 frame exactly one viewport high, panels side by side, each scrolling its own
 list. `AppPage` and `Panel`'s `scroll` prop in `src/client/components/ui.tsx`
-carry this; the routes only choose how the panels divide the frame, and — on the
-session console, with `order` rather than a second copy of the markup — what
-sequence they sit in once there are three columns. Anything narrower or taller
-keeps the stacked layout unchanged.
+carry this; the routes only choose how the panels divide the frame, and — on both
+session pages, with `order` rather than a second copy of the markup — what
+sequence they sit in once there are columns. On the player's page the column
+wrappers are `display: contents` until the columns exist, so the four panels are
+items of one column while stacked and `order` alone moves the player list below
+the scene; nothing there grows, so a short list ends where its content does
+instead of being stretched to the frame, and `scroll` is left on the two lists
+only to catch the opposite case. Anything narrower or taller keeps the stacked
+layout unchanged.
 
 ## The turn chime
 

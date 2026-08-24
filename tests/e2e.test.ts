@@ -115,6 +115,11 @@ async function playerIn(code: string, name: string): Promise<Page> {
     .locator("section", { hasText: /Players \(/ })
     .getByText("Playing Thorin")
     .waitFor();
+  // The character they hold has a panel of its own, which is where their sheet
+  // is reached from.
+  const mine = page.locator("section", { hasText: /My character/ });
+  await mine.getByText("Thorin", { exact: true }).waitFor();
+  await mine.getByRole("button", { name: "My sheet" }).waitFor();
   return page;
 }
 

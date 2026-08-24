@@ -23,6 +23,7 @@ import {
   CARD_BASE,
   CARD_CAPTION,
   CARD_GRID,
+  CharacterThumb,
   EmptyState,
   Panel,
 } from "../components/ui.tsx";
@@ -260,63 +261,103 @@ export function PlayerSession({
         </div>
       </header>
 
-      <TurnControls
-        className="shrink-0"
-        round={snapshot.session.round}
-        activeCharacterName={(() => {
-          const active = snapshot.characters.find(
-            (character) => character.id === snapshot.session.activeSlotId,
-          );
-          return active ? stageLabel(snapshot.characters, active) : null;
-        })()}
-        editable={false}
-      />
+      {/*
+        Two columns on a large screen, one on a narrow one — and the stacked order
+        interleaves them, since the scene belongs above the player list on a phone
+        but beside it on a monitor. The wrappers are `display: contents` until the
+        columns exist, so all four panels are items of the one column and `order`
+        alone decides where the player list falls; the same trick the game master's
+        console uses (GmSession.tsx).
 
-      <div className="grid gap-5 lg:grid-cols-[1fr_1.4fr] wide:min-h-0 wide:flex-1">
-        <Panel title={`Players (${snapshot.players.length})`} scroll>
-          <ul className="divide-y divide-stone-100 dark:divide-stone-800">
-            {snapshot.players.map((player) => {
-              const character = snapshot.characters.find(
-                (entry) => entry.characterId === player.claimedCharacterId,
+        Nothing here grows. Every panel is a flex item at its natural height, so a
+        short list ends where its content does rather than being stretched to the
+        frame. `scroll` on the two lists is only a guard for the other direction: a
+        list taller than the fixed wide frame shrinks back and scrolls its own body
+        instead of spilling out of the page, which the wide layout clips.
+      */}
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:gap-5 wide:min-h-0 wide:flex-1 wide:items-stretch">
+        <div className="contents lg:flex lg:min-w-0 lg:flex-1 lg:flex-col lg:gap-5 wide:min-h-0">
+          <TurnControls
+            className="lg:shrink-0"
+            round={snapshot.session.round}
+            activeCharacterName={(() => {
+              const active = snapshot.characters.find(
+                (character) => character.id === snapshot.session.activeSlotId,
               );
-              return (
-                <li key={player.id} className="py-2.5">
-                  <p className="font-medium text-stone-900 dark:text-stone-100">
-                    {player.name}
-                    {player.id === playerId ? (
-                      <span className="ml-1.5 text-xs font-normal text-stone-500 dark:text-stone-400">
-                        (you)
-                      </span>
-                    ) : null}
-                  </p>
-                  <p className="text-xs text-stone-500 dark:text-stone-400">
-                    {character ? `Playing ${character.name}` : "Choosing a character…"}
-                  </p>
-                </li>
-              );
-            })}
-          </ul>
-        </Panel>
+              return active ? stageLabel(snapshot.characters, active) : null;
+            })()}
+            editable={false}
+          />
 
-        <Panel
-          scroll
-          title={`In the scene (${snapshot.characters.length})`}
-          actions={
-            myCharacter ? (
-              <Button onClick={() => setSheetOpen(true)}>My sheet</Button>
-            ) : null
-          }
-        >
-          {snapshot.characters.length === 0 ? (
-            <EmptyState>Your game master hasn't brought anyone into the scene yet.</EmptyState>
-          ) : (
-            <InitiativeList
-              characters={snapshot.characters}
-              activeSlotId={snapshot.session.activeSlotId}
-              yourCharacterId={myCharacterId}
-            />
-          )}
-        </Panel>
+          <Panel
+            title="My character"
+            className="lg:shrink-0"
+            actions={
+              myCharacter ? (
+                <Button onClick={() => setSheetOpen(true)}>My sheet</Button>
+              ) : null
+            }
+          >
+            {myCharacter ? (
+              // Deliberately thin for now — a picture and a name. The character's
+              // HERO System numbers land here next.
+              <div className="flex items-center gap-3">
+                <CharacterThumb kind={myCharacter.kind} backgroundUrl={myCharacter.backgroundUrl} />
+                <p className="truncate font-medium text-stone-900 dark:text-stone-100">
+                  {myCharacter.name}
+                </p>
+              </div>
+            ) : (
+              <EmptyState>
+                Your character isn't in the scene right now. Your game master can bring them
+                back.
+              </EmptyState>
+            )}
+          </Panel>
+
+          <Panel
+            title={`Players (${snapshot.players.length})`}
+            scroll
+            className="order-last lg:order-none"
+          >
+            <ul className="divide-y divide-stone-100 dark:divide-stone-800">
+              {snapshot.players.map((player) => {
+                const character = snapshot.characters.find(
+                  (entry) => entry.characterId === player.claimedCharacterId,
+                );
+                return (
+                  <li key={player.id} className="py-2.5">
+                    <p className="font-medium text-stone-900 dark:text-stone-100">
+                      {player.name}
+                      {player.id === playerId ? (
+                        <span className="ml-1.5 text-xs font-normal text-stone-500 dark:text-stone-400">
+                          (you)
+                        </span>
+                      ) : null}
+                    </p>
+                    <p className="text-xs text-stone-500 dark:text-stone-400">
+                      {character ? `Playing ${character.name}` : "Choosing a character…"}
+                    </p>
+                  </li>
+                );
+              })}
+            </ul>
+          </Panel>
+        </div>
+
+        <div className="contents lg:flex lg:min-w-0 lg:flex-[1.4] lg:flex-col wide:min-h-0">
+          <Panel scroll title={`In the scene (${snapshot.characters.length})`}>
+            {snapshot.characters.length === 0 ? (
+              <EmptyState>Your game master hasn't brought anyone into the scene yet.</EmptyState>
+            ) : (
+              <InitiativeList
+                characters={snapshot.characters}
+                activeSlotId={snapshot.session.activeSlotId}
+                yourCharacterId={myCharacterId}
+              />
+            )}
+          </Panel>
+        </div>
       </div>
 
       {sheetOpen && myCharacter ? (

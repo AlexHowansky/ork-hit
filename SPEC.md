@@ -176,11 +176,19 @@ The app should have the following features:
 * A player's session page should be headed by their own name, with the
   character they are playing named underneath it.
 
-* Once a session is joined, players should see two panels. One should contain a
-  list of all the joined players, and one should contain a list of all active
-  PCs and NPCs. For the PCs, the list should include which player is associated.
-  No row in that list offers to open a sheet; a player reaches their own through
-  a single `My sheet` control above it, and no other sheet is theirs to open.
+* Once a session is joined, players should see four panels: the round, their own
+  character, a list of all the joined players, and a list of all active PCs and
+  NPCs. For the PCs, that last list should include which player is associated.
+  No row in it offers to open a sheet; a player reaches their own through a
+  single `My sheet` control on their `My character` panel, and no other sheet is
+  theirs to open.
+
+* No panel on a player's session page is stretched to fill the screen: each is
+  only as tall as what it holds. Where the screen is wide enough for two columns,
+  the round, the player's own character and the list of players sit in the first
+  column — so the round is the width of the player list rather than of the page —
+  and the scene sits in the second. Stacked, the order is the round, their
+  character, the scene, then the players.
 
 * Each PC and NPC on a session page should be shown with a small picture of
   itself — in the scene, and in the list the game master adds them from —
