@@ -24,6 +24,7 @@ import { InitiativeList } from "../components/InitiativeList.tsx";
 import { TurnControls } from "../components/TurnControls.tsx";
 import { SheetOverlay } from "../components/SheetFrame.tsx";
 import { ThemeToggle } from "../components/ThemeToggle.tsx";
+import { useConfirm } from "../components/Confirm.tsx";
 import { useToast } from "../components/Toast.tsx";
 import type { Character, GameSession, SessionCharacter, Snapshot } from "../types.ts";
 
@@ -31,6 +32,7 @@ export function GmSessionConsole() {
   const { id: sessionId = "" } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
+  const confirm = useConfirm();
 
   const { snapshot, connection, applySnapshot } = useSessionSocket(sessionId);
   const [session, setSession] = useState<GameSession | null>(null);
@@ -125,19 +127,25 @@ export function GmSessionConsole() {
       }),
     );
 
-  const kickPlayer = (playerId: string, name: string) => {
-    if (!window.confirm(`Remove ${name} from this session?`)) return;
+  const kickPlayer = async (playerId: string, name: string) => {
+    const ok = await confirm({
+      title: `Remove ${name} from this session?`,
+      body: "They can rejoin with the session code.",
+      confirmLabel: "Remove",
+    });
+    if (!ok) return;
     void mutate(() =>
       api.delete<{ snapshot: Snapshot }>(`/api/sessions/${sessionId}/players/${playerId}`),
     );
   };
 
   const endSession = async () => {
-    if (
-      !window.confirm("End this session? The code stops working and everyone is disconnected.")
-    ) {
-      return;
-    }
+    const ok = await confirm({
+      title: "End this session?",
+      body: "The code stops working and everyone is disconnected.",
+      confirmLabel: "End session",
+    });
+    if (!ok) return;
     try {
       await api.post(`/api/sessions/${sessionId}/end`);
       toast.show("Session ended.", "success");
@@ -284,7 +292,7 @@ export function GmSessionConsole() {
                       </select>
                       <Button
                         variant="ghost"
-                        onClick={() => kickPlayer(player.id, player.name)}
+                        onClick={() => void kickPlayer(player.id, player.name)}
                         className="text-red-600 dark:text-red-400"
                       >
                         Kick

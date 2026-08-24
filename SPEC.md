@@ -40,6 +40,15 @@ document explains the requirements that must be adhered to.
   hovered, and give the same feedback to anyone arriving by keyboard rather than
   mouse.
 
+* A question asked before something irreversible is the app's own dialog, drawn
+  like every other: `window.confirm` is never used, because the browser draws it
+  in its own chrome and it ignores the theme and the palette entirely. The button
+  that goes through with it names the action rather than saying "OK", so it still
+  says what will happen when read on its own, and the question can be refused
+  with Escape or the close control as well as with Cancel.
+  The one native dialog left is `window.prompt`, as the fallback when the browser
+  refuses clipboard access and the text has to be offered for copying by hand.
+
 * Observe OWASP Top Ten guidelines.
 
 * Observe best practices for modern web development.

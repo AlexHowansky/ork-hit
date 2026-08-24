@@ -293,6 +293,23 @@ native binding, which is a heavier dependency than anything else here, and it is
 worth it — decoding and rescaling four image formats correctly is not something
 to hand-roll.
 
+**Asking before something irreversible is the app's own dialog.** Deleting a
+campaign or a character, ending a session and removing a player all ask first,
+and none of them uses `window.confirm`: the browser draws that in its own chrome,
+so it arrives in the wrong typeface, ignores light and dark entirely, and shows a
+name in curly quotes in whatever font the chrome happens to use. `ConfirmProvider`
+(`src/client/components/Confirm.tsx`) puts the question in the same `Modal` every
+other dialog uses, and hands the caller a promise, so the guard at the top of a
+handler stays the one line it was — `if (!(await confirm({…}))) return;` — rather
+than each route growing its own piece of open-question state. It is a provider for
+the reason `ToastProvider` is one: the answer has to outlive the click that asked
+for it. The one-line native message becomes a title and a body, the button that
+goes through with it carries the verb rather than "OK" so it still says what will
+happen when read on its own, and Escape, the ✕ and Cancel all mean no — the answer
+a dialog dismissed by accident should give. It sits at `z-40` like `SheetOverlay`,
+under the toasts at `z-50`, so the message about what just happened is still
+readable over it.
+
 **Wide screens get a dashboard, not a document.** A 16:9 monitor is much shorter
 relative to its width than a phone, so a page that stacks its panels makes the
 game master scroll away from the turn tracker mid-turn. A `wide` variant in

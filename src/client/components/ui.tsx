@@ -167,6 +167,62 @@ export function Panel({
 }
 
 /**
+ * A panel opened over the page, with a title bar and a close control.
+ *
+ * The counterpart to `SheetOverlay`: that one is deliberately chrome-free because
+ * a character sheet is a whole page of someone else's design, whereas everything
+ * here — a form, a question — is ours and wants a heading to say what it is.
+ *
+ * Escape closes it. A click on the dimmed backdrop deliberately does not: these
+ * hold forms people are part way through typing into, and losing that to a stray
+ * click is worse than the extra press it costs to leave on purpose.
+ *
+ * `z-40` puts it under the toasts at `z-50`, so a message about what just
+ * happened is still readable over an open dialog.
+ */
+export function Modal({
+  title,
+  onClose,
+  children,
+  wide = false,
+}: {
+  title: string;
+  onClose: () => void;
+  children: ReactNode;
+  wide?: boolean;
+}) {
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 p-4">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        className={`flex max-h-[90vh] w-full flex-col overflow-hidden rounded-xl bg-white shadow-xl dark:bg-stone-900 ${
+          wide ? "max-w-5xl wide:max-w-7xl" : "max-w-lg"
+        }`}
+      >
+        <header className="flex items-center justify-between border-b border-stone-200 px-5 py-3 dark:border-stone-800">
+          <h2 className="font-semibold text-stone-900 dark:text-stone-100">{title}</h2>
+          <Button variant="ghost" onClick={onClose} aria-label="Close">
+            ✕
+          </Button>
+        </header>
+        <div className="flex-1 overflow-auto p-5">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+
+/**
  * The edit and delete controls for a card, laid over the bottom right of its
  * picture.
  *

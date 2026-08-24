@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useNavigate } from "react-router";
 import { api } from "./api.ts";
+import { ConfirmProvider } from "./components/Confirm.tsx";
 import { ToastProvider, useToast } from "./components/Toast.tsx";
 import { Login } from "./routes/Login.tsx";
 import { GmLibrary } from "./routes/GmLibrary.tsx";
@@ -114,7 +115,9 @@ export function App() {
   return (
     <BrowserRouter>
       <ToastProvider>
-        <Shell />
+        <ConfirmProvider>
+          <Shell />
+        </ConfirmProvider>
       </ToastProvider>
     </BrowserRouter>
   );

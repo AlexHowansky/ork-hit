@@ -23,6 +23,7 @@ import {
   Field,
   FileDrop,
   IconButton,
+  Modal,
   Panel,
   SheetIcon,
   useDropTarget,
@@ -30,6 +31,7 @@ import {
 } from "../components/ui.tsx";
 import { CharacterCard } from "../components/CharacterCard.tsx";
 import { SheetOverlay } from "../components/SheetFrame.tsx";
+import { useConfirm } from "../components/Confirm.tsx";
 import { useToast } from "../components/Toast.tsx";
 import type { Campaign, Character, GameSession } from "../types.ts";
 
@@ -37,48 +39,6 @@ import type { Campaign, Character, GameSession } from "../types.ts";
 const NAME_MAX_LENGTH = 60;
 
 /* ------------------------------------------------------------------- dialogs */
-
-function Modal({
-  title,
-  onClose,
-  children,
-  wide = false,
-}: {
-  title: string;
-  onClose: () => void;
-  children: React.ReactNode;
-  wide?: boolean;
-}) {
-  // Escape closes, which is the behaviour people expect from a dialog.
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
-  return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 p-4">
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-        className={`flex max-h-[90vh] w-full flex-col overflow-hidden rounded-xl bg-white shadow-xl dark:bg-stone-900 ${
-          wide ? "max-w-5xl wide:max-w-7xl" : "max-w-lg"
-        }`}
-      >
-        <header className="flex items-center justify-between border-b border-stone-200 px-5 py-3 dark:border-stone-800">
-          <h2 className="font-semibold text-stone-900 dark:text-stone-100">{title}</h2>
-          <Button variant="ghost" onClick={onClose} aria-label="Close">
-            ✕
-          </Button>
-        </header>
-        <div className="flex-1 overflow-auto p-5">{children}</div>
-      </div>
-    </div>
-  );
-}
 
 function CampaignForm({
   campaign,
@@ -380,6 +340,7 @@ function CampaignCard({
 
 export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () => void }) {
   const toast = useToast();
+  const confirm = useConfirm();
   const navigate = useNavigate();
 
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -478,13 +439,12 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
   );
 
   const deleteCampaign = async (campaign: Campaign) => {
-    if (
-      !window.confirm(
-        `Delete “${campaign.name}”? Its characters and sessions will be deleted too.`,
-      )
-    ) {
-      return;
-    }
+    const ok = await confirm({
+      title: `Delete “${campaign.name}”?`,
+      body: "Its characters and sessions will be deleted too.",
+      confirmLabel: "Delete campaign",
+    });
+    if (!ok) return;
     try {
       await api.delete(`/api/campaigns/${campaign.id}`);
       setSelectedCampaignId(null);
@@ -496,7 +456,11 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
   };
 
   const deleteCharacter = async (character: Character) => {
-    if (!window.confirm(`Delete “${character.name}”?`)) return;
+    const ok = await confirm({
+      title: `Delete “${character.name}”?`,
+      confirmLabel: "Delete character",
+    });
+    if (!ok) return;
     try {
       await api.delete(`/api/characters/${character.id}`);
       setCharacters((current) => current.filter((entry) => entry.id !== character.id));
