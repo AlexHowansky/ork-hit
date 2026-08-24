@@ -51,7 +51,6 @@ export function presentSessionForGm(
     status: session.status,
     round: session.round,
     playerCount,
-    activeCharacterId: session.active_character_id,
     createdAt: session.created_at,
     endedAt: session.ended_at,
   };

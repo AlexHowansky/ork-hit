@@ -25,7 +25,7 @@ import {
   EmptyState,
   Panel,
 } from "../components/ui.tsx";
-import { InitiativeList } from "../components/InitiativeList.tsx";
+import { InitiativeList, stageLabel } from "../components/InitiativeList.tsx";
 import { TurnControls } from "../components/TurnControls.tsx";
 import { SheetOverlay } from "../components/SheetFrame.tsx";
 import { ThemeToggle } from "../components/ThemeToggle.tsx";
@@ -88,12 +88,19 @@ export function PlayerSession({
 
   // Identifies this player's turn, changing again if the order comes back round
   // to them — with one character in the scene the id alone would never change.
+  //
+  // Keyed on the slot rather than the character, which is also what would tell
+  // two turns in one round apart if a character ever stood in two places.
   const myTurnKey = (() => {
     if (!snapshot) return null;
     const claimed =
       snapshot.players.find((player) => player.id === playerId)?.claimedCharacterId ?? null;
-    if (!claimed || snapshot.session.activeCharacterId !== claimed) return null;
-    return `${claimed}#${snapshot.session.round}`;
+    const active = snapshot.session.activeSlotId;
+    if (!claimed || !active) return null;
+    const mine = snapshot.characters.some(
+      (character) => character.id === active && character.characterId === claimed,
+    );
+    return mine ? `${active}#${snapshot.session.round}` : null;
   })();
 
   // `undefined` until the first snapshot lands: arriving mid-turn is not a change,
@@ -149,7 +156,7 @@ export function PlayerSession({
   const me = snapshot.players.find((player) => player.id === playerId) ?? null;
   const myCharacterId = me?.claimedCharacterId ?? null;
   const myCharacter =
-    snapshot.characters.find((character) => character.id === myCharacterId) ?? null;
+    snapshot.characters.find((character) => character.characterId === myCharacterId) ?? null;
 
   const claim = async (characterId: string) => {
     setClaiming(true);
@@ -199,7 +206,7 @@ export function PlayerSession({
                   key={character.id}
                   type="button"
                   disabled={claiming}
-                  onClick={() => void claim(character.id)}
+                  onClick={() => void claim(character.characterId)}
                   className={`${CARD_BASE} border-stone-200 bg-white text-left disabled:opacity-50 dark:border-stone-800 dark:bg-stone-900`}
                 >
                   <div className="aspect-square w-full shrink-0 overflow-hidden bg-stone-200 dark:bg-stone-800">
@@ -255,11 +262,12 @@ export function PlayerSession({
       <TurnControls
         className="shrink-0"
         round={snapshot.session.round}
-        activeCharacterName={
-          snapshot.characters.find(
-            (character) => character.id === snapshot.session.activeCharacterId,
-          )?.name ?? null
-        }
+        activeCharacterName={(() => {
+          const active = snapshot.characters.find(
+            (character) => character.id === snapshot.session.activeSlotId,
+          );
+          return active ? stageLabel(snapshot.characters, active) : null;
+        })()}
         editable={false}
       />
 
@@ -303,7 +311,7 @@ export function PlayerSession({
           ) : (
             <InitiativeList
               characters={snapshot.characters}
-              activeCharacterId={snapshot.session.activeCharacterId}
+              activeSlotId={snapshot.session.activeSlotId}
               yourCharacterId={myCharacterId}
             />
           )}

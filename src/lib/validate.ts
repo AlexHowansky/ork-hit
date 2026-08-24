@@ -68,12 +68,18 @@ export const schemas = {
     characterId: z.string().min(1).max(64),
   }),
 
+  /** Which character to put on the stage; a repeat is another copy, not an error. */
+  stageAdd: z.object({
+    characterId: z.string().min(1).max(64),
+  }),
+
+  /** The whole initiative order, as stage slot ids. */
   reorder: z.object({
     order: z.array(z.string().min(1).max(64)).max(200),
   }),
 
   setTurn: z.object({
-    characterId: z.string().min(1).max(64).nullable(),
+    slotId: z.string().min(1).max(64).nullable(),
   }),
 
   advanceTurn: z.object({

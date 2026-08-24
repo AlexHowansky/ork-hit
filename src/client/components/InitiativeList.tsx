@@ -31,9 +31,23 @@ import { CSS } from "@dnd-kit/utilities";
 import type { SessionCharacter } from "../types.ts";
 import { CharacterThumb, KindBadge } from "./ui.tsx";
 
+/**
+ * What to call one slot, given the whole stage.
+ *
+ * The copy number only appears while there is another copy to tell this one
+ * apart from — a lone goblin is just "Goblin". Shared so the turn banner and the
+ * initiative row never disagree about what the monster on turn is called.
+ */
+export function stageLabel(characters: SessionCharacter[], slot: SessionCharacter): string {
+  const copies = characters.filter((entry) => entry.characterId === slot.characterId).length;
+  return copies > 1 ? `${slot.name} ${slot.copyNumber}` : slot.name;
+}
+
 interface RowProps {
   character: SessionCharacter;
   index: number;
+  /** How many copies of this character are on the stage, counting this one. */
+  copies: number;
   isActive: boolean;
   editable: boolean;
   /** Highlights the viewing player's own character. */
@@ -46,6 +60,7 @@ interface RowProps {
 function Row({
   character,
   index,
+  copies,
   isActive,
   editable,
   isYours,
@@ -61,6 +76,11 @@ function Row({
   // A player character nobody has taken yet: an open seat at the table, and the
   // one thing both audiences want to spot without reading.
   const isUnclaimed = character.kind === "pc" && character.claimedByPlayerId === null;
+
+  // The number only earns its place while there is another copy to tell this one
+  // apart from; a lone goblin is just the goblin. Spoken names take it too, or
+  // two rows of "Reorder Goblin" would be the same instruction twice.
+  const copyLabel = copies > 1 ? `${character.name} ${character.copyNumber}` : character.name;
 
   return (
     <li
@@ -85,7 +105,7 @@ function Row({
           {...attributes}
           {...listeners}
           className="cursor-grab touch-none px-1 text-stone-400 hover:text-stone-700 active:cursor-grabbing dark:hover:text-stone-200"
-          aria-label={`Reorder ${character.name}. Press space, then use the arrow keys.`}
+          aria-label={`Reorder ${copyLabel}. Press space, then use the arrow keys.`}
         >
           <span aria-hidden="true">⠿</span>
         </button>
@@ -113,6 +133,15 @@ function Row({
           >
             {character.name}
           </span>
+          {copies > 1 ? (
+            <span
+              className="rounded bg-stone-200 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-stone-700 dark:bg-stone-700 dark:text-stone-200"
+              // Read as part of the name above rather than as a badge of its own.
+              aria-hidden="true"
+            >
+              {character.copyNumber}
+            </span>
+          ) : null}
           <KindBadge kind={character.kind} />
           {isActive ? (
             <span className="rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-white uppercase dark:text-stone-950">
@@ -166,7 +195,7 @@ function Row({
             type="button"
             onClick={onRemove}
             className="rounded px-2 py-1 text-xs text-red-600 hover:bg-red-100 dark:text-red-400 dark:hover:bg-red-950"
-            aria-label={`Remove ${character.name} from the session`}
+            aria-label={`Remove ${copyLabel} from the session`}
           >
             Remove
           </button>
@@ -178,7 +207,7 @@ function Row({
 
 export function InitiativeList({
   characters,
-  activeCharacterId,
+  activeSlotId,
   editable = false,
   yourCharacterId = null,
   onReorder,
@@ -187,12 +216,14 @@ export function InitiativeList({
   onOpenSheet,
 }: {
   characters: SessionCharacter[];
-  activeCharacterId: string | null;
+  /** The slot whose turn it is. A slot, not a character: one may fill two. */
+  activeSlotId: string | null;
   editable?: boolean;
+  /** The viewing player's character, matched on the character rather than the slot. */
   yourCharacterId?: string | null;
-  onReorder?: (orderedIds: string[]) => void;
-  onSetTurn?: (characterId: string) => void;
-  onRemove?: (characterId: string) => void;
+  onReorder?: (orderedSlotIds: string[]) => void;
+  onSetTurn?: (slotId: string) => void;
+  onRemove?: (slotId: string) => void;
   /**
    * Gives every row a "Sheet" button. The game master passes it; a player's list
    * has none, since the only sheet they may open is their own and "My sheet"
@@ -217,14 +248,23 @@ export function InitiativeList({
     onReorder(arrayMove(characters, from, to).map((character) => character.id));
   };
 
+  // Counted once here rather than per row, which would be a scan of the list
+  // inside a scan of the list.
+  const copies = new Map<string, number>();
+  for (const character of characters) {
+    copies.set(character.characterId, (copies.get(character.characterId) ?? 0) + 1);
+  }
+
   const rows = characters.map((character, index) => (
     <Row
       key={character.id}
       character={character}
       index={index}
-      isActive={character.id === activeCharacterId}
+      copies={copies.get(character.characterId) ?? 1}
+      isActive={character.id === activeSlotId}
       editable={editable}
-      isYours={character.id === yourCharacterId}
+      // On the character: a player's own PC is theirs wherever it stands.
+      isYours={character.characterId === yourCharacterId}
       onSetTurn={onSetTurn ? () => onSetTurn(character.id) : undefined}
       onRemove={onRemove ? () => onRemove(character.id) : undefined}
       onOpenSheet={onOpenSheet ? () => onOpenSheet(character) : undefined}

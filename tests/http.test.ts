@@ -88,8 +88,12 @@ async function makeTable(cookie: string) {
 
   for (const character of [pc, npc]) {
     await fetch(
-      `${base}/api/sessions/${session.id}/characters/${character.id}`,
-      authed(cookie, { method: "POST" }),
+      `${base}/api/sessions/${session.id}/stage`,
+      authed(cookie, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ characterId: character.id }),
+      }),
     );
   }
 
@@ -175,8 +179,12 @@ describe("character sheets reach only the right people", () => {
       await (await fetch(`${base}/api/characters`, authed(gm.cookie, { method: "POST", body: form }))).json()
     ).character;
     await fetch(
-      `${base}/api/sessions/${session.id}/characters/${other.id}`,
-      authed(gm.cookie, { method: "POST" }),
+      `${base}/api/sessions/${session.id}/stage`,
+      authed(gm.cookie, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ characterId: other.id }),
+      }),
     );
 
     const alice = await joinAs(session.code, "Alice");
@@ -473,10 +481,111 @@ describe("a campaign runs one session at a time", () => {
   });
 });
 
+describe("more than one copy of an NPC", () => {
+  /** Puts a character on the stage and answers with the new snapshot. */
+  async function stage(cookie: string, sessionId: string, characterId: string) {
+    const response = await fetch(
+      `${base}/api/sessions/${sessionId}/stage`,
+      authed(cookie, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ characterId }),
+      }),
+    );
+    return { status: response.status, snapshot: (await response.json()).snapshot };
+  }
+
+  test("an NPC added twice stands in two slots, a PC in one", async () => {
+    const gm = await signIn();
+    const { pc, npc, session } = await makeTable(gm.cookie);
+
+    const { snapshot } = await stage(gm.cookie, session.id, npc.id);
+    const npcSlots = snapshot.characters.filter(
+      (character: { characterId: string }) => character.characterId === npc.id,
+    );
+    expect(npcSlots).toHaveLength(2);
+    expect(npcSlots.map((slot: { copyNumber: number }) => slot.copyNumber)).toEqual([1, 2]);
+    // Two slots, two identities — which is what gives each its own turn.
+    expect(new Set(npcSlots.map((slot: { id: string }) => slot.id)).size).toBe(2);
+
+    // The hero is not a monster: asking twice changes nothing.
+    const again = await stage(gm.cookie, session.id, pc.id);
+    expect(again.status).toBe(200);
+    expect(
+      again.snapshot.characters.filter(
+        (character: { characterId: string }) => character.characterId === pc.id,
+      ),
+    ).toHaveLength(1);
+  });
+
+  test("removing one copy leaves the other where it was", async () => {
+    const gm = await signIn();
+    const { npc, session } = await makeTable(gm.cookie);
+    const { snapshot: staged } = await stage(gm.cookie, session.id, npc.id);
+
+    const copies = staged.characters.filter(
+      (character: { characterId: string }) => character.characterId === npc.id,
+    );
+    const [first, second] = copies;
+
+    // Put the turn on the copy that is staying, so we can see it survive.
+    await fetch(
+      `${base}/api/sessions/${session.id}/turn`,
+      authed(gm.cookie, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slotId: second.id }),
+      }),
+    );
+
+    const response = await fetch(
+      `${base}/api/sessions/${session.id}/stage/${first.id}`,
+      authed(gm.cookie, { method: "DELETE" }),
+    );
+    expect(response.status).toBe(200);
+
+    const { snapshot } = await response.json();
+    const left = snapshot.characters.filter(
+      (character: { characterId: string }) => character.characterId === npc.id,
+    );
+    expect(left).toHaveLength(1);
+    expect(left[0].id).toBe(second.id);
+    // Copy 2 is still copy 2: a number names the monster, not its place in line.
+    expect(left[0].copyNumber).toBe(2);
+    expect(snapshot.session.activeSlotId).toBe(second.id);
+    // …and the order behind it closed up.
+    expect(snapshot.characters.map((c: { position: number }) => c.position)).toEqual(
+      snapshot.characters.map((_: unknown, index: number) => index),
+    );
+  });
+
+  test("the order can be rewritten with copies in it", async () => {
+    const gm = await signIn();
+    const { npc, session } = await makeTable(gm.cookie);
+    const { snapshot: staged } = await stage(gm.cookie, session.id, npc.id);
+
+    const ids = staged.characters.map((character: { id: string }) => character.id);
+    const reversed = [...ids].reverse();
+
+    const response = await fetch(
+      `${base}/api/sessions/${session.id}/order`,
+      authed(gm.cookie, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ order: reversed }),
+      }),
+    );
+    expect(response.status).toBe(200);
+
+    const { snapshot } = await response.json();
+    expect(snapshot.characters.map((character: { id: string }) => character.id)).toEqual(reversed);
+  });
+});
+
 describe("restarting the turn order", () => {
   /** Walks the tracker forward `steps` times and reports where it ended up. */
   async function advance(cookie: string, sessionId: string, steps: number) {
-    let body!: { snapshot: { session: { round: number; activeCharacterId: string | null } } };
+    let body!: { snapshot: { session: { round: number; activeSlotId: string | null } } };
     for (let i = 0; i < steps; i += 1) {
       const response = await fetch(
         `${base}/api/sessions/${sessionId}/turn/advance`,
@@ -504,7 +613,7 @@ describe("restarting the turn order", () => {
     // Two characters on the stage, so five steps is two full rounds and one over.
     const before = await advance(gm.cookie, session.id, 5);
     expect(before.round).toBe(3);
-    expect(before.activeCharacterId).not.toBeNull();
+    expect(before.activeSlotId).not.toBeNull();
 
     const response = await fetch(
       `${base}/api/sessions/${session.id}/turn/restart`,
@@ -514,7 +623,7 @@ describe("restarting the turn order", () => {
 
     const { snapshot } = await response.json();
     expect(snapshot.session.round).toBe(1);
-    expect(snapshot.session.activeCharacterId).toBeNull();
+    expect(snapshot.session.activeSlotId).toBeNull();
     // The fight restarts, not the session: the same characters are on the stage,
     // in the same order they were in before.
     expect(snapshot.characters.map((character: { id: string }) => character.id)).toEqual(staged);
@@ -536,7 +645,7 @@ describe("restarting the turn order", () => {
     const { snapshot } = await (
       await fetch(`${base}/api/sessions/${session.id}`, authed(gm.cookie))
     ).json();
-    expect(after.activeCharacterId).toBe(snapshot.characters[0].id);
+    expect(after.activeSlotId).toBe(snapshot.characters[0].id);
   });
 });
 
@@ -549,7 +658,7 @@ describe("ending a session", () => {
     // The owner is still the owner, but an ended session accepts nothing.
     const mutations = await Promise.all([
       fetch(
-        `${base}/api/sessions/${session.id}/characters/${pc.id}`,
+        `${base}/api/sessions/${session.id}/stage/${pc.id}`,
         authed(gm.cookie, { method: "DELETE" }),
       ),
       fetch(

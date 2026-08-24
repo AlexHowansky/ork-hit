@@ -128,6 +128,37 @@ control that throws work away and the only way back is to press Next as many
 times as it took to get there — and it is disabled outright at round one with no
 turn set, where there is nothing to go back to.
 
+**The stage is a list of slots, not of characters.** A fight usually has more than
+one goblin, so `session_characters` rows carry an id of their own and two of them
+may name the same character. That id is what the turn marker points at
+(`game_sessions.active_slot_id`), what a reorder sends, and what a removal names —
+because "remove Strahd" stopped being a question with one answer. It is also the
+`id` in the snapshot, so every id-keyed thing on the client — React keys, dnd-kit
+ids, `Set turn`, `Remove` — kept working and simply means the slot now; the
+character it shows rides alongside as `characterId`, which is what a claim and a
+sheet are about. The one place this had to be watched is `advanceTurn`: matching
+the marker on the character would find the first goblin every time, so the marker
+would spring back to it and the other two would never act.
+
+**A copy's number is a name, not a position.** `copy_number` is stored, assigned as
+one more than the highest that session has ever used for that character. Remove
+Goblin 2 and you are left with Goblin 1 and Goblin 3, and the next one along is
+Goblin 4. Deriving the number from the row's place in the order would have been
+less to store and wrong at the table: the number would change when another copy
+died or the order was dragged about, and someone tracking a monster's wounds on
+paper needs the label to stay put. The number is only drawn while there is a second
+copy to tell it apart from — a lone goblin is just the goblin — which is
+`stageLabel` in `InitiativeList.tsx`, shared with the turn banner so the two can
+never disagree about what the monster on turn is called.
+
+**Only NPCs repeat.** A PC added twice is a no-op: `sessionCharacters.add` takes the
+character's kind and refuses a second slot for a hero. Two would give one player two
+seats and break the one-claim-per-character rule the players table enforces, and a
+party does not have two of the same hero in it. That is also what lets claims stay
+keyed on the character rather than the slot, which is the reason the whole player
+side of this — claiming, "Playing as", the sheet check — needed no schema change at
+all.
+
 **Initiative positions are dense.** `session_characters.position` is always
 `0..n-1`. Adds append, removes close the gap, and a reorder sends the entire
 ordered list rather than a move — which makes it idempotent and lets the server

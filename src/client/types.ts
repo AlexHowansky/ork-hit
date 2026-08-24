@@ -18,7 +18,18 @@ export interface Character {
   backgroundUrl: string | null;
 }
 
+/**
+ * A slot on the stage.
+ *
+ * `id` is the slot, not the character: it is the React key, the drag id, and what
+ * a reorder, a turn or a removal names. The character in it is `characterId` —
+ * what a claim is about, and what two copies of one NPC share. `sheetUrl` is the
+ * character's too, so both copies open the same sheet.
+ */
 export interface SessionCharacter extends Character {
+  characterId: string;
+  /** Which copy of that character this is. Shown only when there is more than one. */
+  copyNumber: number;
   position: number;
   claimedByPlayerId: string | null;
   claimedByPlayerName: string | null;
@@ -38,7 +49,6 @@ export interface GameSession {
   status: "active" | "ended";
   round: number;
   playerCount: number;
-  activeCharacterId: string | null;
   createdAt: string;
   endedAt: string | null;
 }
@@ -48,7 +58,7 @@ export interface Snapshot {
     id: string;
     status: string;
     round: number;
-    activeCharacterId: string | null;
+    activeSlotId: string | null;
   };
   players: SessionPlayer[];
   characters: SessionCharacter[];

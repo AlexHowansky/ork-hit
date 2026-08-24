@@ -59,7 +59,7 @@ export interface GameSessionRow {
   gm_id: string;
   code: string;
   status: SessionStatus;
-  active_character_id: string | null;
+  active_slot_id: string | null;
   round: number;
   created_at: string;
   ended_at: string | null;
@@ -74,7 +74,15 @@ export interface PlayerRow {
   joined_at: string;
 }
 
-/** A character in a session, joined with its initiative position. */
+/**
+ * A slot on the stage, joined with the library character standing in it.
+ *
+ * `id` is inherited from `CharacterRow` and is still the *character*; the slot's
+ * own identity is `slot_id`. They are different things now that one character can
+ * occupy two slots, and the join is the only place both are in hand.
+ */
 export interface SessionCharacterRow extends CharacterRow {
+  slot_id: string;
+  copy_number: number;
   position: number;
 }

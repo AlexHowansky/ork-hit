@@ -69,15 +69,18 @@ function advanceTurn(sessionId: string, direction: "next" | "prev") {
     throw errors.badRequest("Add some characters to the session before tracking turns.");
   }
 
-  const currentIndex = session.active_character_id
-    ? order.findIndex((character) => character.id === session.active_character_id)
+  // On the slot, not the character: with three goblins on the stage, matching on
+  // the character would find the first of them every time, so the marker would
+  // spring back to it and the other two would never get a turn.
+  const currentIndex = session.active_slot_id
+    ? order.findIndex((row) => row.slot_id === session.active_slot_id)
     : -1;
 
   // With no turn set yet, stepping forward starts at the top of the order and
   // stepping back starts at the bottom.
   if (currentIndex === -1) {
     const startIndex = direction === "next" ? 0 : order.length - 1;
-    gameSessions.setTurn(sessionId, order[startIndex]!.id, session.round);
+    gameSessions.setTurn(sessionId, order[startIndex]!.slot_id, session.round);
     return;
   }
 
@@ -88,7 +91,7 @@ function advanceTurn(sessionId: string, direction: "next" | "prev") {
   if (direction === "next" && nextIndex === 0) round += 1;
   if (direction === "prev" && currentIndex === 0) round = Math.max(1, round - 1);
 
-  gameSessions.setTurn(sessionId, order[nextIndex]!.id, round);
+  gameSessions.setTurn(sessionId, order[nextIndex]!.slot_id, round);
 }
 
 /* ------------------------------------------------------------------- routes */
@@ -177,17 +180,22 @@ export const sessionRoutes = {
     }),
   },
 
-  /* ------------------------------------------------ active character roster */
+  /* --------------------------------------------------------------- the stage */
 
-  "/api/sessions/:id/characters/:characterId": {
+  /**
+   * The stage: the characters in play, each in a slot of its own.
+   *
+   * Adding names a character, removing names a slot, and the two routes are
+   * shaped to say so. They have to differ: an NPC may stand in three slots at
+   * once, so "remove Strahd" is no longer a question with one answer.
+   */
+  "/api/sessions/:id/stage": {
     POST: handler(
-      (
-        request: BunRequest<"/api/sessions/:id/characters/:characterId">,
-        { logger }: RequestContext,
-      ) => {
+      async (request: BunRequest<"/api/sessions/:id/stage">, { logger }: RequestContext) => {
         const { gm, session } = requireOwnedActiveSession(request, request.params.id);
+        const { characterId } = await parseJsonBody(request, schemas.stageAdd);
 
-        const character = characters.byId(request.params.characterId);
+        const character = characters.byId(characterId);
         // A session belongs to one campaign, so only that campaign's characters
         // can be brought into it.
         if (!character || character.campaign_id !== session.campaign_id) {
@@ -196,28 +204,30 @@ export const sessionRoutes = {
         const campaign = campaigns.byId(character.campaign_id);
         if (campaign?.gm_id !== gm.id) throw errors.notFound("We couldn't find that character.");
 
-        sessionCharacters.add(session.id, character.id);
+        // A repeated PC comes back null and changes nothing, which is the same
+        // no-op the old ON CONFLICT gave and needs no complaint of its own.
+        const slotId = sessionCharacters.add(session.id, character.id, character.kind);
         logger.info("character added to session", {
           sessionId: session.id,
           characterId: character.id,
+          slotId,
         });
 
         return publish(session.id);
       },
     ),
+  },
 
+  "/api/sessions/:id/stage/:slotId": {
     DELETE: handler(
-      (
-        request: BunRequest<"/api/sessions/:id/characters/:characterId">,
-        { logger }: RequestContext,
-      ) => {
+      (request: BunRequest<"/api/sessions/:id/stage/:slotId">, { logger }: RequestContext) => {
         const { session } = requireOwnedActiveSession(request, request.params.id);
         // Also closes the gap in the initiative order, releases any claim on the
-        // character, and clears the turn marker if it was pointing here.
-        sessionCharacters.remove(session.id, request.params.characterId);
+        // character that was here, and clears the turn marker if it pointed here.
+        sessionCharacters.remove(session.id, request.params.slotId);
         logger.info("character removed from session", {
           sessionId: session.id,
-          characterId: request.params.characterId,
+          slotId: request.params.slotId,
         });
         return publish(session.id);
       },
@@ -232,9 +242,9 @@ export const sessionRoutes = {
         const { session } = requireOwnedActiveSession(request, request.params.id);
         const { order } = await parseJsonBody(request, schemas.reorder);
 
-        const current = sessionCharacters.list(session.id).map((character) => character.id);
+        const current = sessionCharacters.list(session.id).map((row) => row.slot_id);
 
-        // The request must describe exactly the current membership. Rejecting a
+        // The request must describe exactly the current stage. Rejecting a
         // stale list is what keeps two game master tabs from fighting: the loser
         // is told to re-read rather than silently dropping a character.
         const submitted = new Set(order);
@@ -263,14 +273,14 @@ export const sessionRoutes = {
     POST: handler(
       async (request: BunRequest<"/api/sessions/:id/turn">, { logger }: RequestContext) => {
         const { session } = requireOwnedActiveSession(request, request.params.id);
-        const { characterId } = await parseJsonBody(request, schemas.setTurn);
+        const { slotId } = await parseJsonBody(request, schemas.setTurn);
 
-        if (characterId !== null && !sessionCharacters.isMember(session.id, characterId)) {
+        if (slotId !== null && !sessionCharacters.slotExists(session.id, slotId)) {
           throw errors.badRequest("That character isn't active in this session.");
         }
 
-        gameSessions.setTurn(session.id, characterId, session.round);
-        logger.info("turn set", { sessionId: session.id, characterId });
+        gameSessions.setTurn(session.id, slotId, session.round);
+        logger.info("turn set", { sessionId: session.id, slotId });
 
         return publish(session.id);
       },

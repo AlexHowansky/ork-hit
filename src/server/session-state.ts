@@ -16,11 +16,22 @@ export interface SessionSnapshot {
     id: string;
     status: string;
     round: number;
-    activeCharacterId: string | null;
+    /** The stage slot whose turn it is — not a character; one may fill two slots. */
+    activeSlotId: string | null;
   };
   players: ReturnType<typeof presentPlayer>[];
-  /** Active characters, already sorted into initiative order. */
+  /**
+   * The stage, already sorted into initiative order.
+   *
+   * `id` is the **slot**, because the slot is what this is a list of: it is the
+   * React key, the drag id, and what a reorder, a turn or a removal names. The
+   * character standing in it is `characterId`, which is what a claim and a sheet
+   * are about. Keeping `id` on the slot is what lets every id-keyed thing on the
+   * client stay as it was and simply mean the right thing now.
+   */
   characters: (ReturnType<typeof presentCharacter> & {
+    characterId: string;
+    copyNumber: number;
     position: number;
     claimedByPlayerId: string | null;
     claimedByPlayerName: string | null;
@@ -43,14 +54,20 @@ export function buildSnapshot(sessionId: string): SessionSnapshot | null {
       id: session.id,
       status: session.status,
       round: session.round,
-      activeCharacterId: session.active_character_id,
+      activeSlotId: session.active_slot_id,
     },
     players: roster.map(presentPlayer),
-    characters: sessionCharacters.list(sessionId).map((character) => {
-      const holder = claims.get(character.id) ?? null;
+    characters: sessionCharacters.list(sessionId).map((row) => {
+      // `presented.id` and `presented.sheetUrl` are both the character's; only
+      // the outer `id` moves to the slot.
+      const presented = presentCharacter(row);
+      const holder = claims.get(presented.id) ?? null;
       return {
-        ...presentCharacter(character),
-        position: character.position,
+        ...presented,
+        id: row.slot_id,
+        characterId: presented.id,
+        copyNumber: row.copy_number,
+        position: row.position,
         claimedByPlayerId: holder?.id ?? null,
         claimedByPlayerName: holder?.name ?? null,
       };
@@ -77,7 +94,7 @@ export function buildGmSessionList(gmId: string): ReturnType<typeof presentSessi
 /** The active sessions a character currently appears in. */
 export function sessionIdsWith(characterId: string): string[] {
   return db.query<{ game_session_id: string }, { characterId: string }>(`
-    SELECT sc.game_session_id
+    SELECT DISTINCT sc.game_session_id
     FROM session_characters sc
     JOIN game_sessions gs ON gs.id = sc.game_session_id
     WHERE sc.character_id = $characterId AND gs.status = 'active'

@@ -62,7 +62,7 @@ export function makeSession(count = 3) {
   const members = Array.from({ length: count }, (_, index) =>
     makeCharacter(campaign.id, index === count - 1 && count > 1 ? "npc" : "pc"),
   );
-  for (const member of members) sessionCharacters.add(session.id, member.id);
+  for (const member of members) sessionCharacters.add(session.id, member.id, member.kind);
   return { gm, campaign, session, characters: members };
 }
 
@@ -77,6 +77,16 @@ export function makePlayer(sessionId: string, name?: string) {
 /** The current initiative order as a list of names, for readable assertions. */
 export function orderOf(sessionId: string): string[] {
   return sessionCharacters.list(sessionId).map((character) => character.name);
+}
+
+/** The stage as slot ids, which is what a reorder and the turn marker name. */
+export function slotsOf(sessionId: string): string[] {
+  return sessionCharacters.list(sessionId).map((row) => row.slot_id);
+}
+
+/** The copy number of each slot, in initiative order. */
+export function copiesOf(sessionId: string): number[] {
+  return sessionCharacters.list(sessionId).map((row) => row.copy_number);
 }
 
 /** The stored positions, to assert they stay dense and gap-free. */

@@ -170,6 +170,53 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     await player.getByText("In the scene (2)").waitFor({ timeout: 5000 });
   }, 60_000);
 
+  test("an NPC can be brought on more than once, and each copy acts", async () => {
+    if (!browser) return;
+    const { page: gm, code } = await gmWithSession();
+    const player = await playerIn(code, "Gus");
+
+    // Strahd is already on the stage once; two more makes three.
+    const library = gm.locator("section", { hasText: "Add from library" });
+    await library.getByRole("listitem").filter({ hasText: "Strahd" })
+      .getByRole("button", { name: "Add" }).click();
+    await gm.getByText("Initiative order (4)").waitFor({ timeout: 5000 });
+    await library.getByRole("listitem").filter({ hasText: "Strahd" })
+      .getByRole("button", { name: "Add" }).click();
+    await gm.getByText("Initiative order (5)").waitFor({ timeout: 5000 });
+
+    // The NPC stayed in the library — that is what lets it be added again — and
+    // says how many of it are out.
+    const strahdCard = library.getByRole("listitem").filter({ hasText: "Strahd" });
+    expect(await strahdCard.count()).toBe(1);
+    // The badge counts the copies already on the stage.
+    expect((await strahdCard.innerText()).replace(/\s+/g, " ")).toContain("3");
+
+    // Each copy is numbered, and the player sees the same numbers.
+    const stage = gm.locator("section", { hasText: "Initiative order" });
+    for (const n of ["1", "2", "3"]) {
+      await stage.getByRole("listitem").filter({ hasText: `Strahd${n}` }).waitFor({ timeout: 5000 });
+    }
+    await player.getByText("In the scene (5)").waitFor({ timeout: 5000 });
+
+    // A full round gives every copy its own turn rather than sticking on the first.
+    const seen: string[] = [];
+    for (let i = 0; i < 5; i += 1) {
+      await gm.getByRole("button", { name: "Next →" }).click();
+      await gm.waitForTimeout(150);
+      seen.push((await gm.locator("p", { hasText: "Up now:" }).innerText()).replace(/\s+/g, " "));
+    }
+    expect(seen.filter((line) => line.includes("Strahd"))).toHaveLength(3);
+    expect(new Set(seen).size).toBe(5);
+
+    // Removing the middle copy leaves the other two with the numbers they had.
+    await stage.getByRole("listitem").filter({ hasText: "Strahd2" })
+      .getByRole("button", { name: "Remove" }).click();
+    await gm.getByText("Initiative order (4)").waitFor({ timeout: 5000 });
+    await stage.getByRole("listitem").filter({ hasText: "Strahd1" }).waitFor({ timeout: 5000 });
+    await stage.getByRole("listitem").filter({ hasText: "Strahd3" }).waitFor({ timeout: 5000 });
+    expect(await stage.getByRole("listitem").filter({ hasText: "Strahd2" }).count()).toBe(0);
+  }, 60_000);
+
   test("restarting takes both screens back to round 1", async () => {
     if (!browser) return;
     const { page: gm, code } = await gmWithSession();

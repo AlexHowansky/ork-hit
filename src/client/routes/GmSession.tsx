@@ -20,7 +20,7 @@ import {
   KindBadge,
   Panel,
 } from "../components/ui.tsx";
-import { InitiativeList } from "../components/InitiativeList.tsx";
+import { InitiativeList, stageLabel } from "../components/InitiativeList.tsx";
 import { TurnControls } from "../components/TurnControls.tsx";
 import { SheetOverlay } from "../components/SheetFrame.tsx";
 import { ThemeToggle } from "../components/ThemeToggle.tsx";
@@ -75,19 +75,21 @@ export function GmSessionConsole() {
     [applySnapshot, toast],
   );
 
+  /** Puts a character on the stage. An NPC asked for twice arrives twice. */
   const addCharacter = (characterId: string) =>
     mutate(() =>
-      api.post<{ snapshot: Snapshot }>(`/api/sessions/${sessionId}/characters/${characterId}`),
+      api.postJson<{ snapshot: Snapshot }>(`/api/sessions/${sessionId}/stage`, { characterId }),
     );
 
-  const removeCharacter = (characterId: string) =>
+  /** Takes one slot off the stage, leaving any other copy of it where it is. */
+  const removeCharacter = (slotId: string) =>
     mutate(() =>
-      api.delete<{ snapshot: Snapshot }>(`/api/sessions/${sessionId}/characters/${characterId}`),
+      api.delete<{ snapshot: Snapshot }>(`/api/sessions/${sessionId}/stage/${slotId}`),
     );
 
-  const setTurn = (characterId: string) =>
+  const setTurn = (slotId: string) =>
     mutate(() => api.postJson<{ snapshot: Snapshot }>(`/api/sessions/${sessionId}/turn`, {
-      characterId,
+      slotId,
     }));
 
   const advanceTurn = useCallback(
@@ -178,12 +180,22 @@ export function GmSessionConsole() {
     return <p className="p-8 text-center text-stone-500 dark:text-stone-400">Loading session…</p>;
   }
 
-  const activeIds = new Set(snapshot?.characters.map((character) => character.id) ?? []);
-  const availableCharacters = library.filter((character) => !activeIds.has(character.id));
+  // How many of each character are on the stage: the count beside a library card,
+  // and what decides whether a PC still belongs in that list at all.
+  const staged = new Map<string, number>();
+  for (const character of snapshot?.characters ?? []) {
+    staged.set(character.characterId, (staged.get(character.characterId) ?? 0) + 1);
+  }
+
+  // An NPC never leaves the library — a fight can always want another goblin. A
+  // PC does, once it is on the stage: there is only ever one of a given hero, so
+  // a card that could not be used again would just be in the way.
+  const availableCharacters = library.filter(
+    (character) => character.kind === "npc" || !staged.has(character.id),
+  );
   const activeCharacter =
-    snapshot?.characters.find(
-      (character) => character.id === snapshot.session.activeCharacterId,
-    ) ?? null;
+    snapshot?.characters.find((character) => character.id === snapshot.session.activeSlotId) ??
+    null;
   const playerCharacters = snapshot?.characters.filter((c) => c.kind === "pc") ?? [];
 
   const joinUrl = `${location.origin}/join?code=${encodeURIComponent(session.code)}`;
@@ -231,7 +243,9 @@ export function GmSessionConsole() {
       <TurnControls
         className="shrink-0"
         round={snapshot?.session.round ?? session.round}
-        activeCharacterName={activeCharacter?.name ?? null}
+        activeCharacterName={
+          activeCharacter ? stageLabel(snapshot?.characters ?? [], activeCharacter) : null
+        }
         editable
         onAdvance={advanceTurn}
         onRestart={() => void restartTurns()}
@@ -251,7 +265,7 @@ export function GmSessionConsole() {
               </p>
               <InitiativeList
                 characters={snapshot.characters}
-                activeCharacterId={snapshot.session.activeCharacterId}
+                activeSlotId={snapshot.session.activeSlotId}
                 editable
                 onReorder={reorder}
                 onSetTurn={(id) => void setTurn(id)}
@@ -283,7 +297,7 @@ export function GmSessionConsole() {
               <ul className="divide-y divide-stone-100 dark:divide-stone-800">
                 {snapshot.players.map((player) => {
                   const claimed = snapshot.characters.find(
-                    (character) => character.id === player.claimedCharacterId,
+                    (character) => character.characterId === player.claimedCharacterId,
                   );
                   return (
                     <li key={player.id} className="flex items-center gap-3 py-2.5">
@@ -305,7 +319,9 @@ export function GmSessionConsole() {
                       >
                         <option value="">— none —</option>
                         {playerCharacters.map((character) => (
-                          <option key={character.id} value={character.id}>
+                          // Valued by the character: a claim is on the hero, not
+                          // on the slot they happen to be standing in.
+                          <option key={character.id} value={character.characterId}>
                             {character.name}
                           </option>
                         ))}
@@ -328,7 +344,10 @@ export function GmSessionConsole() {
 
           <Panel title="Add from library" scroll className="wide:order-2">
             {availableCharacters.length === 0 ? (
-              <EmptyState>Every character in this campaign is already in the session.</EmptyState>
+              <EmptyState>
+                This campaign has no NPCs, and every player character is already in the
+                session.
+              </EmptyState>
             ) : (
               <ul className="divide-y divide-stone-100 dark:divide-stone-800">
                 {availableCharacters.map((character) => (
@@ -340,6 +359,16 @@ export function GmSessionConsole() {
                     <span className="flex-1 truncate text-sm text-stone-800 dark:text-stone-200">
                       {character.name}
                     </span>
+                    {/* How many of this one are out there already. Absent rather
+                        than zero when there are none, so the row stays quiet. */}
+                    {staged.has(character.id) ? (
+                      <span
+                        className="rounded bg-stone-200 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-stone-700 dark:bg-stone-700 dark:text-stone-200"
+                        title={`${staged.get(character.id)} in the session`}
+                      >
+                        {staged.get(character.id)}
+                      </span>
+                    ) : null}
                     <KindBadge kind={character.kind} />
                     <Button onClick={() => void addCharacter(character.id)} disabled={busy}>
                       Add

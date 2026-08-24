@@ -192,6 +192,15 @@ The app should have the following features:
   whose turn it is. When the GM makes this selection, the player screens should
   instantly update without a refresh.
 
+* An NPC may be on the stage more than once. Adding it again brings on another
+  copy with its own place in the initiative order and its own turn, and its card
+  stays in the library panel so it can be added again. Where a character has more
+  than one copy on the stage, each is numbered beside its name, and the library
+  card shows how many of it are out. A copy keeps its number for the whole fight:
+  removing one or dragging the order about never renumbers the rest, and the next
+  copy added takes the next number up rather than filling a gap. Player characters
+  are unchanged — one each, and their card leaves the library once they are on.
+
 * The GM should be able to restart the turn order, taking the session back to
   round one with no turn set, as though the fight had not begun. The characters
   on the stage, their initiative order and the players' claims are all left

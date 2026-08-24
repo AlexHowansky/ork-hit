@@ -228,7 +228,7 @@ describe("the starting roster", () => {
       gmId: campaign.gm_id,
       code: generateSessionCode(),
     });
-    sessionCharacters.add(session.id, early.id);
+    sessionCharacters.add(session.id, early.id, "pc");
     makeCharacter(campaign.id, "pc", "Beatrix");
 
     sessionCharacters.addCampaignPcs(session.id, campaign.id);

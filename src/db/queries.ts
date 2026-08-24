@@ -378,20 +378,21 @@ export const gameSessions = {
     ).run({ id, ts: now() });
   },
 
-  setTurn(id: string, characterId: string | null, round: number): void {
+  /** Points the turn marker at a stage slot, or nowhere. */
+  setTurn(id: string, slotId: string | null, round: number): void {
     db.query(
-      "UPDATE game_sessions SET active_character_id = $characterId, round = $round WHERE id = $id",
-    ).run({ id, characterId, round });
+      "UPDATE game_sessions SET active_slot_id = $slotId, round = $round WHERE id = $id",
+    ).run({ id, slotId, round });
   },
 };
 
 /* --------------------------------------------------------- session membership */
 
 export const sessionCharacters = {
-  /** Active characters in initiative order, joined with their library record. */
+  /** The stage in initiative order, each slot joined with the character in it. */
   list(sessionId: string): SessionCharacterRow[] {
     return db.query<SessionCharacterRow, { sessionId: string }>(`
-      SELECT c.*, sc.position
+      SELECT c.*, sc.id AS slot_id, sc.copy_number, sc.position
       FROM session_characters sc
       JOIN characters c ON c.id = sc.character_id
       WHERE sc.game_session_id = $sessionId
@@ -399,11 +400,26 @@ export const sessionCharacters = {
     `).all({ sessionId });
   },
 
+  /**
+   * Whether this character is on the stage at all, in any number of copies.
+   *
+   * The question the claim paths ask, since a player claims a character rather
+   * than one of its slots — and only PCs can be claimed, which never have more
+   * than one. Turn-setting asks `slotExists` instead.
+   */
   isMember(sessionId: string, characterId: string): boolean {
     const row = db.query<{ character_id: string }, { sessionId: string; characterId: string }>(`
       SELECT character_id FROM session_characters
       WHERE game_session_id = $sessionId AND character_id = $characterId
     `).get({ sessionId, characterId });
+    return row !== null;
+  },
+
+  /** Whether this slot is one of the session's. */
+  slotExists(sessionId: string, slotId: string): boolean {
+    const row = db.query<{ id: string }, { sessionId: string; slotId: string }>(
+      "SELECT id FROM session_characters WHERE game_session_id = $sessionId AND id = $slotId",
+    ).get({ sessionId, slotId });
     return row !== null;
   },
 
@@ -420,10 +436,13 @@ export const sessionCharacters = {
    */
   addCampaignPcs(sessionId: string, campaignId: string): void {
     db.query(`
-      INSERT INTO session_characters (game_session_id, character_id, position, added_at)
+      INSERT INTO session_characters
+        (id, game_session_id, character_id, copy_number, position, added_at)
       SELECT
+        lower(hex(randomblob(16))),
         $sessionId,
         c.id,
+        1,
         COALESCE(
           (SELECT MAX(position) + 1 FROM session_characters WHERE game_session_id = $sessionId),
           0
@@ -438,35 +457,68 @@ export const sessionCharacters = {
     `).run({ sessionId, campaignId, ts: now() });
   },
 
-  /** Appends a character at the end of the initiative order. */
-  add(sessionId: string, characterId: string): void {
+  /**
+   * Appends a copy of a character at the end of the initiative order.
+   *
+   * An NPC can be added over and over — that is the point, a fight has more than
+   * one goblin — and each add is a slot of its own with its own turn. A PC is
+   * added at most once: a second copy would give one player two seats and break
+   * the one-claim-per-character rule the players table enforces, and there is no
+   * reading of a party where two of the same hero turn up.
+   *
+   * The copy number is one more than the highest this session has ever used for
+   * that character, not one more than the count. Removing Goblin 2 leaves 1 and
+   * 3, and the next add is 4 — so a number, once given, keeps naming the same
+   * monster for the whole fight, which is what someone tracking its wounds on
+   * paper needs.
+   *
+   * Returns the new slot, or `null` when a PC was already there.
+   */
+  add(sessionId: string, characterId: string, kind: CharacterKind): string | null {
+    if (kind === "pc" && sessionCharacters.isMember(sessionId, characterId)) return null;
+
+    const id = newId();
     db.query(`
-      INSERT INTO session_characters (game_session_id, character_id, position, added_at)
+      INSERT INTO session_characters
+        (id, game_session_id, character_id, copy_number, position, added_at)
       VALUES (
+        $id,
         $sessionId,
         $characterId,
+        COALESCE((
+          SELECT MAX(copy_number) + 1 FROM session_characters
+          WHERE game_session_id = $sessionId AND character_id = $characterId
+        ), 1),
         COALESCE((SELECT MAX(position) + 1 FROM session_characters WHERE game_session_id = $sessionId), 0),
         $ts
       )
-      ON CONFLICT (game_session_id, character_id) DO NOTHING
-    `).run({ sessionId, characterId, ts: now() });
+    `).run({ id, sessionId, characterId, ts: now() });
+    return id;
   },
 
   /**
-   * Removes a character and closes the gap it leaves in the order, so positions
-   * stay dense. Also releases any player claim on it, and clears the active turn
-   * if it was that character's.
+   * Takes one slot off the stage and closes the gap it leaves in the order, so
+   * positions stay dense. Also clears the turn marker if it was pointing here,
+   * and releases any player claim on the character that was standing in it.
+   *
+   * Everything is keyed on the slot rather than the character: removing one
+   * goblin must not take its twin with it. The claim release is the exception —
+   * it stays character-keyed, which is still right because only PCs are
+   * claimable and a PC never has a second slot to go on holding the claim.
    */
-  remove: db.transaction((sessionId: string, characterId: string) => {
-    const removed = db.query<{ position: number }, { sessionId: string; characterId: string }>(`
-      SELECT position FROM session_characters
-      WHERE game_session_id = $sessionId AND character_id = $characterId
-    `).get({ sessionId, characterId });
+  remove: db.transaction((sessionId: string, slotId: string) => {
+    const removed = db.query<
+      { position: number; character_id: string },
+      { sessionId: string; slotId: string }
+    >(`
+      SELECT position, character_id FROM session_characters
+      WHERE game_session_id = $sessionId AND id = $slotId
+    `).get({ sessionId, slotId });
     if (!removed) return;
 
     db.query(
-      "DELETE FROM session_characters WHERE game_session_id = $sessionId AND character_id = $characterId",
-    ).run({ sessionId, characterId });
+      "DELETE FROM session_characters WHERE game_session_id = $sessionId AND id = $slotId",
+    ).run({ sessionId, slotId });
 
     db.query(`
       UPDATE session_characters SET position = position - 1
@@ -476,17 +528,16 @@ export const sessionCharacters = {
     db.query(`
       UPDATE players SET claimed_character_id = NULL
       WHERE game_session_id = $sessionId AND claimed_character_id = $characterId
-    `).run({ sessionId, characterId });
+    `).run({ sessionId, characterId: removed.character_id });
 
-    db.query(`
-      UPDATE game_sessions SET active_character_id = NULL
-      WHERE id = $sessionId AND active_character_id = $characterId
-    `).run({ sessionId, characterId });
+    db.query(
+      "UPDATE game_sessions SET active_slot_id = NULL WHERE id = $sessionId AND active_slot_id = $slotId",
+    ).run({ sessionId, slotId });
   }),
 
   /**
-   * Rewrites the whole initiative order. The caller has already checked that
-   * `orderedIds` is exactly the session's current membership.
+   * Rewrites the whole initiative order. `orderedIds` is slot ids, and the
+   * caller has already checked it is exactly the session's current stage.
    *
    * Positions are first pushed into a range that cannot collide with the final
    * one, then written down into 0..n-1. Without that two-pass approach an
@@ -501,10 +552,10 @@ export const sessionCharacters = {
 
     const setPosition = db.query(`
       UPDATE session_characters SET position = $position
-      WHERE game_session_id = $sessionId AND character_id = $characterId
+      WHERE game_session_id = $sessionId AND id = $slotId
     `);
-    orderedIds.forEach((characterId, position) => {
-      setPosition.run({ sessionId, characterId, position });
+    orderedIds.forEach((slotId, position) => {
+      setPosition.run({ sessionId, slotId, position });
     });
   }),
 };
