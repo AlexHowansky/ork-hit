@@ -56,6 +56,12 @@ const VARIANTS = {
     "bg-red-600 text-white hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600",
   ghost:
     "text-stone-600 hover:bg-stone-200 hover:text-stone-900 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-100",
+  // Destructive, but quiet enough to sit in a list without shouting — one filled
+  // red button per row would drown the row it belongs to. A variant rather than
+  // `ghost` plus a red `className`: both set `color`, so which one wins is down
+  // to the order Tailwind happens to emit them in rather than to the caller.
+  dangerGhost:
+    "text-red-600 hover:bg-red-100 dark:text-red-400 dark:hover:bg-red-950",
 } as const;
 
 export function Button({

@@ -232,7 +232,15 @@ function CharacterForm({
  * last time the page loaded. Until the first snapshot arrives — and if the socket
  * drops — the count from the list stands in.
  */
-function SessionRow({ session, onOpen }: { session: GameSession; onOpen: () => void }) {
+function SessionRow({
+  session,
+  onOpen,
+  onEnd,
+}: {
+  session: GameSession;
+  onOpen: () => void;
+  onEnd: () => void;
+}) {
   const { snapshot } = useSessionSocket(session.id);
   const playerCount = snapshot?.players.length ?? session.playerCount;
   const round = snapshot?.session.round ?? session.round;
@@ -248,7 +256,12 @@ function SessionRow({ session, onOpen }: { session: GameSession; onOpen: () => v
             : `${playerCount} player${playerCount === 1 ? "" : "s"}`}
         </span>
       </span>
-      <Button onClick={onOpen}>Open console</Button>
+      <div className="flex shrink-0 items-center gap-2">
+        <Button variant="dangerGhost" onClick={onEnd}>
+          End session
+        </Button>
+        <Button onClick={onOpen}>Open console</Button>
+      </div>
     </div>
   );
 }
@@ -438,6 +451,31 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
     (session) => session.campaignId === selectedCampaignId,
   );
 
+  /**
+   * Ends a session without opening its console.
+   *
+   * Named by campaign rather than "this session": the library can be showing
+   * several at once, and the console's wording would leave the game master
+   * guessing which one they are about to close.
+   *
+   * Nothing is reloaded afterwards — ending broadcasts the session list to the
+   * library socket, so the row goes on its own.
+   */
+  const endSession = async (session: GameSession) => {
+    const ok = await confirm({
+      title: `End the session on “${session.campaignName}”?`,
+      body: "The code stops working and everyone is disconnected.",
+      confirmLabel: "End session",
+    });
+    if (!ok) return;
+    try {
+      await api.post(`/api/sessions/${session.id}/end`);
+      toast.show("Session ended.", "success");
+    } catch (error) {
+      toast.showError(error);
+    }
+  };
+
   const deleteCampaign = async (campaign: Campaign) => {
     const ok = await confirm({
       title: `Delete “${campaign.name}”?`,
@@ -532,6 +570,7 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
                 <SessionRow
                   session={session}
                   onOpen={() => navigate(`/gm/sessions/${session.id}`)}
+                  onEnd={() => void endSession(session)}
                 />
               </li>
             ))}

@@ -128,6 +128,16 @@ control that throws work away and the only way back is to press Next as many
 times as it took to get there — and it is disabled outright at round one with no
 turn set, where there is nothing to go back to.
 
+**A destructive control in a list is a variant, not a red `className`.** `Button`'s
+`dangerGhost` (`src/client/components/ui.tsx`) is the quiet form of `danger`: red
+text, no fill, for "End session" in the library's list and "Kick" in the players
+panel, where one filled red button per row would drown the row it belongs to. It
+exists as a variant because the obvious shortcut — `variant="ghost"` with a red
+`className` — silently does not work: both set `color`, and which utility wins is
+decided by the order Tailwind emits them in rather than by the order the caller
+wrote them, so those buttons rendered stone grey. The same hazard the drop-target
+ring avoids, in a different property.
+
 **Nothing is deleted out from under a running session.** A character on the stage
 of a live session cannot be deleted; `DELETE /api/characters/:id` answers 409 and
 says which way out to take. Without the guard the `ON DELETE CASCADE` on

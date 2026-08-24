@@ -59,7 +59,7 @@ async function signedInGm(): Promise<Page> {
 }
 
 /** Signs in and builds a campaign with three characters, all through the UI. */
-async function gmWithSession(): Promise<{ page: Page; code: string }> {
+async function gmWithSession(): Promise<{ page: Page; code: string; campaignName: string }> {
   const page = await signedInGm();
 
   // A campaign and three characters, created through the dialogs.
@@ -95,7 +95,7 @@ async function gmWithSession(): Promise<{ page: Page; code: string }> {
     .getByRole("button", { name: "Add" }).click();
   await page.getByText("Initiative order (3)").waitFor();
 
-  return { page, code };
+  return { page, code, campaignName };
 }
 
 /** Joins as a player and claims Thorin. */
@@ -514,6 +514,46 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     await ending.getByRole("button", { name: "End session" }).click();
     await other.waitForURL("**/gm");
     await listed.waitFor({ state: "detached", timeout: 5000 });
+  }, 60_000);
+
+  test("a session can be ended from the library, without opening its console", async () => {
+    if (!browser) return;
+    const { page: gm, code, campaignName } = await gmWithSession();
+    const player = await playerIn(code, "Hana");
+
+    await gm.getByRole("button", { name: "← Library" }).click();
+    await gm.waitForURL("**/gm");
+
+    // Other tests of this same game master leave sessions running, so the row has
+    // to be found by its own campaign rather than by being the only one.
+    const row = gm.locator("li").filter({ hasText: campaignName });
+    await row.getByRole("button", { name: "End session" }).click();
+
+    // The question names the campaign, since the library can be showing several.
+    const ending = gm.getByRole("dialog", { name: `End the session on “${campaignName}”?` });
+    await ending.getByRole("button", { name: "End session" }).click();
+
+    // The row goes on its own — nothing reloads the library.
+    await row.waitFor({ state: "detached", timeout: 5000 });
+
+    // And the table really is closed: the player is told, not just left hanging.
+    await player.getByText("The session has ended").waitFor({ timeout: 5000 });
+  }, 60_000);
+
+  test("backing out of that leaves the session running", async () => {
+    if (!browser) return;
+    const { page: gm, campaignName } = await gmWithSession();
+
+    await gm.getByRole("button", { name: "← Library" }).click();
+    await gm.waitForURL("**/gm");
+
+    const row = gm.locator("li").filter({ hasText: campaignName });
+    await row.getByRole("button", { name: "End session" }).click();
+    await gm.getByRole("dialog", { name: `End the session on “${campaignName}”?` })
+      .getByRole("button", { name: "Cancel" }).click();
+
+    await gm.waitForTimeout(300);
+    expect(await row.getByRole("button", { name: "Open console" }).count()).toBe(1);
   }, 60_000);
 
   test("a player who closes their browser leaves the table", async () => {

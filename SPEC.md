@@ -139,7 +139,10 @@ The app should have the following features:
   join.
 
 * A game master may end a running session. Once the session is ended, the code
-  should no longer work.
+  should no longer work. It can be ended from its own console or straight from the
+  library's list of sessions in progress, without opening the console first. Either
+  way it asks before doing it, and the library's question names the campaign, since
+  more than one session may be listed.
 
 * The game master's library lists the sessions in progress in campaign name
   order, each with the round it has reached and how many players have joined.

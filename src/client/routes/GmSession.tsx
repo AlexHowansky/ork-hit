@@ -327,9 +327,8 @@ export function GmSessionConsole() {
                         ))}
                       </select>
                       <Button
-                        variant="ghost"
+                        variant="dangerGhost"
                         onClick={() => void kickPlayer(player.id, player.name)}
-                        className="text-red-600 dark:text-red-400"
                       >
                         Kick
                       </Button>
