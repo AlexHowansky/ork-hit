@@ -1067,6 +1067,83 @@ describe("the deployment's card size reaches the browser", () => {
   });
 });
 
+describe("a character who is playing cannot be deleted", () => {
+  const remove = (cookie: string, characterId: string) =>
+    fetch(`${base}/api/characters/${characterId}`, authed(cookie, { method: "DELETE" }));
+
+  const idsIn = async (cookie: string, campaignId: string) =>
+    (await (await fetch(`${base}/api/characters?campaignId=${campaignId}`, authed(cookie))).json())
+      .characters.map((character: { id: string }) => character.id);
+
+  test("refused while they are on the stage of a running session", async () => {
+    const { cookie } = await signIn();
+    // `makeTable` leaves its campaign with an active session holding both characters.
+    const playing = await makeTable(cookie);
+
+    const response = await remove(cookie, playing.pc.id);
+    expect(response.status).toBe(409);
+    expect((await response.json()).error.code).toBe("conflict");
+
+    // Refused outright: they are still in the library, and still on the stage.
+    expect(await idsIn(cookie, playing.campaign.id)).toContain(playing.pc.id);
+    const { snapshot } = await (
+      await fetch(`${base}/api/sessions/${playing.session.id}`, authed(cookie))
+    ).json();
+    expect(
+      snapshot.characters.map((character: { characterId: string }) => character.characterId),
+    ).toContain(playing.pc.id);
+  });
+
+  test("allowed once they are taken off the stage", async () => {
+    const { cookie } = await signIn();
+    const playing = await makeTable(cookie);
+
+    const { snapshot } = await (
+      await fetch(`${base}/api/sessions/${playing.session.id}`, authed(cookie))
+    ).json();
+    const slot = snapshot.characters.find(
+      (character: { characterId: string }) => character.characterId === playing.npc.id,
+    );
+    await fetch(
+      `${base}/api/sessions/${playing.session.id}/stage/${slot.id}`,
+      authed(cookie, { method: "DELETE" }),
+    );
+
+    expect((await remove(cookie, playing.npc.id)).status).toBe(204);
+    expect(await idsIn(cookie, playing.campaign.id)).not.toContain(playing.npc.id);
+  });
+
+  test("allowed once the session has ended", async () => {
+    const { cookie } = await signIn();
+    const playing = await makeTable(cookie);
+    await fetch(`${base}/api/sessions/${playing.session.id}/end`, authed(cookie, { method: "POST" }));
+
+    // The rule is about sessions that are still running, not about ever having
+    // played — an ended session is history and holds nothing back.
+    expect((await remove(cookie, playing.pc.id)).status).toBe(204);
+    expect(await idsIn(cookie, playing.campaign.id)).not.toContain(playing.pc.id);
+  });
+
+  test("a character who never went on stage is deletable while others play", async () => {
+    const { cookie } = await signIn();
+    const playing = await makeTable(cookie);
+
+    // Filed under a campaign with a session in full swing, but not in it. The
+    // rule is about being on the stage, not about the campaign being busy.
+    const form = new FormData();
+    form.set("campaignId", playing.campaign.id);
+    form.set("kind", "npc");
+    form.set("name", unique("Understudy"));
+    form.set("sheet", new File(["<h1>sheet</h1>"], "sheet.html"));
+    const { character } = await (
+      await fetch(`${base}/api/characters`, authed(cookie, { method: "POST", body: form }))
+    ).json();
+
+    expect((await remove(cookie, character.id)).status).toBe(204);
+    expect(await idsIn(cookie, playing.campaign.id)).not.toContain(character.id);
+  });
+});
+
 describe("a character is refiled by being moved to another campaign", () => {
   /** A campaign with nothing running on it, and one character filed under it. */
   async function bareCampaign(cookie: string, characterName?: string) {

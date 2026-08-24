@@ -190,15 +190,23 @@ export const characterRoutes = {
         const gm = requireGm(request);
         const character = requireOwnedCharacter(gm, request.params.id);
 
-        // Capture the affected sessions before the cascade removes the rows that
-        // say which sessions those are.
-        const notify = sessionIdsWith(character.id);
+        // Deleting would cascade through `session_characters` and take this
+        // character off the stage of a running session mid-fight, with the players
+        // watching them vanish and no way to put them back. The same rule as
+        // refiling above, and for the same reason — with one more way out, since
+        // taking them off the stage is enough where a move needs the whole session
+        // ended.
+        if (sessionIdsWith(character.id).length > 0) {
+          throw errors.conflict(
+            "This character is playing in a session that is still running. Take them " +
+              "off the stage, or end that session, before deleting them.",
+          );
+        }
 
         characters.remove(character.id);
         await collectOrphanedUploads();
         logger.info("character deleted", { characterId: character.id });
 
-        for (const sessionId of notify) broadcastSession(sessionId);
         return noContent();
       },
     ),

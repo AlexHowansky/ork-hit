@@ -122,7 +122,10 @@ The app should have the following features:
   ordered by name whatever their kind.
   A character may be refiled into another campaign by dragging its card onto that
   campaign's card. A character playing in a session that is still running may not
-  be moved until that session ends.
+  be moved until that session ends, and may not be deleted at all: deleting would
+  take them off the stage mid-fight with the players watching them vanish. Taking
+  them off the stage is enough to free them, since the rule is about being in play
+  rather than about the campaign being busy — an ended session holds nothing back.
 
 * A game master may start a new session on a campaign that has none running.
   Every PC in the campaign joins the new session automatically, in name order; the NPCs stay in the library until the

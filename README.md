@@ -128,6 +128,20 @@ control that throws work away and the only way back is to press Next as many
 times as it took to get there — and it is disabled outright at round one with no
 turn set, where there is nothing to go back to.
 
+**Nothing is deleted out from under a running session.** A character on the stage
+of a live session cannot be deleted; `DELETE /api/characters/:id` answers 409 and
+says which way out to take. Without the guard the `ON DELETE CASCADE` on
+`session_characters.character_id` would do it silently — the character would
+disappear from the players' screens mid-fight on the next broadcast, and the
+initiative order would be left with a hole in it, since a cascade removes rows
+without renumbering `position` the way `sessionCharacters.remove` does. The guard is
+`sessionIdsWith` (`src/server/session-state.ts`), the same check that already
+refuses to refile a character out of a campaign they are playing in; it filters on
+`status = 'active'`, so an ended session is history and a character merely filed
+under a busy campaign is still deletable. Refusing the operation is what closes the
+dense-position hazard, rather than any renumbering code: the cascade can no longer
+fire on a stage anyone is looking at.
+
 **The stage is a list of slots, not of characters.** A fight usually has more than
 one goblin, so `session_characters` rows carry an id of their own and two of them
 may name the same character. That id is what the turn marker points at
