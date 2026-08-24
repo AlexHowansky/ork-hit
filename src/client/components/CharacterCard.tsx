@@ -2,7 +2,7 @@
 
 import type { HTMLAttributes } from "react";
 import type { Character } from "../types.ts";
-import { CARD_BASE, CardActions, KindBadge } from "./ui.tsx";
+import { CARD_BASE, CARD_CAPTION, CardActions, KindBadge } from "./ui.tsx";
 
 export function CharacterCard({
   character,
@@ -43,7 +43,7 @@ export function CharacterCard({
         {actions ? <CardActions>{actions}</CardActions> : null}
       </div>
 
-      <div className="shrink-0 p-3">
+      <div className={CARD_CAPTION}>
         {onOpen ? (
           <button
             type="button"

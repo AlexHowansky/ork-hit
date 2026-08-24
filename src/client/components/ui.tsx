@@ -28,6 +28,20 @@ export const CARD_BASE =
   "group flex flex-col overflow-hidden rounded-xl border-[length:var(--card-border)] shadow-sm transition duration-150 hover:-translate-y-0.5 hover:border-amber-400 hover:shadow-lg focus-within:-translate-y-0.5 focus-within:border-amber-400 focus-within:shadow-lg dark:hover:border-amber-500/70 dark:focus-within:border-amber-500/70";
 
 /**
+ * The strip under a card's picture, carrying its name.
+ *
+ * It takes the *page's* background rather than the card's, so the caption reads
+ * as the ground the picture is sitting on rather than as part of the picture's
+ * own tile. Kept here beside `CARD_BASE` because three libraries draw this strip
+ * — campaigns, characters, and the player's pick-a-character grid — and a card
+ * that matched in every respect but this one would be the odd one out.
+ *
+ * The value is the same pair `body` carries in `styles.css`; the two are meant to
+ * be the same colour and should move together.
+ */
+export const CARD_CAPTION = "shrink-0 bg-stone-100 p-3 dark:bg-stone-950";
+
+/**
  * The grid every card library sits in.
  *
  * The track is a fixed width rather than a fraction, so a card is the same size

@@ -14,6 +14,7 @@ import {
   AppPage,
   Button,
   CARD_BASE,
+  CARD_CAPTION,
   CARD_GRID,
   CHARACTER_DRAG,
   CardActions,
@@ -344,7 +345,7 @@ function CampaignCard({
         </CardActions>
       </div>
 
-      <div className="shrink-0 p-3">
+      <div className={CARD_CAPTION}>
         <h3 className="truncate font-medium text-stone-900 dark:text-stone-100">{campaign.name}</h3>
       </div>
     </article>

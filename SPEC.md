@@ -34,7 +34,9 @@ document explains the requirements that must be adhered to.
 
 * A card in a library shows its picture as a square, with the name below it and
   its controls as icons over the lower right of the picture: edit and delete,
-  and on a character card an icon that opens its sheet.
+  and on a character card an icon that opens its sheet. The strip carrying the
+  name takes the page's own background rather than the card's, so it reads as the
+  ground the picture sits on.
   Cards must come out the same size as each other whatever the length of the name
   they carry, and in every library. They must show a clear highlight when
   hovered, and give the same feedback to anyone arriving by keyboard rather than

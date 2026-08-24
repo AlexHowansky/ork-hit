@@ -21,6 +21,7 @@ import {
   AppPage,
   Button,
   CARD_BASE,
+  CARD_CAPTION,
   CARD_GRID,
   EmptyState,
   Panel,
@@ -225,7 +226,7 @@ export function PlayerSession({
                       </div>
                     )}
                   </div>
-                  <div className="shrink-0 p-3">
+                  <div className={CARD_CAPTION}>
                     <p className="truncate font-medium text-stone-900 dark:text-stone-100">
                       {character.name}
                     </p>
