@@ -29,7 +29,8 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { SessionCharacter } from "../types.ts";
-import { CharacterThumb, KindBadge } from "./ui.tsx";
+import { faGripVertical } from "@fortawesome/free-solid-svg-icons";
+import { CharacterThumb, Icon, KindBadge } from "./ui.tsx";
 import { Vitals, type VitalsPatch } from "./Vitals.tsx";
 
 /**
@@ -119,7 +120,7 @@ function Row({
           className="cursor-grab touch-none px-1 text-stone-400 hover:text-stone-700 active:cursor-grabbing dark:hover:text-stone-200"
           aria-label={`Reorder ${copyLabel}. Press space, then use the arrow keys.`}
         >
-          <span aria-hidden="true">⠿</span>
+          <Icon icon={faGripVertical} />
         </button>
       ) : (
         <span

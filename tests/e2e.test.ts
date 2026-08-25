@@ -175,7 +175,7 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
 
     // Walking off the end of the order advances the round on both screens.
     for (let i = 0; i < 3; i += 1) {
-      await gm.getByRole("button", { name: "Next →" }).click();
+      await gm.getByRole("button", { name: "Next" }).click();
       await gm.waitForTimeout(120);
     }
     await player.getByText("Round 2").waitFor({ timeout: 5000 });
@@ -278,7 +278,7 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     // A full round gives every copy its own turn rather than sticking on the first.
     const seen: string[] = [];
     for (let i = 0; i < 5; i += 1) {
-      await gm.getByRole("button", { name: "Next →" }).click();
+      await gm.getByRole("button", { name: "Next" }).click();
       await gm.waitForTimeout(150);
       seen.push((await gm.locator("p", { hasText: "Up now:" }).innerText()).replace(/\s+/g, " "));
     }
@@ -301,7 +301,7 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
 
     // Into round 2, with a turn set, so there is something to go back from.
     for (let i = 0; i < 4; i += 1) {
-      await gm.getByRole("button", { name: "Next →" }).click();
+      await gm.getByRole("button", { name: "Next" }).click();
       await gm.waitForTimeout(120);
     }
     await player.getByText("Round 2").waitFor({ timeout: 5000 });
@@ -326,7 +326,7 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     expect(await namesIn(gm)).toEqual(["Elara", "Thorin", "Strahd"]);
 
     // And the next step opens round one at the top of the order.
-    await gm.getByRole("button", { name: "Next →" }).click();
+    await gm.getByRole("button", { name: "Next" }).click();
     await gm.locator("p", { hasText: "Up now:" }).getByText("Elara")
       .waitFor({ timeout: 5000 });
     expect(await gm.getByText("Round 1").count()).toBe(1);
@@ -605,7 +605,7 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     const { page: gm, code, campaignName } = await gmWithSession();
     const player = await playerIn(code, "Hana");
 
-    await gm.getByRole("button", { name: "← Library" }).click();
+    await gm.getByRole("button", { name: "Library" }).click();
     await gm.waitForURL("**/gm");
 
     // Other tests of this same game master leave sessions running, so the row has
@@ -628,7 +628,7 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     if (!browser) return;
     const { page: gm, campaignName } = await gmWithSession();
 
-    await gm.getByRole("button", { name: "← Library" }).click();
+    await gm.getByRole("button", { name: "Library" }).click();
     await gm.waitForURL("**/gm");
 
     const row = gm.locator("li").filter({ hasText: campaignName });

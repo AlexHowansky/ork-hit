@@ -24,6 +24,8 @@
  */
 
 import { useEffect, useRef, useState } from "react";
+import { faHeartPulse } from "@fortawesome/free-solid-svg-icons";
+import { Icon } from "./ui.tsx";
 import {
   HERO_STAT_LABELS,
   HERO_VITAL_FIELDS,
@@ -163,21 +165,8 @@ function RecoveryButton({ name, recovery, onClick }: {
       aria-label={`Take a Recovery for ${name}`}
       className="flex h-6 w-6 items-center justify-center rounded text-stone-500 hover:bg-stone-200 hover:text-stone-800 dark:text-stone-400 dark:hover:bg-stone-700 dark:hover:text-stone-100"
     >
-      {/* A lung's worth of air: an arrow curling back up to full. */}
-      <svg
-        viewBox="0 0 24 24"
-        className="h-4 w-4"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden="true"
-      >
-        <path d="M20 12a8 8 0 1 1-2.34-5.66" />
-        <path d="M20 4v4h-4" />
-        <path d="M12 9v6M9 12h6" />
-      </svg>
+      {/* A Recovery is a character getting their wind back. */}
+      <Icon icon={faHeartPulse} />
     </button>
   );
 }

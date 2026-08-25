@@ -17,9 +17,11 @@ import {
   CharacterThumb,
   CopyButton,
   EmptyState,
+  Icon,
   KindBadge,
   Panel,
 } from "../components/ui.tsx";
+import { faArrowLeft } from "@fortawesome/free-solid-svg-icons";
 import type { VitalsPatch } from "../components/Vitals.tsx";
 import { InitiativeList, stageLabel } from "../components/InitiativeList.tsx";
 import { TurnControls } from "../components/TurnControls.tsx";
@@ -232,7 +234,7 @@ export function GmSessionConsole() {
       <header className="flex shrink-0 flex-wrap items-start justify-between gap-3">
         <div>
           <Button variant="ghost" onClick={() => navigate("/gm")} className="mb-1 -ml-2">
-            ← Library
+            <Icon icon={faArrowLeft} /> Library
           </Button>
           <h1 className="text-xl font-semibold text-stone-900 dark:text-stone-100">
             {session.campaignName}

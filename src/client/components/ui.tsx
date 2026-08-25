@@ -1,6 +1,16 @@
 /** Small shared primitives, so the pages stay about behaviour rather than classes. */
 
 import { useEffect, useRef, useState } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
+import {
+  faDragon,
+  faFileLines,
+  faPenToSquare,
+  faShieldHalved,
+  faTrash,
+  faXmark,
+} from "@fortawesome/free-solid-svg-icons";
 import type {
   ButtonHTMLAttributes,
   DragEvent,
@@ -232,7 +242,7 @@ export function Modal({
         <header className="flex items-center justify-between border-b border-stone-200 px-5 py-3 dark:border-stone-800">
           <h2 className="font-semibold text-stone-900 dark:text-stone-100">{title}</h2>
           <Button variant="ghost" onClick={onClose} aria-label="Close">
-            ✕
+            <Icon icon={faXmark} />
           </Button>
         </header>
         <div className="flex-1 overflow-auto p-5">{children}</div>
@@ -288,65 +298,35 @@ export function IconButton({
 }
 
 /**
- * The card icons.
+ * An icon.
  *
- * Drawn inline rather than written as glyphs — the rest of the app uses text
- * symbols, but those are decorative, and a sheet, a pencil and a bin have no set
- * of characters that render alike across platforms.
+ * Every picture in this app comes from one set — FontAwesome's free solid icons,
+ * imported one at a time and drawn as inline SVG, so there is no font to fetch
+ * and nothing crosses the network. This wrapper exists so a call site names an
+ * icon and a size and nothing else, and so the sizing stays Tailwind's rather
+ * than the library's: the buttons here were measured against `h-4 w-4`.
+ *
+ * Always decorative. Every icon in the app sits either in a button that carries
+ * its own `aria-label` and `title`, or inside a wrapper already marked
+ * `aria-hidden` — a picture is never the only thing saying what a control does.
  */
-export function EditIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className="h-4 w-4"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M12 20h9" />
-      <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-    </svg>
-  );
+export function Icon({
+  icon,
+  className = "h-4 w-4",
+}: {
+  icon: IconDefinition;
+  className?: string;
+}) {
+  return <FontAwesomeIcon icon={icon} className={className} aria-hidden="true" />;
 }
 
-export function SheetIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className="h-4 w-4"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z" />
-      <path d="M14 3v5h5" />
-      <path d="M9 13h6M9 17h4" />
-    </svg>
-  );
-}
-
-export function DeleteIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className="h-4 w-4"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M3 6h18" />
-      <path d="M8 6V4h8v2" />
-      <path d="M19 6l-1 14H6L5 6" />
-      <path d="M10 11v6M14 11v6" />
-    </svg>
-  );
-}
+/**
+ * The card controls' icons, named once here rather than at each card: three
+ * libraries draw the same three buttons, and they must not drift apart.
+ */
+export const EditIcon = () => <Icon icon={faPenToSquare} />;
+export const SheetIcon = () => <Icon icon={faFileLines} />;
+export const DeleteIcon = () => <Icon icon={faTrash} />;
 
 export function EmptyState({ children }: { children: ReactNode }) {
   return (
@@ -388,10 +368,10 @@ export function CharacterThumb({
         <img src={backgroundUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
       ) : (
         <span
-          className="flex h-full w-full items-center justify-center text-lg opacity-40"
+          className="flex h-full w-full items-center justify-center opacity-40"
           aria-hidden="true"
         >
-          {kind === "pc" ? "🛡" : "🐉"}
+          <Icon icon={kind === "pc" ? faShieldHalved : faDragon} className="h-5 w-5" />
         </span>
       )}
     </div>

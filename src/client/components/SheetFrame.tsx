@@ -10,8 +10,9 @@
  * alone.
  */
 
+import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import { useEffect } from "react";
-import { IconButton } from "./ui.tsx";
+import { Icon, IconButton } from "./ui.tsx";
 
 export function SheetFrame({ src, title }: { src: string; title: string }) {
   return (
@@ -84,7 +85,7 @@ export function SheetOverlay({
       </div>
       <IconButton
         label="Close"
-        icon={<span className="text-sm leading-none">✕</span>}
+        icon={<Icon icon={faXmark} />}
         onClick={onClose}
         className="absolute top-2 right-2 z-10"
       />

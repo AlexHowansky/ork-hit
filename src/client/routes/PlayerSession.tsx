@@ -25,10 +25,12 @@ import {
   CARD_GRID,
   CharacterThumb,
   EmptyState,
+  Icon,
   Panel,
 } from "../components/ui.tsx";
 import { InitiativeList, stageLabel } from "../components/InitiativeList.tsx";
 import { Vitals, type VitalsPatch } from "../components/Vitals.tsx";
+import { faShieldHalved } from "@fortawesome/free-solid-svg-icons";
 import { HERO_STAT_LABELS } from "../../lib/hero.ts";
 import { TurnControls } from "../components/TurnControls.tsx";
 import { SheetOverlay } from "../components/SheetFrame.tsx";
@@ -250,10 +252,10 @@ export function PlayerSession({
                       />
                     ) : (
                       <div
-                        className="flex h-full items-center justify-center text-4xl opacity-30"
+                        className="flex h-full items-center justify-center opacity-30"
                         aria-hidden
                       >
-                        🛡
+                        <Icon icon={faShieldHalved} className="h-12 w-12" />
                       </div>
                     )}
                   </div>

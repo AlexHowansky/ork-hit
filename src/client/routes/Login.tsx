@@ -7,9 +7,10 @@
  */
 
 import { useState } from "react";
+import { faDiceD20 } from "@fortawesome/free-solid-svg-icons";
 import { useNavigate, useSearchParams } from "react-router";
 import { api } from "../api.ts";
-import { Button, Field } from "../components/ui.tsx";
+import { Button, Field, Icon } from "../components/ui.tsx";
 import { ThemeToggle } from "../components/ThemeToggle.tsx";
 import { useToast } from "../components/Toast.tsx";
 import type { Identity, Snapshot } from "../types.ts";
@@ -81,7 +82,7 @@ export function Login({ onIdentity }: { onIdentity: (identity: Identity) => void
       <div className="w-full max-w-md">
         <div className="mb-6 flex items-center justify-between">
           <h1 className="text-xl font-semibold text-stone-900 dark:text-stone-100">
-            <span aria-hidden="true">🎲</span> TTRPG Synchronizer
+            <Icon icon={faDiceD20} className="h-5 w-5" /> TTRPG Synchronizer
           </h1>
           <ThemeToggle />
         </div>

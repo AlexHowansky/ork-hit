@@ -1,12 +1,16 @@
 /** Switches between following the system, forced light, and forced dark. */
 
 import { useState } from "react";
+import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
+import { faCircleHalfStroke, faMoon, faSun } from "@fortawesome/free-solid-svg-icons";
 import { applyPreference, readPreference, type ThemePreference } from "../theme.ts";
+import { Icon } from "./ui.tsx";
 
-const OPTIONS: { value: ThemePreference; label: string; icon: string }[] = [
-  { value: "light", label: "Light", icon: "☀" },
-  { value: "system", label: "System", icon: "◐" },
-  { value: "dark", label: "Dark", icon: "☾" },
+const OPTIONS: { value: ThemePreference; label: string; icon: IconDefinition }[] = [
+  { value: "light", label: "Light", icon: faSun },
+  // Half light, half dark: the choice that is neither, because it is both.
+  { value: "system", label: "System", icon: faCircleHalfStroke },
+  { value: "dark", label: "Dark", icon: faMoon },
 ];
 
 export function ThemeToggle() {
@@ -36,7 +40,7 @@ export function ThemeToggle() {
               : "text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-100"
           }`}
         >
-          <span aria-hidden="true">{option.icon}</span>
+          <Icon icon={option.icon} />
           <span className="sr-only">{option.label}</span>
         </button>
       ))}

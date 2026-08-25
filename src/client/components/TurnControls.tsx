@@ -11,7 +11,8 @@
  */
 
 import { useEffect } from "react";
-import { Button } from "./ui.tsx";
+import { faArrowLeft, faArrowRight, faRotateLeft } from "@fortawesome/free-solid-svg-icons";
+import { Button, Icon } from "./ui.tsx";
 
 export function TurnControls({
   round,
@@ -87,7 +88,7 @@ export function TurnControls({
               title="Back to round 1, with no turn set"
               className="mr-1"
             >
-              ↺ Restart
+              <Icon icon={faRotateLeft} /> Restart
             </Button>
           ) : null}
           <Button
@@ -96,7 +97,7 @@ export function TurnControls({
             disabled={disabled}
             title="Previous turn (left arrow)"
           >
-            ← Previous
+            <Icon icon={faArrowLeft} /> Previous
           </Button>
           <Button
             variant="primary"
@@ -105,7 +106,7 @@ export function TurnControls({
             disabled={disabled}
             title="Next turn (right arrow)"
           >
-            Next →
+            Next <Icon icon={faArrowRight} />
           </Button>
         </div>
       ) : null}

@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { api } from "../api.ts";
+import { faScroll } from "@fortawesome/free-solid-svg-icons";
 import { HERO_STAT_FIELDS, HERO_STAT_LABELS } from "../../lib/hero.ts";
 import { useSessionSocket } from "../useSessionSocket.ts";
 import { useLiveSessions } from "../useLiveSessions.ts";
@@ -24,6 +25,7 @@ import {
   EmptyState,
   Field,
   FileDrop,
+  Icon,
   IconButton,
   Modal,
   Panel,
@@ -354,8 +356,8 @@ function CampaignCard({
               loading="lazy"
             />
           ) : (
-            <div className="flex h-full items-center justify-center text-4xl opacity-30" aria-hidden>
-              📜
+            <div className="flex h-full items-center justify-center opacity-30" aria-hidden>
+              <Icon icon={faScroll} className="h-12 w-12" />
             </div>
           )}
         </button>

@@ -42,6 +42,12 @@ document explains the requirements that must be adhered to.
   hovered, and give the same feedback to anyone arriving by keyboard rather than
   mouse.
 
+* Icons come from one published set rather than being drawn per control or typed
+  as text symbols, so they match each other and render the same everywhere. An
+  icon is never the only thing saying what a control does: it carries a label a
+  screen reader can read, and a control that pairs an icon with a word keeps the
+  word.
+
 * A question asked before something irreversible is the app's own dialog, drawn
   like every other: `window.confirm` is never used, because the browser draws it
   in its own chrome and it ignores the theme and the palette entirely. The button

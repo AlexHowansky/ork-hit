@@ -128,6 +128,22 @@ control that throws work away and the only way back is to press Next as many
 times as it took to get there — and it is disabled outright at round one with no
 turn set, where there is nothing to go back to.
 
+**Every picture comes from one set.** Icons are FontAwesome v7's free solid
+icons, imported one at a time from `@fortawesome/free-solid-svg-icons` and drawn
+as inline SVG by `Icon` (`src/client/components/ui.tsx`) — so nothing is fetched
+at runtime, there is no webfont, and the page's `default-src 'self'` policy needs
+no exception. `main.tsx` sets `config.autoAddCss = false` and imports the
+library's stylesheet instead, because it otherwise writes a `<style>` element
+into the head the first time an icon renders, and every other stylesheet here is
+bundled. Sizes stay Tailwind's (`h-4 w-4`) rather than the library's own `size`
+prop, since the buttons were measured against those classes.
+
+Icons are always decorative: each one sits in a button carrying its own
+`aria-label` and `title`, or inside a wrapper already marked `aria-hidden`, so a
+picture is never the only thing saying what a control does. That is also why the
+turn controls kept their words — the icon replaced the arrow beside `Previous`,
+not the label. The free icons are CC BY 4.0, © Fonticons, Inc.
+
 **A destructive control in a list is a variant, not a red `className`.** `Button`'s
 `dangerGhost` (`src/client/components/ui.tsx`) is the quiet form of `danger`: red
 text, no fill, for "End session" in the library's list and "Kick" in the players

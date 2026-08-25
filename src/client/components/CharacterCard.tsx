@@ -1,8 +1,9 @@
 /** A character in the library, presented as a card with its background image. */
 
 import type { HTMLAttributes } from "react";
+import { faDragon, faShieldHalved } from "@fortawesome/free-solid-svg-icons";
 import type { Character } from "../types.ts";
-import { CARD_BASE, CARD_CAPTION, CardActions, KindBadge } from "./ui.tsx";
+import { CARD_BASE, CARD_CAPTION, CardActions, Icon, KindBadge } from "./ui.tsx";
 
 export function CharacterCard({
   character,
@@ -33,8 +34,11 @@ export function CharacterCard({
             loading="lazy"
           />
         ) : (
-          <div className="flex h-full items-center justify-center text-4xl opacity-30" aria-hidden>
-            {character.kind === "pc" ? "🛡" : "🐉"}
+          <div className="flex h-full items-center justify-center opacity-30" aria-hidden>
+            <Icon
+              icon={character.kind === "pc" ? faShieldHalved : faDragon}
+              className="h-12 w-12"
+            />
           </div>
         )}
         <div className="absolute top-2 left-2">
