@@ -197,13 +197,22 @@ The app should have the following features:
   tighter, and a name too long for the panel is cut short rather than wrapped —
   the whole of it heads the page anyway.
 
+* The session code, the two ways of handing it out and the control that ends the
+  session share a panel of their own, at the top of the column the players are
+  in. They belong together — ending the session is what stops the code working —
+  and the panel carries no heading, since a code with copy buttons beside it says
+  what it is. The page header is left with only where you are and how the page
+  looks: the way back to the library, the campaign's name, and the light/dark
+  control.
+
 * No panel on the session console is stretched to fill the screen either, and
   the round sits above the initiative order and shares its width — it is the same
   fight. Where the screen is a dashboard the console is three equal columns: the
   round over the initiative order, then the library the GM adds from, then the
-  players. Narrower, it is two equal halves: the round over the initiative order
-  on one side, the players over the library on the other. Narrower still, one
-  column in that same reading order.
+  code over the players. Narrower, it is two equal halves: the round over the
+  initiative order on one side, the code, the players and the library on the
+  other. Narrower still, one column, with the code first — it is the first thing
+  a game master needs.
 
 * No panel on a player's session page is stretched to fill the screen: each is
   only as tall as what it holds. Where the screen is wide enough for two columns,

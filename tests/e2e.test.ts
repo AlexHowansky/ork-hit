@@ -609,9 +609,9 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     await other.waitForURL("**/gm/sessions/**");
     await listed.waitFor({ timeout: 5000 });
 
-    await other.getByRole("button", { name: "End session" }).click();
-    // The confirmation carries the same verb as the button that opened it, so
-    // the second click is scoped to the dialog rather than the page.
+    await other.getByRole("button", { name: "End", exact: true }).click();
+    // The dialog spells the action out where the button on the console is a
+    // single word, so the second click is scoped to the dialog either way.
     const ending = other.getByRole("dialog", { name: "End this session?" });
     await ending.getByRole("button", { name: "End session" }).click();
     await other.waitForURL("**/gm");

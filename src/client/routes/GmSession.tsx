@@ -21,7 +21,7 @@ import {
   KindBadge,
   Panel,
 } from "../components/ui.tsx";
-import { faArrowLeft } from "@fortawesome/free-solid-svg-icons";
+import { faArrowLeft, faCopy, faLink, faStop } from "@fortawesome/free-solid-svg-icons";
 import type { VitalsPatch } from "../components/Vitals.tsx";
 import { InitiativeList, stageLabel } from "../components/InitiativeList.tsx";
 import { TurnControls } from "../components/TurnControls.tsx";
@@ -221,17 +221,24 @@ export function GmSessionConsole() {
 
   const joinUrl = `${location.origin}/join?code=${encodeURIComponent(session.code)}`;
 
-  // Three static controls. On a tall screen they get their own panel; on a wide
-  // one that band of height is worth more to the lists below, so they ride along
-  // in the header instead.
+  /*
+   * The code, the two ways of handing it out, and the control that stops it
+   * working. They belong together and they belong in a panel: the header is for
+   * where you are and how the page looks, not for the session's own controls.
+   */
   const invite = (
-    <div className="flex flex-wrap items-center gap-3">
-      <code className="rounded-lg bg-stone-100 px-3 py-2 font-mono text-sm tracking-wider text-stone-900 dark:bg-stone-800 dark:text-stone-100">
-        {session.code}
-      </code>
-      <CopyButton value={session.code} label="Copy code" />
-      <CopyButton value={joinUrl} label="Copy join link" />
-    </div>
+    <Panel className="order-first sm:order-none">
+      <div className="flex flex-wrap items-center gap-3">
+        <code className="rounded-lg bg-stone-100 px-3 py-2 font-mono text-sm tracking-wider text-stone-900 dark:bg-stone-800 dark:text-stone-100">
+          {session.code}
+        </code>
+        <CopyButton value={session.code} label="Code" icon={faCopy} />
+        <CopyButton value={joinUrl} label="Link" icon={faLink} />
+        <Button variant="danger" onClick={() => void endSession()}>
+          <Icon icon={faStop} /> End
+        </Button>
+      </div>
+    </Panel>
   );
 
   return (
@@ -246,20 +253,12 @@ export function GmSessionConsole() {
           </h1>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="hidden wide:block">{invite}</div>
           {connection === "reconnecting" ? (
             <span className="text-xs text-amber-700 dark:text-amber-400">Reconnecting…</span>
           ) : null}
           <ThemeToggle />
-          <Button variant="danger" onClick={() => void endSession()}>
-            End session
-          </Button>
         </div>
       </header>
-
-      <Panel title="Invite" className="wide:hidden">
-        {invite}
-      </Panel>
 
       {/*
         Three panels' worth of console, in as many columns as the glass allows:
@@ -326,7 +325,9 @@ export function GmSessionConsole() {
           which puts the players last — so each takes a column of its own.
         */}
         <div className="contents sm:flex sm:min-w-0 sm:flex-col sm:gap-5 wide:contents">
-          <div className="contents wide:order-3 wide:flex wide:min-h-0 wide:min-w-0 wide:flex-col">
+          <div className="contents wide:order-3 wide:flex wide:min-h-0 wide:min-w-0 wide:flex-col wide:gap-5">
+          {invite}
+
           <Panel title={`Players (${snapshot?.players.length ?? 0})`} scroll>
             {snapshot && snapshot.players.length > 0 ? (
               <ul className="divide-y divide-stone-100 dark:divide-stone-800">

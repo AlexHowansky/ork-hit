@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import {
+  faCheck,
   faDragon,
   faFileLines,
   faPenToSquare,
@@ -157,6 +158,10 @@ export function AppPage({
  * body's overflow into the panel instead, leaving the heading pinned. It only
  * means anything where the parent has a height to give — inside `AppPage`'s wide
  * layout — which is why the default is off.
+ *
+ * A panel with no `title` and no `actions` has no heading strip at all: a row of
+ * controls that says plainly what it is does not need a word above it repeating
+ * the point.
  */
 export function Panel({
   title,
@@ -167,7 +172,7 @@ export function Panel({
   ref,
   ...rest
 }: HTMLAttributes<HTMLElement> & {
-  title: ReactNode;
+  title?: ReactNode;
   actions?: ReactNode;
   children: ReactNode;
   className?: string;
@@ -182,12 +187,14 @@ export function Panel({
         scroll ? "flex min-h-0 flex-col" : ""
       } ${className}`}
     >
-      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-stone-200 px-4 py-3 dark:border-stone-800">
-        <h2 className="text-sm font-semibold tracking-wide text-stone-500 uppercase dark:text-stone-400">
-          {title}
-        </h2>
-        {actions}
-      </header>
+      {title || actions ? (
+        <header className="flex shrink-0 items-center justify-between gap-3 border-b border-stone-200 px-4 py-3 dark:border-stone-800">
+          <h2 className="text-sm font-semibold tracking-wide text-stone-500 uppercase dark:text-stone-400">
+            {title}
+          </h2>
+          {actions}
+        </header>
+      ) : null}
       <div
         className={`p-4 ${scroll ? "min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable]" : ""}`}
       >
@@ -379,28 +386,49 @@ export function CharacterThumb({
   );
 }
 
-/** Copies text and confirms it, for the session code and invite link. */
-export function CopyButton({ value, label }: { value: string; label: string }) {
+/**
+ * Copies text and confirms it, for the session code and invite link.
+ *
+ * The confirmation is React's own state rather than a write to `textContent`,
+ * which is what it used to be: the button carries an icon now, and rewriting the
+ * text content of the button would take the icon out with the word.
+ */
+export function CopyButton({
+  value,
+  label,
+  icon,
+}: {
+  value: string;
+  label: string;
+  icon: IconDefinition;
+}) {
+  const [copied, setCopied] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // A button unmounted while the message is still up — the panel it sits in is
+  // redrawn on every snapshot — must not be woken later to set state.
+  useEffect(() => () => {
+    if (timer.current) clearTimeout(timer.current);
+  }, []);
+
   return (
     <Button
       type="button"
-      onClick={async (event) => {
-        const button = event.currentTarget;
+      onClick={async () => {
         try {
           await navigator.clipboard.writeText(value);
-          const original = button.textContent;
-          button.textContent = "Copied";
-          setTimeout(() => {
-            button.textContent = original;
-          }, 1500);
+          setCopied(true);
+          if (timer.current) clearTimeout(timer.current);
+          timer.current = setTimeout(() => setCopied(false), 1500);
         } catch {
-          // Clipboard access can be refused; select the text so it can be copied
+          // Clipboard access can be refused; offer the text so it can be copied
           // by hand rather than failing silently.
           window.prompt("Copy this:", value);
         }
       }}
     >
-      {label}
+      <Icon icon={copied ? faCheck : icon} />
+      {copied ? "Copied" : label}
     </Button>
   );
 }

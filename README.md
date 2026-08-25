@@ -414,7 +414,9 @@ session pages, with `order` rather than a second copy of the markup — what
 sequence they sit in once there are columns. The console goes one column, to two
 equal halves, to three equal thirds, and the round travels with the initiative
 order the whole way: it is the same fight, so it sits above it and shares its
-width rather than running the width of the page. On the player's page the column
+width rather than running the width of the page. The code travels with the
+players in the same way — and stacked, `order-first` lifts it above everything,
+since handing out the code is the first thing a game master does. On the player's page the column
 wrappers are `display: contents` until the columns exist, so the four panels are
 items of one column while stacked and `order` alone moves the player list below
 the scene; nothing there grows, so a short list ends where its content does
