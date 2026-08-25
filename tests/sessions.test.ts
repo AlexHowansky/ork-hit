@@ -6,7 +6,15 @@ import { describe, expect, test } from "bun:test";
 import { db } from "../src/db/index.ts";
 import { campaigns, characters, gameSessions, players, sessionCharacters } from "../src/db/queries.ts";
 import { generateSessionCode } from "../src/lib/ids.ts";
-import { makeCampaign, makeCharacter, makeGm, makePlayer, makeSession, unique } from "./helpers.ts";
+import {
+  makeCampaign,
+  makeCharacter,
+  makeGm,
+  makePlayer,
+  makeSession,
+  unique,
+  vitalsOf,
+} from "./helpers.ts";
 
 describe("player names", () => {
   test("are unique within a session, ignoring case", () => {
@@ -306,5 +314,72 @@ describe("the session list", () => {
       newer.id,
       older.id,
     ]);
+  });
+});
+
+describe("what a stage slot has left", () => {
+  test("is seeded from the character's totals when it walks on", () => {
+    const { session, campaign } = makeSession(1);
+    const goblin = makeCharacter(campaign.id, "npc", unique("Goblin"), {
+      endurance: 20,
+      stun: 15,
+      body: 8,
+    });
+
+    sessionCharacters.add(session.id, goblin.id, "npc");
+
+    expect(vitalsOf(session.id).at(-1)).toEqual({ end: 20, stun: 15, body: 8 });
+  });
+
+  test("is each copy's own number", () => {
+    const { session, campaign } = makeSession(1);
+    const goblin = makeCharacter(campaign.id, "npc", unique("Goblin"), {
+      endurance: 20,
+      stun: 15,
+      body: 8,
+    });
+    const first = sessionCharacters.add(session.id, goblin.id, "npc")!;
+    sessionCharacters.add(session.id, goblin.id, "npc");
+
+    sessionCharacters.setVitals(session.id, first, { stun: 3 });
+
+    // One goblin is nearly down; the other is untouched.
+    expect(vitalsOf(session.id).slice(-2)).toEqual([
+      { end: 20, stun: 3, body: 8 },
+      { end: 20, stun: 15, body: 8 },
+    ]);
+  });
+
+  test("survives an edit to the character it was seeded from", () => {
+    const { session, campaign } = makeSession(1);
+    const hero = makeCharacter(campaign.id, "npc", unique("Ogre"), {
+      endurance: 30,
+      stun: 25,
+      body: 12,
+    });
+    const slot = sessionCharacters.add(session.id, hero.id, "npc")!;
+    sessionCharacters.setVitals(session.id, slot, { stun: 4 });
+
+    // The game master corrects the library mid-session: the total moves, what
+    // this copy has left does not, so nobody is quietly healed.
+    characters.update(hero.id, { stun: 40 });
+
+    const row = sessionCharacters.list(session.id).find((entry) => entry.slot_id === slot)!;
+    expect(row.stun).toBe(40);
+    expect(row.cur_stun).toBe(4);
+  });
+
+  test("leaves the values a patch does not mention alone", () => {
+    const { session, campaign } = makeSession(1);
+    const npc = makeCharacter(campaign.id, "npc", unique("Wolf"), {
+      endurance: 10,
+      stun: 10,
+      body: 5,
+    });
+    const slot = sessionCharacters.add(session.id, npc.id, "npc")!;
+
+    sessionCharacters.setVitals(session.id, slot, { endurance: 2 });
+
+    expect(vitalsOf(session.id).at(-1)).toEqual({ end: 2, stun: 10, body: 5 });
   });
 });

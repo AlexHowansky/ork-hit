@@ -8,7 +8,7 @@
  */
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import type { Browser, Page } from "playwright";
+import type { Browser, Locator, Page } from "playwright";
 import { serverOptions } from "../src/server/app.ts";
 import { registerServer } from "../src/server/ws.ts";
 import { gms } from "../src/db/queries.ts";
@@ -80,6 +80,10 @@ async function gmWithSession(): Promise<{ page: Page; code: string; campaignName
       mimeType: "text/html",
       buffer: Buffer.from(`<h1>${name}</h1><script>window.loaded = true;</script>`),
     });
+    // Characteristics, so the session screens have totals to count down from.
+    await page.getByLabel("END", { exact: true }).fill("30");
+    await page.getByLabel("STUN", { exact: true }).fill("25");
+    await page.getByLabel("BODY", { exact: true }).fill("12");
     await page.getByRole("button", { name: "Add character" }).last().click();
     await page.getByRole("button", { name, exact: true }).waitFor();
   }
@@ -179,6 +183,56 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     await gm.getByRole("listitem").filter({ hasText: "Strahd" })
       .getByRole("button", { name: "Remove" }).click();
     await player.getByText("In the scene (2)").waitFor({ timeout: 5000 });
+  }, 60_000);
+
+  /**
+   * Waits for a box to hold a value, since the number may still be crossing a
+   * socket. Playwright's own auto-retrying assertions are not bun:test's
+   * `expect`, so the retry is written out.
+   */
+  const waitForValue = async (locator: Locator, expected: string) => {
+    const deadline = Date.now() + 5000;
+    let seen = "";
+    while (Date.now() < deadline) {
+      seen = await locator.inputValue();
+      if (seen === expected) return;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    expect(seen).toBe(expected);
+  };
+
+  test("what a character has left is edited from either screen", async () => {
+    if (!browser) return;
+    const { page: gm, code } = await gmWithSession();
+    const player = await playerIn(code, "Nia");
+
+    const gmRow = gm.locator("section", { hasText: "Initiative order" })
+      .getByRole("listitem").filter({ hasText: "Thorin" });
+    const myPanel = player.locator("section", { hasText: /My character/ });
+
+    // Both screens start at the totals the library carries.
+    await waitForValue(gmRow.getByLabel("STUN left for Thorin"), "25");
+    await waitForValue(myPanel.getByLabel("END left for Thorin"), "30");
+
+    // The game master knocks Thorin down; the player's own panel follows.
+    await gmRow.getByLabel("STUN left for Thorin").fill("7");
+    await gmRow.getByLabel("STUN left for Thorin").press("Enter");
+    await waitForValue(myPanel.getByLabel("STUN left for Thorin"), "7");
+
+    // The player spends their own ENDURANCE, and the console follows.
+    await myPanel.getByLabel("END left for Thorin").fill("11");
+    await myPanel.getByLabel("END left for Thorin").press("Enter");
+    await waitForValue(gmRow.getByLabel("END left for Thorin"), "11");
+
+    // The scene carries none of these for a player: someone else's are not
+    // theirs to see, and their own are on the panel above rather than twice.
+    const scene = player.locator("section", { hasText: "In the scene" });
+    expect((await scene.innerText()).replace(/\s+/g, " ")).not.toContain("STUN");
+
+    // And the game master still sees every row's.
+    const strahdOnConsole = gm.locator("section", { hasText: "Initiative order" })
+      .getByRole("listitem").filter({ hasText: "Strahd" });
+    expect(await strahdOnConsole.getByLabel("STUN left for Strahd").count()).toBe(1);
   }, 60_000);
 
   test("an NPC can be brought on more than once, and each copy acts", async () => {
@@ -369,6 +423,13 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
       "Name",
       "Type",
       "Campaign",
+      // The characteristics, read across in the order HERO prints them.
+      "SPD",
+      "DEX",
+      "REC",
+      "END",
+      "STUN",
+      "BODY",
       "Background image (optional)",
     ]);
   }, 60_000);

@@ -49,6 +49,13 @@ export interface CharacterRow {
   name: string;
   sheet_upload_id: string;
   background_upload_id: string | null;
+  /** HERO System characteristics. `endurance`, `stun` and `body` are the full totals. */
+  speed: number;
+  dexterity: number;
+  recovery: number;
+  endurance: number;
+  stun: number;
+  body: number;
   created_at: string;
   updated_at: string;
 }
@@ -85,4 +92,12 @@ export interface SessionCharacterRow extends CharacterRow {
   slot_id: string;
   copy_number: number;
   position: number;
+  /**
+   * What this slot has left, as against the totals it inherits from the
+   * character. Seeded from those totals when the slot is added, and its own
+   * number from then on.
+   */
+  cur_endurance: number;
+  cur_stun: number;
+  cur_body: number;
 }

@@ -16,6 +16,17 @@ export interface Character {
   name: string;
   sheetUrl: string;
   backgroundUrl: string | null;
+  /**
+   * The HERO System characteristics. `endurance`, `stun` and `body` are the
+   * character's full totals; what one copy of them has left in a session is on
+   * `SessionCharacter` instead.
+   */
+  speed: number;
+  dexterity: number;
+  recovery: number;
+  endurance: number;
+  stun: number;
+  body: number;
 }
 
 /**
@@ -31,6 +42,10 @@ export interface SessionCharacter extends Character {
   /** Which copy of that character this is. Shown only when there is more than one. */
   copyNumber: number;
   position: number;
+  /** What this slot has left, against the totals above. Two goblins differ. */
+  currentEndurance: number;
+  currentStun: number;
+  currentBody: number;
   claimedByPlayerId: string | null;
   claimedByPlayerName: string | null;
 }

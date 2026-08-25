@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { api } from "../api.ts";
+import { HERO_STAT_FIELDS, HERO_STAT_LABELS } from "../../lib/hero.ts";
 import { useSessionSocket } from "../useSessionSocket.ts";
 import { useLiveSessions } from "../useLiveSessions.ts";
 import { useCardFit } from "../useCardFit.ts";
@@ -208,6 +209,30 @@ function CharacterForm({
           ))}
         </select>
       </label>
+
+      {/*
+        The HERO characteristics, six to a block rather than six stacked rows:
+        they are short numbers and reading them across is how a character sheet
+        prints them. A character nobody has filled in yet is all zeros, which is
+        a legitimate thing to save.
+      */}
+      <fieldset>
+        <legend className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">
+          Characteristics
+        </legend>
+        <div className="grid grid-cols-3 gap-3">
+          {HERO_STAT_FIELDS.map((field) => (
+            <Field
+              key={field}
+              label={HERO_STAT_LABELS[field]}
+              name={field}
+              type="number"
+              inputMode="numeric"
+              defaultValue={character?.[field] ?? 0}
+            />
+          ))}
+        </div>
+      </fieldset>
 
       <FileDrop
         label="Background image (optional)"

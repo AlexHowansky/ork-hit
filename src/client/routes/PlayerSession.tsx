@@ -28,6 +28,8 @@ import {
   Panel,
 } from "../components/ui.tsx";
 import { InitiativeList, stageLabel } from "../components/InitiativeList.tsx";
+import { Vitals, type VitalsPatch } from "../components/Vitals.tsx";
+import { HERO_STAT_LABELS } from "../../lib/hero.ts";
 import { TurnControls } from "../components/TurnControls.tsx";
 import { SheetOverlay } from "../components/SheetFrame.tsx";
 import { ThemeToggle } from "../components/ThemeToggle.tsx";
@@ -159,6 +161,22 @@ export function PlayerSession({
   const myCharacterId = me?.claimedCharacterId ?? null;
   const myCharacter =
     snapshot.characters.find((character) => character.characterId === myCharacterId) ?? null;
+
+  /**
+   * What this player's character has left. Only ever their own: the server
+   * checks that too, since a screen is not where a rule like that lives.
+   */
+  const setVitals = async (slotId: string, patch: VitalsPatch) => {
+    try {
+      const { snapshot: next } = await api.patchJson<{ snapshot: Snapshot }>(
+        `/api/sessions/${sessionId}/stage/${slotId}/vitals`,
+        patch,
+      );
+      applySnapshot(next);
+    } catch (error) {
+      toast.showError(error);
+    }
+  };
 
   const claim = async (characterId: string) => {
     setClaiming(true);
@@ -299,13 +317,28 @@ export function PlayerSession({
             }
           >
             {myCharacter ? (
-              // Deliberately thin for now — a picture and a name. The character's
-              // HERO System numbers land here next.
-              <div className="flex items-center gap-3">
-                <CharacterThumb kind={myCharacter.kind} backgroundUrl={myCharacter.backgroundUrl} />
-                <p className="truncate font-medium text-stone-900 dark:text-stone-100">
-                  {myCharacter.name}
-                </p>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <CharacterThumb
+                    kind={myCharacter.kind}
+                    backgroundUrl={myCharacter.backgroundUrl}
+                  />
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-stone-900 dark:text-stone-100">
+                      {myCharacter.name}
+                    </p>
+                    <p className="text-xs tabular-nums text-stone-500 dark:text-stone-400">
+                      {HERO_STAT_LABELS.speed} {myCharacter.speed} ·{" "}
+                      {HERO_STAT_LABELS.dexterity} {myCharacter.dexterity} ·{" "}
+                      {HERO_STAT_LABELS.recovery} {myCharacter.recovery}
+                    </p>
+                  </div>
+                </div>
+                {/* Spent during a fight, and this player's own to spend. */}
+                <Vitals
+                  character={myCharacter}
+                  onChange={(patch) => void setVitals(myCharacter.id, patch)}
+                />
               </div>
             ) : (
               <EmptyState>

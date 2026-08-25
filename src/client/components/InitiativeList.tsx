@@ -30,6 +30,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import type { SessionCharacter } from "../types.ts";
 import { CharacterThumb, KindBadge } from "./ui.tsx";
+import { Vitals, type VitalsPatch } from "./Vitals.tsx";
 
 /**
  * What to call one slot, given the whole stage.
@@ -52,6 +53,13 @@ interface RowProps {
   editable: boolean;
   /** Highlights the viewing player's own character. */
   isYours: boolean;
+  /**
+   * Absent where this reader may read the numbers but not write them. Separate
+   * from `editable`, which is the game master's drag-and-remove: on the player's
+   * screen the whole list is read-only, and on the game master's every row is
+   * writable, but the two are different questions.
+   */
+  onSetVitals?: (patch: VitalsPatch) => void;
   onSetTurn?: () => void;
   onRemove?: () => void;
   onOpenSheet?: () => void;
@@ -64,6 +72,7 @@ function Row({
   isActive,
   editable,
   isYours,
+  onSetVitals,
   onSetTurn,
   onRemove,
   onOpenSheet,
@@ -90,7 +99,7 @@ function Row({
       // as colour, so it reads in both themes and without colour vision. The
       // turn keeps the border when a row is both on turn and unclaimed — the
       // badge below carries the unclaimed cue in that case.
-      className={`flex items-center gap-3 border-l-4 px-3 py-2.5 ${
+      className={`flex flex-col gap-1 border-l-4 px-3 py-2.5 ${
         isActive
           ? "border-amber-500 bg-amber-50 dark:bg-amber-950/40"
           : isUnclaimed
@@ -99,6 +108,7 @@ function Row({
       } ${isDragging ? "relative z-10 opacity-80 shadow-lg" : ""}`}
       aria-current={isActive ? "true" : undefined}
     >
+      <div className="flex items-center gap-3">
       {editable ? (
         <button
           type="button"
@@ -201,6 +211,28 @@ function Row({
           </button>
         ) : null}
       </div>
+      </div>
+
+      {/*
+        What a character has left is the game master's to see. How badly the
+        monster is hurt is theirs to give out or hold back, and reading another
+        player's STUN off the screen is not the same as being told — so the same
+        thing that decides who may write these decides who may read them:
+        `onSetVitals`, which only the game master's list is given.
+
+        A player's own numbers are not repeated here either. They have a panel of
+        their own, `My character`, which is where that player edits them; a
+        second copy in the scene would be the same three numbers twice on one
+        screen.
+
+        A band of its own under the row rather than a column beside the name:
+        three labelled boxes and a name cannot both have the room they need in
+        the game master's narrow panel, and across the full width they fit on one
+        line. Indented to clear the handle and picture above.
+      */}
+      {onSetVitals ? (
+        <Vitals character={character} onChange={onSetVitals} className="pl-[4.25rem]" />
+      ) : null}
     </li>
   );
 }
@@ -211,6 +243,7 @@ export function InitiativeList({
   editable = false,
   yourCharacterId = null,
   onReorder,
+  onSetVitals,
   onSetTurn,
   onRemove,
   onOpenSheet,
@@ -222,6 +255,12 @@ export function InitiativeList({
   /** The viewing player's character, matched on the character rather than the slot. */
   yourCharacterId?: string | null;
   onReorder?: (orderedSlotIds: string[]) => void;
+  /**
+   * Lets this reader write what a slot has left. The game master passes it; a
+   * player does not — their own numbers are theirs to change, but they change
+   * them on their own character panel rather than in a list of everybody.
+   */
+  onSetVitals?: (slotId: string, patch: VitalsPatch) => void;
   onSetTurn?: (slotId: string) => void;
   onRemove?: (slotId: string) => void;
   /**
@@ -265,6 +304,7 @@ export function InitiativeList({
       editable={editable}
       // On the character: a player's own PC is theirs wherever it stands.
       isYours={character.characterId === yourCharacterId}
+      onSetVitals={onSetVitals ? (patch) => onSetVitals(character.id, patch) : undefined}
       onSetTurn={onSetTurn ? () => onSetTurn(character.id) : undefined}
       onRemove={onRemove ? () => onRemove(character.id) : undefined}
       onOpenSheet={onOpenSheet ? () => onOpenSheet(character) : undefined}

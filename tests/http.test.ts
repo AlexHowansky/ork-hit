@@ -222,6 +222,154 @@ describe("character sheets reach only the right people", () => {
   });
 });
 
+describe("HERO characteristics", () => {
+  test("a character carries the numbers the form sent, and a slot starts there", async () => {
+    const { cookie } = await signIn();
+    const campaignForm = new FormData();
+    campaignForm.set("name", unique("Campaign"));
+    const campaign = (
+      await (
+        await fetch(`${base}/api/campaigns`, authed(cookie, { method: "POST", body: campaignForm }))
+      ).json()
+    ).campaign;
+
+    const form = new FormData();
+    form.set("campaignId", campaign.id);
+    form.set("kind", "npc");
+    form.set("name", unique("Ogre"));
+    form.set("sheet", new File(["<h1>sheet</h1>"], "sheet.html"));
+    form.set("speed", "4");
+    form.set("dexterity", "18");
+    form.set("recovery", "8");
+    form.set("endurance", "30");
+    form.set("stun", "25");
+    form.set("body", "12");
+    const created = (
+      await (
+        await fetch(`${base}/api/characters`, authed(cookie, { method: "POST", body: form }))
+      ).json()
+    ).character;
+    expect(created).toMatchObject({
+      speed: 4,
+      dexterity: 18,
+      recovery: 8,
+      endurance: 30,
+      stun: 25,
+      body: 12,
+    });
+
+    const session = (
+      await (
+        await fetch(
+          `${base}/api/sessions`,
+          authed(cookie, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ campaignId: campaign.id }),
+          }),
+        )
+      ).json()
+    ).session;
+    const staged = (
+      await (
+        await fetch(
+          `${base}/api/sessions/${session.id}/stage`,
+          authed(cookie, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ characterId: created.id }),
+          }),
+        )
+      ).json()
+    ).snapshot;
+
+    // On the stage it starts at full, as its own number.
+    expect(staged.characters[0]).toMatchObject({
+      currentEndurance: 30,
+      currentStun: 25,
+      currentBody: 12,
+    });
+  });
+});
+
+describe("what a character has left", () => {
+  const patchVitals = (
+    cookie: string,
+    sessionId: string,
+    slotId: string,
+    body: Record<string, number>,
+  ) =>
+    fetch(
+      `${base}/api/sessions/${sessionId}/stage/${slotId}/vitals`,
+      authed(cookie, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }),
+    );
+
+  /** The stage slot ids, in initiative order, as the game master sees them. */
+  const slotsOf = async (cookie: string, sessionId: string) => {
+    const snapshot = (
+      await (await fetch(`${base}/api/sessions/${sessionId}`, authed(cookie))).json()
+    ).snapshot;
+    return snapshot.characters as { id: string; characterId: string }[];
+  };
+
+  test("the game master may write any slot", async () => {
+    const { cookie } = await signIn();
+    const { session } = await makeTable(cookie);
+    const [first] = await slotsOf(cookie, session.id);
+
+    const response = await patchVitals(cookie, session.id, first!.id, { stun: -6 });
+    expect(response.status).toBe(200);
+    expect((await response.json()).snapshot.characters[0].currentStun).toBe(-6);
+  });
+
+  test("a player may write their own character's, and only theirs", async () => {
+    const { cookie } = await signIn();
+    const { pc, npc, session } = await makeTable(cookie);
+    const player = await joinAs(session.code, "Bob");
+
+    await fetch(
+      `${base}/api/sessions/${session.id}/claim`,
+      authed(player, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ characterId: pc.id }),
+      }),
+    );
+
+    const slots = await slotsOf(cookie, session.id);
+    const mine = slots.find((slot) => slot.characterId === pc.id)!;
+    const theirs = slots.find((slot) => slot.characterId === npc.id)!;
+
+    const own = await patchVitals(player, session.id, mine.id, { endurance: 7 });
+    expect(own.status).toBe(200);
+
+    const other = await patchVitals(player, session.id, theirs.id, { endurance: 7 });
+    expect(other.status).toBe(403);
+
+    // The refusal changed nothing.
+    const after = (
+      await (await fetch(`${base}/api/sessions/${session.id}`, authed(cookie))).json()
+    ).snapshot.characters;
+    expect(after.find((row: { id: string }) => row.id === theirs.id).currentEndurance).toBe(0);
+  });
+
+  test("a player of another session is refused", async () => {
+    const { cookie } = await signIn();
+    const mine = await makeTable(cookie);
+    const other = await makeTable(cookie);
+    const stranger = await joinAs(other.session.code, "Eve");
+
+    const [slot] = await slotsOf(cookie, mine.session.id);
+    const response = await patchVitals(stranger, mine.session.id, slot!.id, { stun: 1 });
+    expect(response.status).toBeGreaterThanOrEqual(401);
+    expect(response.status).toBeLessThan(500);
+  });
+});
+
 describe("players are read-only", () => {
   test("a player cannot reorder, set the turn, or touch the library", async () => {
     const gm = await signIn();

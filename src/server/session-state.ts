@@ -33,6 +33,13 @@ export interface SessionSnapshot {
     characterId: string;
     copyNumber: number;
     position: number;
+    /**
+     * What this slot has left, as against the totals the character carries.
+     * Per slot rather than per character: two goblins take their own wounds.
+     */
+    currentEndurance: number;
+    currentStun: number;
+    currentBody: number;
     claimedByPlayerId: string | null;
     claimedByPlayerName: string | null;
   })[];
@@ -68,6 +75,9 @@ export function buildSnapshot(sessionId: string): SessionSnapshot | null {
         characterId: presented.id,
         copyNumber: row.copy_number,
         position: row.position,
+        currentEndurance: row.cur_endurance,
+        currentStun: row.cur_stun,
+        currentBody: row.cur_body,
         claimedByPlayerId: holder?.id ?? null,
         claimedByPlayerName: holder?.name ?? null,
       };

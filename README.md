@@ -395,6 +395,39 @@ instead of being stretched to the frame, and `scroll` is left on the two lists
 only to catch the opposite case. Anything narrower or taller keeps the stacked
 layout unchanged.
 
+## Two kinds of number
+
+A character carries six HERO System characteristics, and three of them are
+recorded twice. On the character they are the total — what SPEED, DEXTERITY,
+RECOVERY, ENDURANCE, STUN and BODY *are* — and they change only when the game
+master edits the library. On a stage slot, ENDURANCE, STUN and BODY are recorded
+again as what that copy has left right now.
+
+The split is what makes two goblins two monsters. A slot is seeded from the
+character's totals as it walks on (`sessionCharacters.add`, and the same columns
+in `addCampaignPcs`) and is its own number from then on: one goblin beaten down
+to 3 STUN stays there when its twin joins the fight, and a correction to the
+library mid-session moves the total without healing anybody.
+
+Which is why the totals live on `presentCharacter` — they are the character's,
+and the REST character routes want them too — while the current values are added
+in `buildSnapshot` (`src/server/session-state.ts`) beside the other things that
+are true of a slot rather than of a character.
+
+Who may read them is the same question as who may write them, which is why the
+initiative list gates both on one prop: the game master's list is handed
+`onSetVitals` and draws every row's numbers, a player's list is not and draws
+none. What the monster has left is the game master's information to give out or
+hold back at the table, and a player's own numbers are on their `My character`
+panel rather than a second time in the scene.
+
+`PATCH /api/sessions/:id/stage/:slotId/vitals` is the one route both roles may
+call. The game master runs the fight and may write any slot; a player may write
+exactly the slot holding the character they claimed, checked on the server rather
+than by hiding the boxes. Both end in the same `publish`, so an edit from either
+screen reaches every screen the usual way. `src/lib/hero.ts` names the six
+characteristics once, for the form fields, the labels and the API alike.
+
 ## The turn chime
 
 When the turn reaches a player's character, that player — and only that player —

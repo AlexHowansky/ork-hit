@@ -20,6 +20,7 @@ import {
   KindBadge,
   Panel,
 } from "../components/ui.tsx";
+import type { VitalsPatch } from "../components/Vitals.tsx";
 import { InitiativeList, stageLabel } from "../components/InitiativeList.tsx";
 import { TurnControls } from "../components/TurnControls.tsx";
 import { SheetOverlay } from "../components/SheetFrame.tsx";
@@ -140,6 +141,14 @@ export function GmSessionConsole() {
       }),
     );
   };
+
+  const setVitals = (slotId: string, patch: VitalsPatch) =>
+    mutate(() =>
+      api.patchJson<{ snapshot: Snapshot }>(
+        `/api/sessions/${sessionId}/stage/${slotId}/vitals`,
+        patch,
+      ),
+    );
 
   const setClaim = (playerId: string, claimedCharacterId: string | null) =>
     mutate(() =>
@@ -268,6 +277,7 @@ export function GmSessionConsole() {
                 activeSlotId={snapshot.session.activeSlotId}
                 editable
                 onReorder={reorder}
+                onSetVitals={(id, patch) => void setVitals(id, patch)}
                 onSetTurn={(id) => void setTurn(id)}
                 onRemove={(id) => void removeCharacter(id)}
                 onOpenSheet={setViewingSheet}

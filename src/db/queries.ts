@@ -220,6 +220,33 @@ export const campaigns = {
 
 /* ----------------------------------------------------------------- characters */
 
+/**
+ * The HERO System characteristics a library character carries.
+ *
+ * Named once here because three places speak in them: creating a character,
+ * editing one, and seeding a stage slot from the totals.
+ */
+export interface HeroStats {
+  speed: number;
+  dexterity: number;
+  recovery: number;
+  endurance: number;
+  stun: number;
+  body: number;
+}
+
+/** Fills in the zero the column would have defaulted to, for a partial set. */
+function zeroedStats(stats: Partial<HeroStats> | undefined): HeroStats {
+  return {
+    speed: stats?.speed ?? 0,
+    dexterity: stats?.dexterity ?? 0,
+    recovery: stats?.recovery ?? 0,
+    endurance: stats?.endurance ?? 0,
+    stun: stats?.stun ?? 0,
+    body: stats?.body ?? 0,
+  };
+}
+
 export const characters = {
   /**
    * The library, in name order.
@@ -256,14 +283,19 @@ export const characters = {
     name: string;
     sheetUploadId: string;
     backgroundUploadId: string | null;
+    /** The HERO characteristics, each defaulting to the zero the column carries. */
+    stats?: Partial<HeroStats>;
   }): CharacterRow {
     const id = newId();
     const timestamp = now();
+    const { stats, ...rest } = input;
     db.query(`
       INSERT INTO characters
-        (id, campaign_id, kind, name, sheet_upload_id, background_upload_id, created_at, updated_at)
-      VALUES ($id, $campaignId, $kind, $name, $sheetUploadId, $backgroundUploadId, $timestamp, $timestamp)
-    `).run({ ...input, id, timestamp });
+        (id, campaign_id, kind, name, sheet_upload_id, background_upload_id,
+         speed, dexterity, recovery, endurance, stun, body, created_at, updated_at)
+      VALUES ($id, $campaignId, $kind, $name, $sheetUploadId, $backgroundUploadId,
+         $speed, $dexterity, $recovery, $endurance, $stun, $body, $timestamp, $timestamp)
+    `).run({ ...rest, ...zeroedStats(stats), id, timestamp });
     return characters.byId(id)!;
   },
 
@@ -275,7 +307,7 @@ export const characters = {
       name?: string;
       sheetUploadId?: string;
       backgroundUploadId?: string | null;
-    },
+    } & Partial<HeroStats>,
   ): CharacterRow | null {
     // One fixed statement per column, rather than assembling a SET clause. It is
     // more lines, but it keeps the invariant for this whole file simple enough to
@@ -300,6 +332,32 @@ export const characters = {
     if (changes.backgroundUploadId !== undefined) {
       db.query("UPDATE characters SET background_upload_id = $value, updated_at = $ts WHERE id = $id")
         .run({ id, ts, value: changes.backgroundUploadId });
+    }
+    // The characteristics take the same one-statement-per-column shape, written
+    // out rather than looped so the SQL above stays literal top to bottom.
+    if (changes.speed !== undefined) {
+      db.query("UPDATE characters SET speed = $value, updated_at = $ts WHERE id = $id")
+        .run({ id, ts, value: changes.speed });
+    }
+    if (changes.dexterity !== undefined) {
+      db.query("UPDATE characters SET dexterity = $value, updated_at = $ts WHERE id = $id")
+        .run({ id, ts, value: changes.dexterity });
+    }
+    if (changes.recovery !== undefined) {
+      db.query("UPDATE characters SET recovery = $value, updated_at = $ts WHERE id = $id")
+        .run({ id, ts, value: changes.recovery });
+    }
+    if (changes.endurance !== undefined) {
+      db.query("UPDATE characters SET endurance = $value, updated_at = $ts WHERE id = $id")
+        .run({ id, ts, value: changes.endurance });
+    }
+    if (changes.stun !== undefined) {
+      db.query("UPDATE characters SET stun = $value, updated_at = $ts WHERE id = $id")
+        .run({ id, ts, value: changes.stun });
+    }
+    if (changes.body !== undefined) {
+      db.query("UPDATE characters SET body = $value, updated_at = $ts WHERE id = $id")
+        .run({ id, ts, value: changes.body });
     }
     return characters.byId(id);
   },
@@ -392,7 +450,8 @@ export const sessionCharacters = {
   /** The stage in initiative order, each slot joined with the character in it. */
   list(sessionId: string): SessionCharacterRow[] {
     return db.query<SessionCharacterRow, { sessionId: string }>(`
-      SELECT c.*, sc.id AS slot_id, sc.copy_number, sc.position
+      SELECT c.*, sc.id AS slot_id, sc.copy_number, sc.position,
+             sc.cur_endurance AS cur_endurance, sc.cur_stun AS cur_stun, sc.cur_body AS cur_body
       FROM session_characters sc
       JOIN characters c ON c.id = sc.character_id
       WHERE sc.game_session_id = $sessionId
@@ -424,6 +483,50 @@ export const sessionCharacters = {
   },
 
   /**
+   * Which character is standing in a slot.
+   *
+   * What a player's edit is checked against: they may spend their own
+   * character's ENDURANCE and take their own STUN, and nobody else's.
+   */
+  characterInSlot(sessionId: string, slotId: string): string | null {
+    const row = db.query<{ character_id: string }, { sessionId: string; slotId: string }>(
+      "SELECT character_id FROM session_characters WHERE game_session_id = $sessionId AND id = $slotId",
+    ).get({ sessionId, slotId });
+    return row?.character_id ?? null;
+  },
+
+  /**
+   * Writes what a slot has left. Absent values are left as they were, so a
+   * screen that edits one box does not have to send the other two.
+   *
+   * One fixed statement per column, as everywhere else in this file.
+   */
+  setVitals(
+    sessionId: string,
+    slotId: string,
+    values: { endurance?: number; stun?: number; body?: number },
+  ): void {
+    if (values.endurance !== undefined) {
+      db.query(`
+        UPDATE session_characters SET cur_endurance = $value
+        WHERE game_session_id = $sessionId AND id = $slotId
+      `).run({ sessionId, slotId, value: values.endurance });
+    }
+    if (values.stun !== undefined) {
+      db.query(`
+        UPDATE session_characters SET cur_stun = $value
+        WHERE game_session_id = $sessionId AND id = $slotId
+      `).run({ sessionId, slotId, value: values.stun });
+    }
+    if (values.body !== undefined) {
+      db.query(`
+        UPDATE session_characters SET cur_body = $value
+        WHERE game_session_id = $sessionId AND id = $slotId
+      `).run({ sessionId, slotId, value: values.body });
+    }
+  },
+
+  /**
    * Puts every player character in the campaign into the session at once.
    *
    * A session all but always opens with the whole party present, so the game
@@ -437,7 +540,8 @@ export const sessionCharacters = {
   addCampaignPcs(sessionId: string, campaignId: string): void {
     db.query(`
       INSERT INTO session_characters
-        (id, game_session_id, character_id, copy_number, position, added_at)
+        (id, game_session_id, character_id, copy_number, position, added_at,
+         cur_endurance, cur_stun, cur_body)
       SELECT
         lower(hex(randomblob(16))),
         $sessionId,
@@ -447,7 +551,8 @@ export const sessionCharacters = {
           (SELECT MAX(position) + 1 FROM session_characters WHERE game_session_id = $sessionId),
           0
         ) + ROW_NUMBER() OVER (ORDER BY c.name COLLATE NOCASE) - 1,
-        $ts
+        $ts,
+        c.endurance, c.stun, c.body
       FROM characters c
       WHERE c.campaign_id = $campaignId
         AND c.kind = 'pc'
@@ -480,7 +585,8 @@ export const sessionCharacters = {
     const id = newId();
     db.query(`
       INSERT INTO session_characters
-        (id, game_session_id, character_id, copy_number, position, added_at)
+        (id, game_session_id, character_id, copy_number, position, added_at,
+         cur_endurance, cur_stun, cur_body)
       VALUES (
         $id,
         $sessionId,
@@ -490,7 +596,10 @@ export const sessionCharacters = {
           WHERE game_session_id = $sessionId AND character_id = $characterId
         ), 1),
         COALESCE((SELECT MAX(position) + 1 FROM session_characters WHERE game_session_id = $sessionId), 0),
-        $ts
+        $ts,
+        (SELECT endurance FROM characters WHERE id = $characterId),
+        (SELECT stun FROM characters WHERE id = $characterId),
+        (SELECT body FROM characters WHERE id = $characterId)
       )
     `).run({ id, sessionId, characterId, ts: now() });
     return id;

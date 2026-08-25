@@ -11,6 +11,7 @@ import { parse, schemas } from "../../lib/validate.ts";
 import { errors } from "../../lib/errors.ts";
 import { requireGm } from "../middleware/auth.ts";
 import { campaigns, characters } from "../../db/queries.ts";
+import { HERO_STAT_FIELDS, type HeroStatField } from "../../lib/hero.ts";
 import {
   collectOrphanedUploads,
   fileField,
@@ -60,6 +61,22 @@ async function portraitOrNone(
   }
 }
 
+/**
+ * The HERO characteristics a character form carries.
+ *
+ * A field the form left out is left out of the result, so a PATCH that never
+ * mentions SPEED does not reset it; a field sent empty reads as zero, which is
+ * what clearing the box means.
+ */
+function statsFromForm(form: FormData): Partial<Record<HeroStatField, number>> {
+  const stats: Partial<Record<HeroStatField, number>> = {};
+  for (const field of HERO_STAT_FIELDS) {
+    const raw = form.get(field);
+    if (typeof raw === "string") stats[field] = parse(schemas.heroStat, raw);
+  }
+  return stats;
+}
+
 export const characterRoutes = {
   "/api/characters": {
     GET: handler((request: BunRequest) => {
@@ -101,6 +118,7 @@ export const characterRoutes = {
         name: input.name,
         sheetUploadId: sheet.id,
         backgroundUploadId: background?.id ?? null,
+        stats: statsFromForm(form),
       });
       logger.info("character created", {
         characterId: character.id,
@@ -142,6 +160,10 @@ export const characterRoutes = {
 
         const rawName = form.get("name");
         if (typeof rawName === "string") changes.name = parse(schemas.displayName, rawName);
+
+        for (const [field, value] of Object.entries(statsFromForm(form))) {
+          changes[field as keyof ReturnType<typeof statsFromForm>] = value;
+        }
 
         // Names are unique within a campaign, so the question is about the name and
         // the campaign this character is going to end up with — not about which of

@@ -9,6 +9,7 @@ import {
   sessionCharacters,
   uploads,
 } from "../src/db/queries.ts";
+import type { HeroStats } from "../src/db/queries.ts";
 import { generateSessionCode, generateToken, hashToken } from "../src/lib/ids.ts";
 
 let counter = 0;
@@ -27,7 +28,12 @@ export function makeCampaign(gmId?: string) {
   return campaigns.create({ gmId: gm, name: unique("Campaign"), backgroundUploadId: null });
 }
 
-export function makeCharacter(campaignId: string, kind: "pc" | "npc" = "pc", name?: string) {
+export function makeCharacter(
+  campaignId: string,
+  kind: "pc" | "npc" = "pc",
+  name?: string,
+  stats?: Partial<HeroStats>,
+) {
   // Characters need an upload row to point at; the file itself is irrelevant here.
   const uploadId = makeUpload();
   return characters.create({
@@ -36,6 +42,7 @@ export function makeCharacter(campaignId: string, kind: "pc" | "npc" = "pc", nam
     name: name ?? unique(kind === "pc" ? "Hero" : "Villain"),
     sheetUploadId: uploadId,
     backgroundUploadId: null,
+    stats,
   });
 }
 
@@ -87,6 +94,15 @@ export function slotsOf(sessionId: string): string[] {
 /** The copy number of each slot, in initiative order. */
 export function copiesOf(sessionId: string): number[] {
   return sessionCharacters.list(sessionId).map((row) => row.copy_number);
+}
+
+/** What each slot has left, in initiative order. */
+export function vitalsOf(sessionId: string): { end: number; stun: number; body: number }[] {
+  return sessionCharacters.list(sessionId).map((row) => ({
+    end: row.cur_endurance,
+    stun: row.cur_stun,
+    body: row.cur_body,
+  }));
 }
 
 /** The stored positions, to assert they stay dense and gap-free. */

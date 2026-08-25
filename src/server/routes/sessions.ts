@@ -234,6 +234,51 @@ export const sessionRoutes = {
     ),
   },
 
+  /**
+   * What a stage slot has left: its current ENDURANCE, STUN and BODY.
+   *
+   * The one route both roles may call. The game master runs the fight and may
+   * write any slot; a player may write exactly one — the slot holding the
+   * character they claimed — because spending your own END and taking your own
+   * STUN is the part of the bookkeeping that belongs to the person playing.
+   */
+  "/api/sessions/:id/stage/:slotId/vitals": {
+    PATCH: handler(
+      async (
+        request: BunRequest<"/api/sessions/:id/stage/:slotId/vitals">,
+        { logger }: RequestContext,
+      ) => {
+        const sessionId = request.params.id;
+        const slotId = request.params.slotId;
+        const identity = currentPlayer(request);
+        const asPlayer = identity !== null && identity.session.id === sessionId;
+
+        // Not this session's player, so it has to be the owning game master —
+        // and the same rule as every other mutation: an ended session is frozen.
+        const session = asPlayer
+          ? identity.session
+          : requireOwnedActiveSession(request, sessionId).session;
+
+        const characterId = sessionCharacters.characterInSlot(session.id, slotId);
+        if (!characterId) throw errors.badRequest("That character isn't active in this session.");
+
+        if (asPlayer && characterId !== identity.player.claimed_character_id) {
+          throw errors.forbidden("You can only change your own character's numbers.");
+        }
+
+        const values = await parseJsonBody(request, schemas.setVitals);
+        sessionCharacters.setVitals(session.id, slotId, values);
+        logger.info("slot vitals set", {
+          sessionId: session.id,
+          slotId,
+          by: asPlayer ? "player" : "gm",
+        });
+
+        return publish(session.id);
+      },
+    ),
+  },
+
   /* ------------------------------------------------------ initiative order */
 
   "/api/sessions/:id/order": {

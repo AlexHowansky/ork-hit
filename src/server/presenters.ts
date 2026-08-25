@@ -29,6 +29,15 @@ export function presentCharacter(character: CharacterRow) {
     backgroundUrl: character.background_upload_id
       ? `/uploads/images/${character.background_upload_id}`
       : null,
+    // The HERO characteristics. `endurance`, `stun` and `body` are the full
+    // totals; what a copy of this character has left in a session is a separate
+    // number, carried on the stage slot rather than here.
+    speed: character.speed,
+    dexterity: character.dexterity,
+    recovery: character.recovery,
+    endurance: character.endurance,
+    stun: character.stun,
+    body: character.body,
   };
 }
 

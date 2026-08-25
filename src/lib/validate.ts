@@ -55,6 +55,29 @@ export const schemas = {
     name: displayName,
   }),
 
+  /**
+   * One HERO characteristic, as it arrives from a form.
+   *
+   * Always a string on the way in, and an empty box means zero rather than an
+   * error: a character nobody has filled in yet is a normal thing to save. The
+   * range is deliberately signed — a HERO character at -8 STUN is unconscious,
+   * not invalid — and merely wide enough to catch a typed accident.
+   */
+  heroStat: z.preprocess(
+    (value) => (value === "" || value === null || value === undefined ? 0 : value),
+    z.coerce.number().int().min(-999).max(999),
+  ),
+
+  /**
+   * What a stage slot has left. Every field is optional: a screen that edits one
+   * box sends one box.
+   */
+  setVitals: z.object({
+    endurance: z.number().int().min(-999).max(999).optional(),
+    stun: z.number().int().min(-999).max(999).optional(),
+    body: z.number().int().min(-999).max(999).optional(),
+  }),
+
   sessionStart: z.object({
     campaignId: z.string().min(1).max(64),
   }),

@@ -190,6 +190,25 @@ The app should have the following features:
   and the scene sits in the second. Stacked, the order is the round, their
   character, the scene, then the players.
 
+* Every character, PC and NPC alike, is a HERO System 5th Edition Revised
+  character. Each one in the library carries six characteristics — SPEED,
+  DEXTERITY, RECOVERY, ENDURANCE, STUN and BODY — edited in the character
+  editor. A character nobody has filled in yet reads as zeros.
+
+* ENDURANCE, STUN and BODY are also tracked per active character in a session,
+  as what that copy has left rather than what it started with: two copies of one
+  NPC take their own wounds. A slot is seeded from the character's totals when
+  it joins the scene and is independent from then on, so editing the library
+  mid-session never quietly heals anyone. The values are shown as what is left
+  over the total, may go negative, and are not capped at the total.
+
+* The game master may see and edit those three for any active character, from
+  the initiative panel. A player may see and edit them for their own character
+  only, on their `My character` panel. The scene shows them to a player for
+  nobody at all — not for anyone else, since how hurt the monster is is the game
+  master's to give out, and not for themselves either, since their own panel
+  already carries them. Every change reaches all the screens live.
+
 * Each PC and NPC on a session page should be shown with a small picture of
   itself — in the scene, and in the list the game master adds them from —
   falling back to a placeholder for a character that has no background image.
