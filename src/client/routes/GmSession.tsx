@@ -92,10 +92,34 @@ export function GmSessionConsole() {
     );
 
   /** Takes one slot off the stage, leaving any other copy of it where it is. */
-  const removeCharacter = (slotId: string) =>
-    mutate(() =>
+  /**
+   * Takes a character off the stage.
+   *
+   * It asks first only when someone is actually playing the character: removing
+   * a claimed PC drops that player back to the pick-a-character screen mid-game,
+   * which is not what a misplaced click should be able to do. Everything else —
+   * an unclaimed hero, a goblin, one goblin of several — goes straight away,
+   * because a fight is run by clicking quickly and a dialog in front of every
+   * removal would be answered without being read.
+   */
+  const removeCharacter = async (slotId: string) => {
+    const slot = snapshot?.characters.find((character) => character.id === slotId) ?? null;
+    const heldBy = slot?.kind === "pc" ? slot.claimedByPlayerName : null;
+
+    if (heldBy) {
+      const ok = await confirm({
+        title: `Take ${slot!.name} out of the scene?`,
+        body: `${heldBy} is playing them, and will be asked to choose a character again. `
+          + "Their initiative place goes with them.",
+        confirmLabel: "Remove",
+      });
+      if (!ok) return;
+    }
+
+    void mutate(() =>
       api.delete<{ snapshot: Snapshot }>(`/api/sessions/${sessionId}/stage/${slotId}`),
     );
+  };
 
   const setTurn = (slotId: string) =>
     mutate(() => api.postJson<{ snapshot: Snapshot }>(`/api/sessions/${sessionId}/turn`, {

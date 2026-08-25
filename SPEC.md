@@ -270,6 +270,12 @@ The app should have the following features:
   will be controlled manually. Allow the GM to drag PCs and NPCs to change the
   order.
 
+* Taking a character off the stage asks first only when a player is actually
+  playing it: that player is dropped back to choosing a character, which is not
+  something a misplaced click should do mid-game. An unclaimed character or an
+  NPC goes straight away — a fight is run by clicking quickly, and a question in
+  front of every removal would be answered without being read.
+
 * The GM should be able to add and remove NPCs from the session. When this
   happens, the player's screens should update instantly without a refresh. Use
   websockets or SSE for this.

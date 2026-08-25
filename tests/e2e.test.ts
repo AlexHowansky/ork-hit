@@ -373,6 +373,41 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     await player.getByText("It's your turn!").waitFor({ timeout: 5000 });
   }, 60_000);
 
+  test("taking a played character out of the scene asks first", async () => {
+    if (!browser) return;
+    const { page: gm, code } = await gmWithSession();
+    const player = await playerIn(code, "Ivy");
+
+    const stage = gm.locator("section", { hasText: "Initiative order" });
+
+    // An NPC nobody is playing goes without a question.
+    await stage.getByRole("listitem").filter({ hasText: "Strahd" })
+      .getByRole("button", { name: /Remove Strahd/ }).click();
+    await gm.getByText("Initiative order (2)").waitFor({ timeout: 5000 });
+
+    // Elara is a player character, but unclaimed — still no question.
+    await stage.getByRole("listitem").filter({ hasText: "Elara" })
+      .getByRole("button", { name: /Remove Elara/ }).click();
+    await gm.getByText("Initiative order (1)").waitFor({ timeout: 5000 });
+
+    // Thorin is being played, so this one is asked about — and refusing it
+    // leaves the scene exactly as it was.
+    await stage.getByRole("listitem").filter({ hasText: "Thorin" })
+      .getByRole("button", { name: /Remove Thorin/ }).click();
+    const asking = gm.getByRole("dialog", { name: "Take Thorin out of the scene?" });
+    await asking.getByText("Ivy is playing them").waitFor();
+    await asking.getByRole("button", { name: "Cancel" }).click();
+    await gm.getByText("Initiative order (1)").waitFor({ timeout: 5000 });
+
+    // Going through with it drops the player back to choosing a character.
+    await stage.getByRole("listitem").filter({ hasText: "Thorin" })
+      .getByRole("button", { name: /Remove Thorin/ }).click();
+    await gm.getByRole("dialog", { name: "Take Thorin out of the scene?" })
+      .getByRole("button", { name: "Remove" }).click();
+    await gm.getByText("Initiative order (0)").waitFor({ timeout: 5000 });
+    await player.getByText("Choose your character").waitFor({ timeout: 5000 });
+  }, 60_000);
+
   test("the initiative order can be dragged, and players see the new order", async () => {
     if (!browser) return;
     const { page: gm, code } = await gmWithSession();
