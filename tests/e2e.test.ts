@@ -81,6 +81,7 @@ async function gmWithSession(): Promise<{ page: Page; code: string; campaignName
       buffer: Buffer.from(`<h1>${name}</h1><script>window.loaded = true;</script>`),
     });
     // Characteristics, so the session screens have totals to count down from.
+    await page.getByLabel("REC", { exact: true }).fill("8");
     await page.getByLabel("END", { exact: true }).fill("30");
     await page.getByLabel("STUN", { exact: true }).fill("25");
     await page.getByLabel("BODY", { exact: true }).fill("12");
@@ -223,6 +224,17 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     await myPanel.getByLabel("END left for Thorin").fill("11");
     await myPanel.getByLabel("END left for Thorin").press("Enter");
     await waitForValue(gmRow.getByLabel("END left for Thorin"), "11");
+
+    // A Recovery gives REC back to both, and stops at the totals. The library
+    // gave everyone REC 8, so 7 STUN comes back to 15 and END is already full.
+    await gmRow.getByLabel("Take a Recovery for Thorin").click();
+    await waitForValue(gmRow.getByLabel("STUN left for Thorin"), "15");
+    await waitForValue(gmRow.getByLabel("END left for Thorin"), "19");
+
+    // The player may take their own, from their own panel, and both screens see it.
+    await myPanel.getByLabel("Take a Recovery for Thorin").click();
+    await waitForValue(myPanel.getByLabel("END left for Thorin"), "27");
+    await waitForValue(gmRow.getByLabel("STUN left for Thorin"), "23");
 
     // The scene carries none of these for a player: someone else's are not
     // theirs to see, and their own are on the panel above rather than twice.

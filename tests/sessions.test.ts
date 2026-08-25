@@ -369,6 +369,42 @@ describe("what a stage slot has left", () => {
     expect(row.cur_stun).toBe(4);
   });
 
+  test("a Recovery gives back RECOVERY, and stops at the totals", () => {
+    const { session, campaign } = makeSession(1);
+    const brick = makeCharacter(campaign.id, "npc", unique("Brick"), {
+      recovery: 8,
+      endurance: 30,
+      stun: 25,
+      body: 12,
+    });
+    const slot = sessionCharacters.add(session.id, brick.id, "npc")!;
+    sessionCharacters.setVitals(session.id, slot, { endurance: 4, stun: -6 });
+
+    sessionCharacters.takeRecovery(session.id, slot);
+    expect(vitalsOf(session.id).at(-1)).toEqual({ end: 12, stun: 2, body: 12 });
+
+    // Repeated until both are full, and no further: BODY is not a Recovery's business.
+    for (let i = 0; i < 5; i += 1) sessionCharacters.takeRecovery(session.id, slot);
+    expect(vitalsOf(session.id).at(-1)).toEqual({ end: 30, stun: 25, body: 12 });
+  });
+
+  test("a Recovery never takes anything away", () => {
+    const { session, campaign } = makeSession(1);
+    const buffed = makeCharacter(campaign.id, "npc", unique("Buffed"), {
+      recovery: 5,
+      endurance: 20,
+      stun: 20,
+      body: 10,
+    });
+    const slot = sessionCharacters.add(session.id, buffed.id, "npc")!;
+    // Above the total, as a temporary boost leaves a character.
+    sessionCharacters.setVitals(session.id, slot, { endurance: 40 });
+
+    sessionCharacters.takeRecovery(session.id, slot);
+
+    expect(vitalsOf(session.id).at(-1)).toEqual({ end: 40, stun: 20, body: 10 });
+  });
+
   test("leaves the values a patch does not mention alone", () => {
     const { session, campaign } = makeSession(1);
     const npc = makeCharacter(campaign.id, "npc", unique("Wolf"), {

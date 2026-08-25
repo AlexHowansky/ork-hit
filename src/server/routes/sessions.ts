@@ -29,6 +29,7 @@ import {
   sessionCharacters,
 } from "../../db/queries.ts";
 import { db } from "../../db/index.ts";
+import type { GameSessionRow } from "../../db/types.ts";
 import { presentSessionForGm } from "../presenters.ts";
 import { buildGmSessionList, buildSnapshot } from "../session-state.ts";
 import {
@@ -43,6 +44,38 @@ function snapshotOr404(sessionId: string) {
   const snapshot = buildSnapshot(sessionId);
   if (!snapshot) throw errors.notFound("We couldn't find that session.");
   return snapshot;
+}
+
+/**
+ * Who may change what a stage slot has left.
+ *
+ * The game master runs the fight and may write any slot; a player may write
+ * exactly the slot holding the character they claimed, because spending your own
+ * END and taking your own STUN is the part of the bookkeeping that belongs to
+ * the person playing. Shared by the two routes that write those numbers, so
+ * there is one answer to the question rather than two that could drift apart.
+ */
+function requireVitalsAccess(
+  request: BunRequest<"/api/sessions/:id/stage/:slotId/vitals" | "/api/sessions/:id/stage/:slotId/recover">,
+): { session: GameSessionRow; asPlayer: boolean } {
+  const sessionId = request.params.id;
+  const identity = currentPlayer(request);
+  const asPlayer = identity !== null && identity.session.id === sessionId;
+
+  // Not this session's player, so it has to be the owning game master — and the
+  // same rule as every other mutation: an ended session is frozen.
+  const session = asPlayer
+    ? identity.session
+    : requireOwnedActiveSession(request, sessionId).session;
+
+  const characterId = sessionCharacters.characterInSlot(session.id, request.params.slotId);
+  if (!characterId) throw errors.badRequest("That character isn't active in this session.");
+
+  if (asPlayer && characterId !== identity.player.claimed_character_id) {
+    throw errors.forbidden("You can only change your own character's numbers.");
+  }
+
+  return { session, asPlayer };
 }
 
 /** Publishes the new state and returns it to the caller in the same shape. */
@@ -248,29 +281,39 @@ export const sessionRoutes = {
         request: BunRequest<"/api/sessions/:id/stage/:slotId/vitals">,
         { logger }: RequestContext,
       ) => {
-        const sessionId = request.params.id;
-        const slotId = request.params.slotId;
-        const identity = currentPlayer(request);
-        const asPlayer = identity !== null && identity.session.id === sessionId;
-
-        // Not this session's player, so it has to be the owning game master —
-        // and the same rule as every other mutation: an ended session is frozen.
-        const session = asPlayer
-          ? identity.session
-          : requireOwnedActiveSession(request, sessionId).session;
-
-        const characterId = sessionCharacters.characterInSlot(session.id, slotId);
-        if (!characterId) throw errors.badRequest("That character isn't active in this session.");
-
-        if (asPlayer && characterId !== identity.player.claimed_character_id) {
-          throw errors.forbidden("You can only change your own character's numbers.");
-        }
-
+        const { session, asPlayer } = requireVitalsAccess(request);
         const values = await parseJsonBody(request, schemas.setVitals);
-        sessionCharacters.setVitals(session.id, slotId, values);
+
+        sessionCharacters.setVitals(session.id, request.params.slotId, values);
         logger.info("slot vitals set", {
           sessionId: session.id,
-          slotId,
+          slotId: request.params.slotId,
+          by: asPlayer ? "player" : "gm",
+        });
+
+        return publish(session.id);
+      },
+    ),
+  },
+
+  /**
+   * A Recovery: RECOVERY back into both ENDURANCE and STUN, capped at the
+   * character's totals. The arithmetic is the server's, not the button's — two
+   * screens are looking at the same monster, and one of them is always a little
+   * behind.
+   */
+  "/api/sessions/:id/stage/:slotId/recover": {
+    POST: handler(
+      (
+        request: BunRequest<"/api/sessions/:id/stage/:slotId/recover">,
+        { logger }: RequestContext,
+      ) => {
+        const { session, asPlayer } = requireVitalsAccess(request);
+
+        sessionCharacters.takeRecovery(session.id, request.params.slotId);
+        logger.info("recovery taken", {
+          sessionId: session.id,
+          slotId: request.params.slotId,
           by: asPlayer ? "player" : "gm",
         });
 

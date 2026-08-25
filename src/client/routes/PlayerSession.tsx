@@ -178,6 +178,18 @@ export function PlayerSession({
     }
   };
 
+  /** A Recovery for this player's own character; the totals are the server's. */
+  const recover = async (slotId: string) => {
+    try {
+      const { snapshot: next } = await api.post<{ snapshot: Snapshot }>(
+        `/api/sessions/${sessionId}/stage/${slotId}/recover`,
+      );
+      applySnapshot(next);
+    } catch (error) {
+      toast.showError(error);
+    }
+  };
+
   const claim = async (characterId: string) => {
     setClaiming(true);
     try {
@@ -338,6 +350,7 @@ export function PlayerSession({
                 <Vitals
                   character={myCharacter}
                   onChange={(patch) => void setVitals(myCharacter.id, patch)}
+                  onRecover={() => void recover(myCharacter.id)}
                 />
               </div>
             ) : (

@@ -60,6 +60,7 @@ interface RowProps {
    * writable, but the two are different questions.
    */
   onSetVitals?: (patch: VitalsPatch) => void;
+  onRecover?: () => void;
   onSetTurn?: () => void;
   onRemove?: () => void;
   onOpenSheet?: () => void;
@@ -73,6 +74,7 @@ function Row({
   editable,
   isYours,
   onSetVitals,
+  onRecover,
   onSetTurn,
   onRemove,
   onOpenSheet,
@@ -226,12 +228,19 @@ function Row({
         screen.
 
         A band of its own under the row rather than a column beside the name:
-        three labelled boxes and a name cannot both have the room they need in
-        the game master's narrow panel, and across the full width they fit on one
-        line. Indented to clear the handle and picture above.
+        three labelled boxes, a name and a control cannot all have the room they
+        need in the game master's narrow panel, and across the full width they
+        fit on one line. Only slightly indented — the width is what keeps the
+        Recovery control on the same line as the numbers it changes, so there is
+        none to give away to lining up with the name above.
       */}
       {onSetVitals ? (
-        <Vitals character={character} onChange={onSetVitals} className="pl-[4.25rem]" />
+        <Vitals
+          character={character}
+          onChange={onSetVitals}
+          onRecover={onRecover}
+          className="pl-2"
+        />
       ) : null}
     </li>
   );
@@ -244,6 +253,7 @@ export function InitiativeList({
   yourCharacterId = null,
   onReorder,
   onSetVitals,
+  onRecover,
   onSetTurn,
   onRemove,
   onOpenSheet,
@@ -261,6 +271,8 @@ export function InitiativeList({
    * them on their own character panel rather than in a list of everybody.
    */
   onSetVitals?: (slotId: string, patch: VitalsPatch) => void;
+  /** Gives each row a Recovery control, beside the numbers it changes. */
+  onRecover?: (slotId: string) => void;
   onSetTurn?: (slotId: string) => void;
   onRemove?: (slotId: string) => void;
   /**
@@ -305,6 +317,7 @@ export function InitiativeList({
       // On the character: a player's own PC is theirs wherever it stands.
       isYours={character.characterId === yourCharacterId}
       onSetVitals={onSetVitals ? (patch) => onSetVitals(character.id, patch) : undefined}
+      onRecover={onRecover ? () => onRecover(character.id) : undefined}
       onSetTurn={onSetTurn ? () => onSetTurn(character.id) : undefined}
       onRemove={onRemove ? () => onRemove(character.id) : undefined}
       onOpenSheet={onOpenSheet ? () => onOpenSheet(character) : undefined}

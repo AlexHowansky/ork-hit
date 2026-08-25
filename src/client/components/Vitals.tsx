@@ -11,6 +11,10 @@
  * back. Nothing is sent per keystroke — a half-typed "-" or "1" on the way to
  * "12" is not a value anyone should see on the other screens.
  *
+ * The Recovery button at the end is the one piece of arithmetic here, and it is
+ * the server's: RECOVERY back into ENDURANCE and STUN, neither going over the
+ * character's total.
+ *
  * Values are signed on purpose: a HERO character at -8 STUN is unconscious, not
  * a mistake, and nothing here clamps to the total either, since a Recovery can
  * take a character back up to it but a temporary boost can take them past it.
@@ -106,14 +110,58 @@ function Box({
   );
 }
 
+/**
+ * The Recovery control: a breath in, drawn as one.
+ *
+ * An icon rather than a word because it sits at the end of a row of small boxes
+ * in a narrow panel, and "Take a Recovery" would be wider than the three numbers
+ * it follows. Spelled out in the label and the tooltip, which is where a control
+ * with a picture on it says what it does.
+ */
+function RecoveryButton({ name, recovery, onClick }: {
+  name: string;
+  recovery: number;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      onPointerDown={(event) => event.stopPropagation()}
+      title={`Take a Recovery: +${recovery} to END and STUN, up to full`}
+      aria-label={`Take a Recovery for ${name}`}
+      className="flex h-6 w-6 items-center justify-center rounded text-stone-500 hover:bg-stone-200 hover:text-stone-800 dark:text-stone-400 dark:hover:bg-stone-700 dark:hover:text-stone-100"
+    >
+      {/* A lung's worth of air: an arrow curling back up to full. */}
+      <svg
+        viewBox="0 0 24 24"
+        className="h-4 w-4"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M20 12a8 8 0 1 1-2.34-5.66" />
+        <path d="M20 4v4h-4" />
+        <path d="M12 9v6M9 12h6" />
+      </svg>
+    </button>
+  );
+}
+
 export function Vitals({
   character,
   onChange,
+  onRecover,
   className = "",
 }: {
   character: SessionCharacter;
   /** Absent where this reader may look but not touch. */
   onChange?: (patch: VitalsPatch) => void;
+  /** Absent for the same reason, and for a character with no RECOVERY to take. */
+  onRecover?: () => void;
   className?: string;
 }) {
   return (
@@ -131,6 +179,9 @@ export function Vitals({
           />
         );
       })}
+      {onRecover ? (
+        <RecoveryButton name={character.name} recovery={character.recovery} onClick={onRecover} />
+      ) : null}
     </div>
   );
 }

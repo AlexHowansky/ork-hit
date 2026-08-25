@@ -209,6 +209,11 @@ The app should have the following features:
   master's to give out, and not for themselves either, since their own panel
   already carries them. Every change reaches all the screens live.
 
+* Beside those numbers, wherever they may be edited, is a control that takes a
+  Recovery: RECOVERY is added to both current ENDURANCE and current STUN, and
+  neither goes past the character's total. It never takes anything away, so a
+  character somehow above their total keeps what they have.
+
 * Each PC and NPC on a session page should be shown with a small picture of
   itself — in the scene, and in the list the game master adds them from —
   falling back to a placeholder for a character that has no background image.

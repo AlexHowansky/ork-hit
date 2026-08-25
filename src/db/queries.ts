@@ -496,6 +496,37 @@ export const sessionCharacters = {
   },
 
   /**
+   * A Recovery: the character catches their breath, and gets their RECOVERY back
+   * in both ENDURANCE and STUN.
+   *
+   * Neither goes over the character's total, and neither goes down — a slot
+   * already above its total (a temporary boost, say) keeps what it has rather
+   * than being trimmed to the maximum by a breather. The arithmetic is done in
+   * the statement rather than read out and written back, so two people pressing
+   * it at once cannot lose one of the two Recoveries.
+   */
+  takeRecovery(sessionId: string, slotId: string): void {
+    db.query(`
+      UPDATE session_characters SET
+        cur_endurance = MAX(
+          cur_endurance,
+          MIN(
+            (SELECT endurance FROM characters WHERE id = character_id),
+            cur_endurance + (SELECT recovery FROM characters WHERE id = character_id)
+          )
+        ),
+        cur_stun = MAX(
+          cur_stun,
+          MIN(
+            (SELECT stun FROM characters WHERE id = character_id),
+            cur_stun + (SELECT recovery FROM characters WHERE id = character_id)
+          )
+        )
+      WHERE game_session_id = $sessionId AND id = $slotId
+    `).run({ sessionId, slotId });
+  },
+
+  /**
    * Writes what a slot has left. Absent values are left as they were, so a
    * screen that edits one box does not have to send the other two.
    *

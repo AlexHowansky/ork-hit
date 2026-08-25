@@ -421,11 +421,20 @@ none. What the monster has left is the game master's information to give out or
 hold back at the table, and a player's own numbers are on their `My character`
 panel rather than a second time in the scene.
 
-`PATCH /api/sessions/:id/stage/:slotId/vitals` is the one route both roles may
-call. The game master runs the fight and may write any slot; a player may write
-exactly the slot holding the character they claimed, checked on the server rather
-than by hiding the boxes. Both end in the same `publish`, so an edit from either
-screen reaches every screen the usual way. `src/lib/hero.ts` names the six
+A Recovery is a button, but the arithmetic is not: `POST
+/api/sessions/:id/stage/:slotId/recover` does it in one `UPDATE`, adding RECOVERY
+to both current values and capping each at the character's total. Two screens are
+looking at the same monster and one of them is always slightly behind, so a
+button that computed the new number from what it happened to be showing would
+lose one of two Recoveries pressed at once.
+
+`PATCH /api/sessions/:id/stage/:slotId/vitals` and that route are the two both
+roles may call, and they share one authorization helper — `requireVitalsAccess`
+— so there is one answer to who may change a slot's numbers rather than two that
+could drift apart. The game master runs the fight and may write any slot; a player may write exactly
+the slot holding the character they claimed, checked on the server rather than by
+hiding the boxes. Both end in the same `publish`, so an edit from either screen
+reaches every screen the usual way. `src/lib/hero.ts` names the six
 characteristics once, for the form fields, the labels and the API alike.
 
 ## The turn chime
