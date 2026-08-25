@@ -29,7 +29,12 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { SessionCharacter } from "../types.ts";
-import { faGripVertical } from "@fortawesome/free-solid-svg-icons";
+import {
+  faEye,
+  faGripVertical,
+  faPlay,
+  faUserMinus,
+} from "@fortawesome/free-solid-svg-icons";
 import { CharacterThumb, Icon, KindBadge } from "./ui.tsx";
 import { Vitals, type VitalsPatch } from "./Vitals.tsx";
 
@@ -113,7 +118,15 @@ function Row({
       } ${isDragging ? "relative z-10 opacity-80 shadow-lg" : ""}`}
       aria-current={isActive ? "true" : undefined}
     >
-      <div className="flex items-center gap-3">
+      {/*
+        The controls fall onto their own line rather than squeezing the name out
+        of existence: three labelled buttons and a name cannot both have the room
+        they want in the game master's narrow column, and a name clipped to
+        nothing is worse than a row one line taller. `basis-40` is what makes the
+        wrap happen — without a width to fall below, the name column would shrink
+        to zero first and never trigger it.
+      */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
       {editable ? (
         <button
           type="button"
@@ -135,7 +148,7 @@ function Row({
 
       <CharacterThumb kind={character.kind} backgroundUrl={character.backgroundUrl} />
 
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 basis-40">
         {/* Badges wrap below the name rather than crowding it out: with a picture
             and three of them, the game master's narrower column runs out of room. */}
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -193,7 +206,7 @@ function Row({
             onClick={onOpenSheet}
             className="rounded px-2 py-1 text-xs text-stone-600 hover:bg-stone-200 dark:text-stone-400 dark:hover:bg-stone-700"
           >
-            Sheet
+            <Icon icon={faEye} /> Sheet
           </button>
         ) : null}
         {editable && onSetTurn ? (
@@ -202,7 +215,7 @@ function Row({
             onClick={onSetTurn}
             className="rounded px-2 py-1 text-xs text-stone-600 hover:bg-stone-200 dark:text-stone-400 dark:hover:bg-stone-700"
           >
-            Set turn
+            <Icon icon={faPlay} /> Set turn
           </button>
         ) : null}
         {editable && onRemove ? (
@@ -212,7 +225,7 @@ function Row({
             className="rounded px-2 py-1 text-xs text-red-600 hover:bg-red-100 dark:text-red-400 dark:hover:bg-red-950"
             aria-label={`Remove ${copyLabel} from the session`}
           >
-            Remove
+            <Icon icon={faUserMinus} /> Remove
           </button>
         ) : null}
       </div>
