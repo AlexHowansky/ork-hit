@@ -421,6 +421,12 @@ none. What the monster has left is the game master's information to give out or
 hold back at the table, and a player's own numbers are on their `My character`
 panel rather than a second time in the scene.
 
+Each box is coloured by how much of the total is left, so the state of a fight
+reads off the panel before any of the numbers do. Where the boundaries fall is a
+rule about characters rather than about colours, so it lives in `bandFor`
+(`src/lib/hero.ts`) with the characteristics themselves, and the component is
+left deciding only what red, yellow and green look like in each theme.
+
 A Recovery is a button, but the arithmetic is not: `POST
 /api/sessions/:id/stage/:slotId/recover` does it in one `UPDATE`, adding RECOVERY
 to both current values and capping each at the character's total. Two screens are

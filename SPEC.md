@@ -209,6 +209,12 @@ The app should have the following features:
   master's to give out, and not for themselves either, since their own panel
   already carries them. Every change reaches all the screens live.
 
+* Each of those three boxes is coloured by how much of the total is left: under
+  a third is red, up to two thirds is yellow, and above that green. A character
+  with no total recorded has no reading to give and stays uncoloured. The number
+  itself is always shown, so the colour is a second way of saying it rather than
+  the only one.
+
 * Beside those numbers, wherever they may be edited, is a control that takes a
   Recovery: RECOVERY is added to both current ENDURANCE and current STUN, and
   neither goes past the character's total. It never takes anything away, so a

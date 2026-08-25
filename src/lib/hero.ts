@@ -36,3 +36,24 @@ export const HERO_STAT_LABELS: Record<HeroStatField, string> = {
 export const HERO_VITAL_FIELDS = ["endurance", "stun", "body"] as const;
 
 export type HeroVitalField = (typeof HERO_VITAL_FIELDS)[number];
+
+/**
+ * How healthy one of the spendable characteristics is, as a band rather than a
+ * colour: under a third left is `"low"`, up to two thirds `"middling"`, above
+ * that `"full"`.
+ *
+ * `"unknown"` is nought out of nought — a character nobody has filled in yet,
+ * where there is no reading to give rather than a good or a bad one.
+ *
+ * The rule lives here, with the characteristics themselves, so the screens are
+ * left deciding only what each band looks like.
+ */
+export type VitalBand = "low" | "middling" | "full" | "unknown";
+
+export function bandFor(current: number, max: number): VitalBand {
+  if (max <= 0) return "unknown";
+  const share = (current / max) * 100;
+  if (share < 33) return "low";
+  if (share <= 67) return "middling";
+  return "full";
+}

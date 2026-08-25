@@ -11,6 +11,9 @@
  * back. Nothing is sent per keystroke — a half-typed "-" or "1" on the way to
  * "12" is not a value anyone should see on the other screens.
  *
+ * Each box is coloured by how much of the total is left — see `toneFor` — so the
+ * state of a fight reads off the panel before any of the numbers do.
+ *
  * The Recovery button at the end is the one piece of arithmetic here, and it is
  * the server's: RECOVERY back into ENDURANCE and STUN, neither going over the
  * character's total.
@@ -21,7 +24,13 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { HERO_STAT_LABELS, HERO_VITAL_FIELDS, type HeroVitalField } from "../../lib/hero.ts";
+import {
+  HERO_STAT_LABELS,
+  HERO_VITAL_FIELDS,
+  bandFor,
+  type HeroVitalField,
+  type VitalBand,
+} from "../../lib/hero.ts";
 import type { SessionCharacter } from "../types.ts";
 
 /** The two numbers one box shows: what is left, and what it is out of. */
@@ -37,6 +46,28 @@ function pairFor(
 }
 
 export type VitalsPatch = Partial<Record<HeroVitalField, number>>;
+
+/**
+ * What each band looks like: red when a character is nearly out, yellow while
+ * they are wearing down, green while they are holding up — the reading a fuel
+ * gauge gives, so a game master glancing down the initiative order sees who is
+ * in trouble without reading a single number. `bandFor` decides which is which.
+ *
+ * Border, number and a faint wash together, because the boxes are small: a
+ * border alone at this size is a hairline. The number is always there to read,
+ * which is what a reader who cannot separate red from green goes by, and the
+ * wash stays faint enough to keep it legible in both themes.
+ */
+const TONES: Record<VitalBand, string> = {
+  low: "border-rose-400 bg-rose-50 text-rose-900 dark:border-rose-500/70 dark:bg-rose-950/50 dark:text-rose-100",
+  middling:
+    "border-amber-400 bg-amber-50 text-amber-900 dark:border-amber-500/70 dark:bg-amber-950/50 dark:text-amber-100",
+  full: "border-emerald-400 bg-emerald-50 text-emerald-900 dark:border-emerald-500/70 dark:bg-emerald-950/50 dark:text-emerald-100",
+  // No total is no reading, rather than a good one or a bad one.
+  unknown: "border-stone-300 bg-white text-stone-900 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100",
+};
+
+const toneFor = (current: number, max: number) => TONES[bandFor(current, max)];
 
 function Box({
   label,
@@ -98,10 +129,10 @@ function Box({
           // A row in the initiative order is draggable, and a drag started on a
           // box would be a drag instead of a caret.
           onPointerDown={(event) => event.stopPropagation()}
-          className="w-11 rounded border border-stone-300 bg-white px-1 py-0.5 text-center text-xs tabular-nums text-stone-900 focus:border-amber-500 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100"
+          className={`w-11 rounded border px-1 py-0.5 text-center text-xs font-medium tabular-nums focus:border-amber-500 ${toneFor(current, max)}`}
         />
       ) : (
-        <span className="text-xs font-medium tabular-nums text-stone-800 dark:text-stone-200">
+        <span className={`rounded border px-1 py-0.5 text-xs font-medium tabular-nums ${toneFor(current, max)}`}>
           {current}
         </span>
       )}
