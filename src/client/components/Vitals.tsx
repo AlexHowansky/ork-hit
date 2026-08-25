@@ -202,7 +202,7 @@ function Box({
 
   // A shade narrower on a phone, so the row still fits the width it is given
   // without wrapping or being cut off; roomier as soon as there is room.
-  const shared = `w-10 sm:w-11 rounded border px-1 py-0.5 text-center text-xs font-medium tabular-nums ${toneFor(current, max)}`;
+  const shared = `rounded border px-1 py-0.5 text-center text-xs font-medium tabular-nums ${toneFor(current, max)}`;
 
   return (
     <div className="flex items-center gap-0.5 sm:gap-1">
