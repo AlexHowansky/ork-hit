@@ -151,7 +151,7 @@ export function AppPage({
 }) {
   return (
     <div
-      className={`w-full space-y-5 p-4 sm:p-6 wide:flex wide:h-dvh wide:flex-col wide:gap-5 wide:space-y-0 wide:overflow-hidden ${className}`}
+      className={`w-full space-y-2.5 p-2 sm:p-3 wide:flex wide:h-dvh wide:flex-col wide:gap-2.5 wide:space-y-0 wide:overflow-hidden ${className}`}
     >
       {children}
     </div>

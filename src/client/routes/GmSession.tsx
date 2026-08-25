@@ -22,7 +22,7 @@ import {
   Panel,
 } from "../components/ui.tsx";
 import {
-  faArrowLeft,
+  faBook,
   faCopy,
   faLink,
   faStop,
@@ -250,16 +250,24 @@ export function GmSessionConsole() {
 
   return (
     <AppPage>
-      <header className="flex shrink-0 flex-wrap items-start justify-between gap-3">
-        <div>
-          <Button variant="ghost" onClick={() => navigate("/gm")} className="mb-1 -ml-2">
-            <Icon icon={faArrowLeft} /> Library
+      {/*
+        Three tracks rather than a row with the name in the middle of it: the
+        outer two are equal, so the campaign's name is centred on the page rather
+        than on whatever is left over between the button and the toggle, and it
+        stays put as the reconnecting note comes and goes.
+      */}
+      <header className="grid shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-3">
+        <div className="justify-self-start">
+          <Button variant="ghost" onClick={() => navigate("/gm")}>
+            <Icon icon={faBook} /> Library
           </Button>
-          <h1 className="text-xl font-semibold text-stone-900 dark:text-stone-100">
-            {session.campaignName}
-          </h1>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+
+        <h1 className="truncate text-center text-xl font-semibold text-stone-900 dark:text-stone-100">
+          {session.campaignName}
+        </h1>
+
+        <div className="flex flex-wrap items-center justify-end gap-2 justify-self-end">
           {connection === "reconnecting" ? (
             <span className="text-xs text-amber-700 dark:text-amber-400">Reconnecting…</span>
           ) : null}
@@ -285,8 +293,8 @@ export function GmSessionConsole() {
         guard for the other direction — a list taller than the fixed wide frame
         shrinks back and scrolls its own body instead of being clipped by it.
       */}
-      <div className="flex flex-col gap-5 sm:grid sm:grid-cols-2 sm:items-start sm:gap-5 wide:min-h-0 wide:flex-1 wide:grid-cols-3 wide:items-stretch">
-        <div className="contents sm:flex sm:min-w-0 sm:flex-col sm:gap-5 wide:order-1 wide:min-h-0">
+      <div className="flex flex-col gap-2.5 sm:grid sm:grid-cols-2 sm:items-start sm:gap-2.5 wide:min-h-0 wide:flex-1 wide:grid-cols-3 wide:items-stretch">
+        <div className="contents sm:flex sm:min-w-0 sm:flex-col sm:gap-2.5 wide:order-1 wide:min-h-0">
           <TurnControls
             className="sm:shrink-0"
             round={snapshot?.session.round ?? session.round}
@@ -331,8 +339,8 @@ export function GmSessionConsole() {
           the two part company — the library belongs beside the order it feeds,
           which puts the players last — so each takes a column of its own.
         */}
-        <div className="contents sm:flex sm:min-w-0 sm:flex-col sm:gap-5 wide:contents">
-          <div className="contents wide:order-3 wide:flex wide:min-h-0 wide:min-w-0 wide:flex-col wide:gap-5">
+        <div className="contents sm:flex sm:min-w-0 sm:flex-col sm:gap-2.5 wide:contents">
+          <div className="contents wide:order-3 wide:flex wide:min-h-0 wide:min-w-0 wide:flex-col wide:gap-2.5">
           {invite}
 
           <Panel title={`Players (${snapshot?.players.length ?? 0})`} scroll>

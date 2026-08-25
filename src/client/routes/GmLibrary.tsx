@@ -619,7 +619,7 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
 
       <div
         ref={containerRef}
-        className="space-y-6 wide:grid wide:min-h-0 wide:flex-1 wide:grid-cols-[var(--campaign-col)_minmax(0,1.4fr)] wide:gap-6 wide:space-y-0"
+        className="space-y-3 wide:grid wide:min-h-0 wide:flex-1 wide:grid-cols-[var(--campaign-col)_minmax(0,1.4fr)] wide:gap-3 wide:space-y-0"
       >
         <Panel
           ref={panelRef}

@@ -228,7 +228,7 @@ export function PlayerSession({
       .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
 
     return (
-      <div className="w-full p-4 sm:p-6">
+      <div className="w-full p-2 sm:p-3">
         <header className="mb-6 flex items-center justify-between">
           <h1 className="text-xl font-semibold text-stone-900 dark:text-stone-100">
             Welcome, {playerName}
@@ -319,8 +319,8 @@ export function PlayerSession({
         list taller than the fixed wide frame shrinks back and scrolls its own body
         instead of spilling out of the page, which the wide layout clips.
       */}
-      <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:gap-5 wide:min-h-0 wide:flex-1 wide:items-stretch">
-        <div className="contents lg:flex lg:min-w-0 lg:flex-1 lg:flex-col lg:gap-5 wide:min-h-0">
+      <div className="flex flex-col gap-2.5 lg:flex-row lg:items-start lg:gap-2.5 wide:min-h-0 wide:flex-1 wide:items-stretch">
+        <div className="contents lg:flex lg:min-w-0 lg:flex-1 lg:flex-col lg:gap-2.5 wide:min-h-0">
           <TurnControls
             className="lg:shrink-0"
             round={snapshot.session.round}
