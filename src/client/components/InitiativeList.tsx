@@ -109,12 +109,17 @@ function Row({
       // as colour, so it reads in both themes and without colour vision. The
       // turn keeps the border when a row is both on turn and unclaimed — the
       // badge below carries the unclaimed cue in that case.
+      //
+      // Every colour here names the *left* border rather than the border: the
+      // hairline between rows is the list's own `divide-y`, drawn on each row's
+      // bottom edge, and a bare `border-transparent` would paint that out along
+      // with the three sides it was meant for.
       className={`flex flex-col gap-1 border-l-4 px-3 py-2.5 ${
         isActive
-          ? "border-amber-500 bg-amber-50 dark:bg-amber-950/40"
+          ? "border-l-amber-500 bg-amber-50 dark:bg-amber-950/40"
           : isUnclaimed
-            ? "border-rose-400 bg-rose-50 hover:bg-rose-100 dark:border-rose-500/70 dark:bg-rose-950/40 dark:hover:bg-rose-950/60"
-            : "border-transparent hover:bg-stone-50 dark:hover:bg-stone-800/50"
+            ? "border-l-rose-400 bg-rose-50 hover:bg-rose-100 dark:border-l-rose-500/70 dark:bg-rose-950/40 dark:hover:bg-rose-950/60"
+            : "border-l-transparent hover:bg-stone-50 dark:hover:bg-stone-800/50"
       } ${isDragging ? "relative z-10 opacity-80 shadow-lg" : ""}`}
       aria-current={isActive ? "true" : undefined}
     >
