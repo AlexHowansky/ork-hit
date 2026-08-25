@@ -187,7 +187,7 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
   }, 60_000);
 
   /**
-   * Waits for a box to hold a value, since the number may still be crossing a
+   * Waits for a box to read a value, since the number may still be crossing a
    * socket. Playwright's own auto-retrying assertions are not bun:test's
    * `expect`, so the retry is written out.
    */
@@ -195,11 +195,17 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     const deadline = Date.now() + 5000;
     let seen = "";
     while (Date.now() < deadline) {
-      seen = await locator.inputValue();
+      seen = (await locator.innerText()).trim();
       if (seen === expected) return;
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
     expect(seen).toBe(expected);
+  };
+
+  /** Presses a box and picks a change out of the dialog it opens. */
+  const change = async (page: Page, box: Locator, amount: string) => {
+    await box.click();
+    await page.getByRole("dialog").getByRole("button", { name: amount, exact: true }).click();
   };
 
   test("what a character has left is edited from either screen", async () => {
@@ -215,14 +221,20 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     await waitForValue(gmRow.getByLabel("STUN left for Thorin"), "25");
     await waitForValue(myPanel.getByLabel("END left for Thorin"), "30");
 
-    // The game master knocks Thorin down; the player's own panel follows.
-    await gmRow.getByLabel("STUN left for Thorin").fill("7");
-    await gmRow.getByLabel("STUN left for Thorin").press("Enter");
+    // The game master takes 18 STUN off Thorin — the change, not the total, is
+    // what the dialog asks for — and the player's own panel follows.
+    await change(gm, gmRow.getByLabel("STUN left for Thorin"), "−18");
+    await waitForValue(gmRow.getByLabel("STUN left for Thorin"), "7");
     await waitForValue(myPanel.getByLabel("STUN left for Thorin"), "7");
 
     // The player spends their own ENDURANCE, and the console follows.
-    await myPanel.getByLabel("END left for Thorin").fill("11");
-    await myPanel.getByLabel("END left for Thorin").press("Enter");
+    await change(player, myPanel.getByLabel("END left for Thorin"), "−19");
+    await waitForValue(gmRow.getByLabel("END left for Thorin"), "11");
+
+    // An exact value is still reachable, for putting a mistake right.
+    await myPanel.getByLabel("END left for Thorin").click();
+    await player.getByRole("dialog").getByLabel("Or set it exactly").fill("11");
+    await player.getByRole("dialog").getByRole("button", { name: "Set" }).click();
     await waitForValue(gmRow.getByLabel("END left for Thorin"), "11");
 
     // A Recovery gives REC back to both, and stops at the totals. The library

@@ -215,6 +215,11 @@ The app should have the following features:
   master's to give out, and not for themselves either, since their own panel
   already carries them. Every change reaches all the screens live.
 
+* Those three numbers are changed by the difference rather than by typing a new
+  total: pressing one opens a dialog offering every value from 50 off to 50 on,
+  and the app does the sum. An exact value is still reachable in the same dialog,
+  for setting a character up or putting a mistake right.
+
 * Each of those three boxes is coloured by how much of the total is left: under
   a third is red, up to two thirds is yellow, and above that green. A character
   with no total recorded has no reading to give and stays uncoloured. The number

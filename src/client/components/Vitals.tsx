@@ -6,10 +6,10 @@
  * same way wherever it is read: what this copy has left, over the total the
  * character carries in the library.
  *
- * Editing is deliberately unfussy, because it happens mid-fight: type over the
- * number and it is saved when you leave the box or press Enter, Escape puts it
- * back. Nothing is sent per keystroke — a half-typed "-" or "1" on the way to
- * "12" is not a value anyone should see on the other screens.
+ * Editing is deliberately unfussy, because it happens mid-fight: press the
+ * number and pick how much came off or went back on, and the app does the sum.
+ * An exact value is still reachable in the same dialog, for setting a monster up
+ * or putting right a mistake.
  *
  * Each box is coloured by how much of the total is left — see `toneFor` — so the
  * state of a fight reads off the panel before any of the numbers do.
@@ -23,10 +23,10 @@
  * take a character back up to it but a temporary boost can take them past it.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import { faBed, faHeartPulse } from "@fortawesome/free-solid-svg-icons";
-import { Icon } from "./ui.tsx";
+import { Button, Field, Icon, Modal } from "./ui.tsx";
 import {
   HERO_STAT_LABELS,
   HERO_VITAL_FIELDS,
@@ -72,6 +72,113 @@ const TONES: Record<VitalBand, string> = {
 
 const toneFor = (current: number, max: number) => TONES[bandFor(current, max)];
 
+/**
+ * The picker a box opens: how much to take, or how much to recover.
+ *
+ * Mid-fight the number in hand is never the total, it is the change — "that's
+ * eleven STUN" — so this asks for the change and does the sum. Taking and
+ * recovering are separate blocks rather than one long run through zero, because
+ * a misread sign in a fight is a character knocked out by a heal.
+ *
+ * The small numbers come first in each block: most of what a die roll produces
+ * is single figures, and the fifties are there for the bad round.
+ *
+ * An exact value is still reachable at the bottom, because a game master setting
+ * a monster up, or correcting a mistake, knows the number they want rather than
+ * the difference to it.
+ */
+const STEPS = Array.from({ length: 50 }, (_, index) => index + 1);
+
+function DeltaPicker({
+  label,
+  name,
+  current,
+  max,
+  onPick,
+  onSet,
+  onClose,
+}: {
+  label: string;
+  name: string;
+  current: number;
+  max: number;
+  onPick: (delta: number) => void;
+  onSet: (value: number) => void;
+  onClose: () => void;
+}) {
+  const [exact, setExact] = useState(String(current));
+
+  const grid = (sign: 1 | -1) => (
+    <div className="grid grid-cols-10 gap-1">
+      {STEPS.map((step) => (
+        <button
+          key={step}
+          type="button"
+          onClick={() => onPick(sign * step)}
+          className={`rounded py-1 text-xs font-medium tabular-nums ${
+            sign < 0
+              ? "bg-rose-50 text-rose-900 hover:bg-rose-200 dark:bg-rose-950/50 dark:text-rose-100 dark:hover:bg-rose-900"
+              : "bg-emerald-50 text-emerald-900 hover:bg-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-100 dark:hover:bg-emerald-900"
+          }`}
+        >
+          {sign < 0 ? "−" : "+"}
+          {step}
+        </button>
+      ))}
+    </div>
+  );
+
+  return (
+    <Modal title={`${label} — ${name}`} onClose={onClose}>
+      <p className="mb-4 text-sm text-stone-600 dark:text-stone-400">
+        <span className="font-semibold tabular-nums text-stone-900 dark:text-stone-100">
+          {current}
+        </span>
+        {max > 0 ? <span className="tabular-nums"> of {max}</span> : null}. Choose how much to
+        take or recover.
+      </p>
+
+      <p className="mb-1 text-xs font-semibold tracking-wide text-stone-500 uppercase dark:text-stone-400">
+        Take
+      </p>
+      {grid(-1)}
+
+      <p className="mt-4 mb-1 text-xs font-semibold tracking-wide text-stone-500 uppercase dark:text-stone-400">
+        Recover
+      </p>
+      {grid(1)}
+
+      <form
+        className="mt-5 flex items-end gap-2 border-t border-stone-200 pt-4 dark:border-stone-800"
+        onSubmit={(event) => {
+          event.preventDefault();
+          const parsed = Number.parseInt(exact, 10);
+          if (!Number.isNaN(parsed)) onSet(parsed);
+        }}
+      >
+        <Field
+          label="Or set it exactly"
+          value={exact}
+          inputMode="numeric"
+          onChange={(event) => setExact(event.target.value)}
+          className="w-24"
+        />
+        <Button type="submit" className="mb-px">
+          Set
+        </Button>
+      </form>
+    </Modal>
+  );
+}
+
+/**
+ * One characteristic: what is left, over the total.
+ *
+ * Where it may be changed the number is a button rather than a field. Typing a
+ * new total into a box means doing the subtraction in your head first, and doing
+ * it at the table, in a hurry, is where the mistakes are — so a press opens the
+ * picker above and the arithmetic is the app's.
+ */
 function Box({
   label,
   current,
@@ -87,26 +194,13 @@ function Box({
   /** Who this belongs to, for the accessible label — a list needs telling apart. */
   name: string;
 }) {
-  // While a box is being typed into it holds the typing; the rest of the time it
-  // follows the snapshot, so a value someone else changed arrives here too.
-  const [draft, setDraft] = useState<string | null>(null);
-  const committed = useRef(current);
-  committed.current = current;
+  const [picking, setPicking] = useState(false);
 
-  // A snapshot that changes this number out from under an open box wins: the
-  // alternative is a player quietly overwriting a game master's correction with
-  // whatever was half-typed when it arrived.
-  useEffect(() => {
-    setDraft(null);
-  }, [current]);
+  // Bounded to what the API takes, so a run of presses on a nearly-dead monster
+  // cannot walk the number off the end of what can be saved.
+  const clamp = (value: number) => Math.max(-999, Math.min(999, value));
 
-  const commit = () => {
-    if (draft === null) return;
-    setDraft(null);
-    const parsed = Number.parseInt(draft, 10);
-    if (Number.isNaN(parsed) || parsed === committed.current) return;
-    onCommit?.(Math.max(-999, Math.min(999, parsed)));
-  };
+  const shared = `w-11 rounded border px-1 py-0.5 text-center text-xs font-medium tabular-nums ${toneFor(current, max)}`;
 
   return (
     <div className="flex items-center gap-1">
@@ -114,30 +208,39 @@ function Box({
         {label}
       </span>
       {onCommit ? (
-        <input
-          type="text"
-          inputMode="numeric"
-          value={draft ?? String(current)}
-          aria-label={`${label} left for ${name}`}
-          onChange={(event) => setDraft(event.target.value)}
-          onBlur={commit}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.preventDefault();
-              event.currentTarget.blur();
-            } else if (event.key === "Escape") {
-              setDraft(null);
-            }
-          }}
-          // A row in the initiative order is draggable, and a drag started on a
-          // box would be a drag instead of a caret.
-          onPointerDown={(event) => event.stopPropagation()}
-          className={`w-11 rounded border px-1 py-0.5 text-center text-xs font-medium tabular-nums focus:border-amber-500 ${toneFor(current, max)}`}
-        />
+        <>
+          <button
+            type="button"
+            aria-label={`${label} left for ${name}`}
+            title={`${label} left for ${name} — press to change`}
+            onClick={() => setPicking(true)}
+            // A row in the initiative order is draggable, and a press here is a
+            // press rather than the start of a drag.
+            onPointerDown={(event) => event.stopPropagation()}
+            className={`${shared} cursor-pointer hover:brightness-95 dark:hover:brightness-125`}
+          >
+            {current}
+          </button>
+          {picking ? (
+            <DeltaPicker
+              label={label}
+              name={name}
+              current={current}
+              max={max}
+              onPick={(delta) => {
+                setPicking(false);
+                onCommit(clamp(current + delta));
+              }}
+              onSet={(value) => {
+                setPicking(false);
+                if (value !== current) onCommit(clamp(value));
+              }}
+              onClose={() => setPicking(false)}
+            />
+          ) : null}
+        </>
       ) : (
-        <span className={`rounded border px-1 py-0.5 text-xs font-medium tabular-nums ${toneFor(current, max)}`}>
-          {current}
-        </span>
+        <span className={shared}>{current}</span>
       )}
       <span className="text-xs tabular-nums text-stone-400 dark:text-stone-500">/{max}</span>
     </div>

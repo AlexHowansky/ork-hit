@@ -437,6 +437,16 @@ none. What the monster has left is the game master's information to give out or
 hold back at the table, and a player's own numbers are on their `My character`
 panel rather than a second time in the scene.
 
+**A box asks for the change, not the total.** What anyone at the table says is
+"that's eleven STUN", never "you're on fourteen", so pressing a box opens a
+dialog of every step from 50 off to 50 on and the app does the subtraction —
+the arithmetic that goes wrong when it is done in someone's head in a hurry.
+"Take" and "Recover" are separate blocks rather than one run through zero,
+because a misread sign is a character knocked out by a heal, and the small
+numbers come first in each because that is what dice produce. The old behaviour is still there
+at the bottom of the dialog as "Or set it exactly", which is what a game master
+setting a monster up actually wants.
+
 Each box is coloured by how much of the total is left, so the state of a fight
 reads off the panel before any of the numbers do. Where the boundaries fall is a
 rule about characters rather than about colours, so it lives in `bandFor`
