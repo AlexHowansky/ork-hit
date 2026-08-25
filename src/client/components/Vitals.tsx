@@ -14,9 +14,9 @@
  * Each box is coloured by how much of the total is left — see `toneFor` — so the
  * state of a fight reads off the panel before any of the numbers do.
  *
- * The Recovery button at the end is the one piece of arithmetic here, and it is
- * the server's: RECOVERY back into ENDURANCE and STUN, neither going over the
- * character's total.
+ * The two buttons at the end are the only arithmetic here, and it is the
+ * server's: a Recovery puts RECOVERY back into ENDURANCE and STUN without going
+ * over the character's total, and a rest sets both to it.
  *
  * Values are signed on purpose: a HERO character at -8 STUN is unconscious, not
  * a mistake, and nothing here clamps to the total either, since a Recovery can
@@ -24,7 +24,8 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { faHeartPulse } from "@fortawesome/free-solid-svg-icons";
+import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
+import { faBed, faHeartPulse } from "@fortawesome/free-solid-svg-icons";
 import { Icon } from "./ui.tsx";
 import {
   HERO_STAT_LABELS,
@@ -144,29 +145,30 @@ function Box({
 }
 
 /**
- * The Recovery control: a breath in, drawn as one.
+ * The two controls that put numbers back: a Recovery, and a rest.
  *
- * An icon rather than a word because it sits at the end of a row of small boxes
- * in a narrow panel, and "Take a Recovery" would be wider than the three numbers
- * it follows. Spelled out in the label and the tooltip, which is where a control
- * with a picture on it says what it does.
+ * Icons rather than words because they sit at the end of a row of small boxes in
+ * a narrow panel, where "Take a Recovery" would be wider than the three numbers
+ * it follows. What each does is spelled out in the label and the tooltip, which
+ * is where a control with a picture on it says what it means.
  */
-function RecoveryButton({ name, recovery, onClick }: {
-  name: string;
-  recovery: number;
+function VitalAction({ icon, label, title, onClick }: {
+  icon: IconDefinition;
+  label: string;
+  title: string;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      // A row in the initiative order is draggable, and a press here is a press.
       onPointerDown={(event) => event.stopPropagation()}
-      title={`Take a Recovery: +${recovery} to END and STUN, up to full`}
-      aria-label={`Take a Recovery for ${name}`}
+      title={title}
+      aria-label={label}
       className="flex h-6 w-6 items-center justify-center rounded text-stone-500 hover:bg-stone-200 hover:text-stone-800 dark:text-stone-400 dark:hover:bg-stone-700 dark:hover:text-stone-100"
     >
-      {/* A Recovery is a character getting their wind back. */}
-      <Icon icon={faHeartPulse} />
+      <Icon icon={icon} />
     </button>
   );
 }
@@ -175,13 +177,15 @@ export function Vitals({
   character,
   onChange,
   onRecover,
+  onRest,
   className = "",
 }: {
   character: SessionCharacter;
   /** Absent where this reader may look but not touch. */
   onChange?: (patch: VitalsPatch) => void;
-  /** Absent for the same reason, and for a character with no RECOVERY to take. */
+  /** Both absent for the same reason: this reader may look but not touch. */
   onRecover?: () => void;
+  onRest?: () => void;
   className?: string;
 }) {
   return (
@@ -200,7 +204,20 @@ export function Vitals({
         );
       })}
       {onRecover ? (
-        <RecoveryButton name={character.name} recovery={character.recovery} onClick={onRecover} />
+        <VitalAction
+          icon={faHeartPulse}
+          label={`Take a Recovery for ${character.name}`}
+          title={`Take a Recovery: +${character.recovery} to END and STUN, up to full`}
+          onClick={onRecover}
+        />
+      ) : null}
+      {onRest ? (
+        <VitalAction
+          icon={faBed}
+          label={`Rest ${character.name}`}
+          title="Rest: END and STUN back to full"
+          onClick={onRest}
+        />
       ) : null}
     </div>
   );

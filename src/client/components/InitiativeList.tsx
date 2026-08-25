@@ -62,6 +62,7 @@ interface RowProps {
    */
   onSetVitals?: (patch: VitalsPatch) => void;
   onRecover?: () => void;
+  onRest?: () => void;
   onSetTurn?: () => void;
   onRemove?: () => void;
   onOpenSheet?: () => void;
@@ -76,6 +77,7 @@ function Row({
   isYours,
   onSetVitals,
   onRecover,
+  onRest,
   onSetTurn,
   onRemove,
   onOpenSheet,
@@ -240,6 +242,7 @@ function Row({
           character={character}
           onChange={onSetVitals}
           onRecover={onRecover}
+          onRest={onRest}
           className="pl-2"
         />
       ) : null}
@@ -255,6 +258,7 @@ export function InitiativeList({
   onReorder,
   onSetVitals,
   onRecover,
+  onRest,
   onSetTurn,
   onRemove,
   onOpenSheet,
@@ -274,6 +278,8 @@ export function InitiativeList({
   onSetVitals?: (slotId: string, patch: VitalsPatch) => void;
   /** Gives each row a Recovery control, beside the numbers it changes. */
   onRecover?: (slotId: string) => void;
+  /** And a rest, which puts both back to full. */
+  onRest?: (slotId: string) => void;
   onSetTurn?: (slotId: string) => void;
   onRemove?: (slotId: string) => void;
   /**
@@ -319,6 +325,7 @@ export function InitiativeList({
       isYours={character.characterId === yourCharacterId}
       onSetVitals={onSetVitals ? (patch) => onSetVitals(character.id, patch) : undefined}
       onRecover={onRecover ? () => onRecover(character.id) : undefined}
+      onRest={onRest ? () => onRest(character.id) : undefined}
       onSetTurn={onSetTurn ? () => onSetTurn(character.id) : undefined}
       onRemove={onRemove ? () => onRemove(character.id) : undefined}
       onOpenSheet={onOpenSheet ? () => onOpenSheet(character) : undefined}

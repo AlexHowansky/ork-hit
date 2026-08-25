@@ -388,6 +388,38 @@ describe("what a stage slot has left", () => {
     expect(vitalsOf(session.id).at(-1)).toEqual({ end: 30, stun: 25, body: 12 });
   });
 
+  test("a rest sets END and STUN to full, and leaves BODY where it is", () => {
+    const { session, campaign } = makeSession(1);
+    const hero = makeCharacter(campaign.id, "npc", unique("Knight"), {
+      recovery: 6,
+      endurance: 30,
+      stun: 25,
+      body: 12,
+    });
+    const slot = sessionCharacters.add(session.id, hero.id, "npc")!;
+    sessionCharacters.setVitals(session.id, slot, { endurance: 1, stun: -4, body: 7 });
+
+    sessionCharacters.takeRest(session.id, slot);
+
+    // BODY heals over days in HERO, which is longer than a night's sleep.
+    expect(vitalsOf(session.id).at(-1)).toEqual({ end: 30, stun: 25, body: 7 });
+  });
+
+  test("a rest brings a boosted character back down to their own total", () => {
+    const { session, campaign } = makeSession(1);
+    const npc = makeCharacter(campaign.id, "npc", unique("Sprite"), {
+      endurance: 20,
+      stun: 20,
+      body: 10,
+    });
+    const slot = sessionCharacters.add(session.id, npc.id, "npc")!;
+    sessionCharacters.setVitals(session.id, slot, { endurance: 45 });
+
+    sessionCharacters.takeRest(session.id, slot);
+
+    expect(vitalsOf(session.id).at(-1)).toEqual({ end: 20, stun: 20, body: 10 });
+  });
+
   test("a Recovery never takes anything away", () => {
     const { session, campaign } = makeSession(1);
     const buffed = makeCharacter(campaign.id, "npc", unique("Buffed"), {

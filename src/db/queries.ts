@@ -527,6 +527,24 @@ export const sessionCharacters = {
   },
 
   /**
+   * A rest: back to full ENDURANCE and STUN.
+   *
+   * Set to the character's totals rather than raised towards them — a night's
+   * sleep is the end of the bookkeeping for a fight, so a slot left above its
+   * total by some temporary boost comes back to what the character actually is.
+   * BODY is untouched: in HERO that heals over days, not overnight, and putting
+   * it here would quietly undo a wound the game master is still tracking.
+   */
+  takeRest(sessionId: string, slotId: string): void {
+    db.query(`
+      UPDATE session_characters SET
+        cur_endurance = (SELECT endurance FROM characters WHERE id = character_id),
+        cur_stun = (SELECT stun FROM characters WHERE id = character_id)
+      WHERE game_session_id = $sessionId AND id = $slotId
+    `).run({ sessionId, slotId });
+  },
+
+  /**
    * Writes what a slot has left. Absent values are left as they were, so a
    * screen that edits one box does not have to send the other two.
    *

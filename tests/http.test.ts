@@ -388,6 +388,37 @@ describe("what a character has left", () => {
     expect(other.status).toBe(403);
   });
 
+  test("a player may rest their own character only", async () => {
+    const { cookie } = await signIn();
+    const { pc, npc, session } = await makeTable(cookie);
+    const player = await joinAs(session.code, "Dov");
+
+    await fetch(
+      `${base}/api/sessions/${session.id}/claim`,
+      authed(player, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ characterId: pc.id }),
+      }),
+    );
+
+    const slots = await slotsOf(cookie, session.id);
+    const mine = slots.find((slot) => slot.characterId === pc.id)!;
+    const theirs = slots.find((slot) => slot.characterId === npc.id)!;
+
+    const own = await fetch(
+      `${base}/api/sessions/${session.id}/stage/${mine.id}/rest`,
+      authed(player, { method: "POST" }),
+    );
+    expect(own.status).toBe(200);
+
+    const other = await fetch(
+      `${base}/api/sessions/${session.id}/stage/${theirs.id}/rest`,
+      authed(player, { method: "POST" }),
+    );
+    expect(other.status).toBe(403);
+  });
+
   test("a player of another session is refused", async () => {
     const { cookie } = await signIn();
     const mine = await makeTable(cookie);

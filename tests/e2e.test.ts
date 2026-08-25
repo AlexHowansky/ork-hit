@@ -236,6 +236,12 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     await waitForValue(myPanel.getByLabel("END left for Thorin"), "27");
     await waitForValue(gmRow.getByLabel("STUN left for Thorin"), "23");
 
+    // A rest puts both back to full, from either screen, and leaves BODY alone.
+    await gmRow.getByLabel("Rest Thorin").click();
+    await waitForValue(gmRow.getByLabel("END left for Thorin"), "30");
+    await waitForValue(gmRow.getByLabel("STUN left for Thorin"), "25");
+    await waitForValue(myPanel.getByLabel("BODY left for Thorin"), "12");
+
     // The scene carries none of these for a player: someone else's are not
     // theirs to see, and their own are on the panel above rather than twice.
     const scene = player.locator("section", { hasText: "In the scene" });

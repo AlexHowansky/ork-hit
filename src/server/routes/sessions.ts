@@ -56,7 +56,11 @@ function snapshotOr404(sessionId: string) {
  * there is one answer to the question rather than two that could drift apart.
  */
 function requireVitalsAccess(
-  request: BunRequest<"/api/sessions/:id/stage/:slotId/vitals" | "/api/sessions/:id/stage/:slotId/recover">,
+  request: BunRequest<
+    | "/api/sessions/:id/stage/:slotId/vitals"
+    | "/api/sessions/:id/stage/:slotId/recover"
+    | "/api/sessions/:id/stage/:slotId/rest"
+  >,
 ): { session: GameSessionRow; asPlayer: boolean } {
   const sessionId = request.params.id;
   const identity = currentPlayer(request);
@@ -312,6 +316,27 @@ export const sessionRoutes = {
 
         sessionCharacters.takeRecovery(session.id, request.params.slotId);
         logger.info("recovery taken", {
+          sessionId: session.id,
+          slotId: request.params.slotId,
+          by: asPlayer ? "player" : "gm",
+        });
+
+        return publish(session.id);
+      },
+    ),
+  },
+
+  /**
+   * A rest: ENDURANCE and STUN back to the character's totals. BODY is left
+   * alone — it heals over days in HERO, which is longer than a session.
+   */
+  "/api/sessions/:id/stage/:slotId/rest": {
+    POST: handler(
+      (request: BunRequest<"/api/sessions/:id/stage/:slotId/rest">, { logger }: RequestContext) => {
+        const { session, asPlayer } = requireVitalsAccess(request);
+
+        sessionCharacters.takeRest(session.id, request.params.slotId);
+        logger.info("rest taken", {
           sessionId: session.id,
           slotId: request.params.slotId,
           by: asPlayer ? "player" : "gm",

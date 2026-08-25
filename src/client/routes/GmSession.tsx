@@ -157,6 +157,11 @@ export function GmSessionConsole() {
       api.post<{ snapshot: Snapshot }>(`/api/sessions/${sessionId}/stage/${slotId}/recover`),
     );
 
+  const rest = (slotId: string) =>
+    mutate(() =>
+      api.post<{ snapshot: Snapshot }>(`/api/sessions/${sessionId}/stage/${slotId}/rest`),
+    );
+
   const setClaim = (playerId: string, claimedCharacterId: string | null) =>
     mutate(() =>
       api.patchJson<{ snapshot: Snapshot }>(`/api/sessions/${sessionId}/players/${playerId}`, {
@@ -286,6 +291,7 @@ export function GmSessionConsole() {
                 onReorder={reorder}
                 onSetVitals={(id, patch) => void setVitals(id, patch)}
                 onRecover={(id) => void recover(id)}
+                onRest={(id) => void rest(id)}
                 onSetTurn={(id) => void setTurn(id)}
                 onRemove={(id) => void removeCharacter(id)}
                 onOpenSheet={setViewingSheet}

@@ -221,10 +221,15 @@ The app should have the following features:
   itself is always shown, so the colour is a second way of saying it rather than
   the only one.
 
-* Beside those numbers, wherever they may be edited, is a control that takes a
-  Recovery: RECOVERY is added to both current ENDURANCE and current STUN, and
+* Beside those numbers, wherever they may be edited, are two controls. One takes
+  a Recovery: RECOVERY is added to both current ENDURANCE and current STUN, and
   neither goes past the character's total. It never takes anything away, so a
   character somehow above their total keeps what they have.
+
+* The other is a rest, which sets current ENDURANCE and STUN to the character's
+  totals — exactly to them, so a character left above their total by a temporary
+  boost comes back to what they are. BODY is not a rest's business: it heals over
+  days, which is longer than a session.
 
 * Each PC and NPC on a session page should be shown with a small picture of
   itself — in the scene, and in the list the game master adds them from —
