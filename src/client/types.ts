@@ -73,6 +73,8 @@ export interface Snapshot {
     id: string;
     status: string;
     round: number;
+    /** The campaign's name: what heads a player's screen. */
+    campaignName: string;
     activeSlotId: string | null;
   };
   players: SessionPlayer[];

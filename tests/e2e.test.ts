@@ -104,16 +104,18 @@ async function gmWithSession(): Promise<{ page: Page; code: string; campaignName
 }
 
 /** Joins as a player and claims Thorin. */
-async function playerIn(code: string, name: string): Promise<Page> {
+async function playerIn(code: string, name: string, campaignName?: string): Promise<Page> {
   const page = await (await browser!.newContext()).newPage();
   await page.goto(`${base}/join?code=${encodeURIComponent(code)}`);
   await page.getByLabel("Player name").fill(name);
   await page.getByRole("button", { name: "Join session" }).click();
   await page.getByText("Choose your character").waitFor();
   await page.getByRole("button", { name: "Thorin" }).click();
-  // The session page is headed by the player, and says which character they hold.
-  await page.getByRole("heading", { name, exact: true }).waitFor();
-  await page.getByText("Playing as Thorin").waitFor();
+  // The session page is headed by the campaign, the same as the console is; who
+  // the player is and who they are playing are on their own panel below.
+  if (campaignName) {
+    await page.getByRole("heading", { name: campaignName, exact: true }).waitFor();
+  }
   // The players panel names the character each player holds, which is a different
   // id from the slot it sits in and was once matched against the wrong one.
   await page
@@ -161,8 +163,8 @@ async function dragCard(page: Page, from: string, to: string | "the character pa
 describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => {
   test("a player's screen follows the game master with no refresh", async () => {
     if (!browser) return;
-    const { page: gm, code } = await gmWithSession();
-    const player = await playerIn(code, "Alice");
+    const { page: gm, code, campaignName } = await gmWithSession();
+    const player = await playerIn(code, "Alice", campaignName);
 
     // The player appears on the console without either side reloading.
     await gm.getByText("Alice").first().waitFor({ timeout: 5000 });

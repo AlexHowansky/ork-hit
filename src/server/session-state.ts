@@ -16,6 +16,13 @@ export interface SessionSnapshot {
     id: string;
     status: string;
     round: number;
+    /**
+     * What the players call the game they are in. The campaign's name rather
+     * than the session's, because a session has no name of its own — and it is
+     * what heads a player's screen, who otherwise has nothing on the page
+     * saying which table this is.
+     */
+    campaignName: string;
     /** The stage slot whose turn it is — not a character; one may fill two slots. */
     activeSlotId: string | null;
   };
@@ -61,6 +68,7 @@ export function buildSnapshot(sessionId: string): SessionSnapshot | null {
       id: session.id,
       status: session.status,
       round: session.round,
+      campaignName: campaigns.byId(session.campaign_id)?.name ?? "",
       activeSlotId: session.active_slot_id,
     },
     players: roster.map(presentPlayer),

@@ -287,16 +287,24 @@ export function PlayerSession({
 
   return (
     <AppPage>
-      <header className="flex shrink-0 flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold text-stone-900 dark:text-stone-100">
-            {playerName}
-          </h1>
-          <p className="text-sm text-stone-500 dark:text-stone-400">
-            Playing as {myCharacter?.name ?? "your character"}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+      {/*
+        The campaign heads the page, as it does the game master's console: who
+        the player is and who they are playing are both on their own panel a few
+        lines below, and repeating them up here said nothing the rest of the
+        screen was not already saying.
+
+        Three tracks rather than a row, so the name is centred on the page rather
+        than on what is left over beside the controls, and stays put as the
+        reconnecting note comes and goes.
+      */}
+      <header className="grid shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-3">
+        <div />
+
+        <h1 className="truncate text-center text-xl font-semibold text-stone-900 dark:text-stone-100">
+          {snapshot.session.campaignName}
+        </h1>
+
+        <div className="flex items-center justify-end gap-2">
           {connection === "reconnecting" ? (
             <span className="text-xs text-amber-700 dark:text-amber-400">Reconnecting…</span>
           ) : null}

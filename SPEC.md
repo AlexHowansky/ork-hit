@@ -181,8 +181,9 @@ The app should have the following features:
   see at a glance which characters are still free. The cue must not rely on
   colour alone.
 
-* A player's session page should be headed by their own name, with the
-  character they are playing named underneath it.
+* A player's session page is headed by the campaign, as the game master's
+  console is. Who the player is and which character they hold are on their own
+  panel below, so the heading is not spent repeating them.
 
 * Once a session is joined, players should see four panels: the round, their own
   character, a list of all the joined players, and a list of all active PCs and
