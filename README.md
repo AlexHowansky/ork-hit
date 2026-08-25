@@ -394,6 +394,14 @@ a dialog dismissed by accident should give. It sits at `z-40` like `SheetOverlay
 under the toasts at `z-50`, so the message about what just happened is still
 readable over it.
 
+**A page takes the whole window.** `AppPage` used to centre a column capped at
+`max-w-6xl`, which is right for prose and wrong for panels of lists: a tall
+monitor — wide enough for two columns, too tall to count as a dashboard by the
+`wide` variant below — left two thirds of the glass empty while a panel inside it
+needed a horizontal scrollbar. There is no cap now, and no page-level scroller;
+where a row is genuinely tight it is the row that draws tighter, as `Vitals` does
+by narrowing its boxes and gaps below `sm`.
+
 **Wide screens get a dashboard, not a document.** A 16:9 monitor is much shorter
 relative to its width than a phone, so a page that stacks its panels makes the
 game master scroll away from the turn tracker mid-turn. A `wide` variant in
@@ -403,7 +411,10 @@ frame exactly one viewport high, panels side by side, each scrolling its own
 list. `AppPage` and `Panel`'s `scroll` prop in `src/client/components/ui.tsx`
 carry this; the routes only choose how the panels divide the frame, and — on both
 session pages, with `order` rather than a second copy of the markup — what
-sequence they sit in once there are columns. On the player's page the column
+sequence they sit in once there are columns. The console goes one column, to two
+equal halves, to three equal thirds, and the round travels with the initiative
+order the whole way: it is the same fight, so it sits above it and shares its
+width rather than running the width of the page. On the player's page the column
 wrappers are `display: contents` until the columns exist, so the four panels are
 items of one column while stacked and `order` alone moves the player list below
 the scene; nothing there grows, so a short list ends where its content does

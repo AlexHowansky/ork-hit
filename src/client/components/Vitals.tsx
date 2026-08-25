@@ -200,10 +200,12 @@ function Box({
   // cannot walk the number off the end of what can be saved.
   const clamp = (value: number) => Math.max(-999, Math.min(999, value));
 
-  const shared = `w-11 rounded border px-1 py-0.5 text-center text-xs font-medium tabular-nums ${toneFor(current, max)}`;
+  // A shade narrower on a phone, so the row still fits the width it is given
+  // without wrapping or being cut off; roomier as soon as there is room.
+  const shared = `w-10 sm:w-11 rounded border px-1 py-0.5 text-center text-xs font-medium tabular-nums ${toneFor(current, max)}`;
 
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-0.5 sm:gap-1">
       <span className="text-[10px] font-semibold tracking-wide text-stone-500 uppercase dark:text-stone-400">
         {label}
       </span>
@@ -281,6 +283,7 @@ export function Vitals({
   onChange,
   onRecover,
   onRest,
+  wrap = true,
   className = "",
 }: {
   character: SessionCharacter;
@@ -289,10 +292,22 @@ export function Vitals({
   /** Both absent for the same reason: this reader may look but not touch. */
   onRecover?: () => void;
   onRest?: () => void;
+  /**
+   * Whether the row may fall onto a second line when it runs out of width. The
+   * initiative order lets it; a panel that is only about this one character does
+   * not, and scrolls instead.
+   *
+   * A prop rather than a class the caller passes, because `flex-wrap` and
+   * `flex-nowrap` both set the same property and which one wins is decided by
+   * the order Tailwind emits them in — the hazard the button variants document.
+   */
+  wrap?: boolean;
   className?: string;
 }) {
   return (
-    <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 ${className}`}>
+    <div
+      className={`flex items-center gap-x-2 gap-y-1 sm:gap-x-3 ${wrap ? "flex-wrap" : "flex-nowrap"} ${className}`}
+    >
       {HERO_VITAL_FIELDS.map((field) => {
         const { current, max } = pairFor(character, field);
         return (

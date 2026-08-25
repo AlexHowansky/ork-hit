@@ -228,7 +228,7 @@ export function PlayerSession({
       .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
 
     return (
-      <div className="mx-auto max-w-2xl p-4 sm:p-6 wide:max-w-5xl">
+      <div className="w-full p-4 sm:p-6">
         <header className="mb-6 flex items-center justify-between">
           <h1 className="text-xl font-semibold text-stone-900 dark:text-stone-100">
             Welcome, {playerName}
@@ -286,7 +286,7 @@ export function PlayerSession({
   }
 
   return (
-    <AppPage max="max-w-5xl">
+    <AppPage>
       <header className="flex shrink-0 flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-stone-900 dark:text-stone-100">
@@ -343,6 +343,12 @@ export function PlayerSession({
             }
           >
             {myCharacter ? (
+              // Nothing in here wraps. This panel is one character's own line of
+              // numbers, and a row that folds in half on a phone reads as two
+              // characters at a glance — worse than a line that has to be pushed
+              // sideways to see the end of. A name too long for the panel is cut
+              // with an ellipsis for the same reason; the whole of it is on the
+              // page header above.
               <div className="space-y-3">
                 <div className="flex items-center gap-3">
                   <CharacterThumb
@@ -353,7 +359,7 @@ export function PlayerSession({
                     <p className="truncate font-medium text-stone-900 dark:text-stone-100">
                       {myCharacter.name}
                     </p>
-                    <p className="text-xs tabular-nums text-stone-500 dark:text-stone-400">
+                    <p className="truncate text-xs tabular-nums text-stone-500 dark:text-stone-400">
                       {HERO_STAT_LABELS.speed} {myCharacter.speed} ·{" "}
                       {HERO_STAT_LABELS.dexterity} {myCharacter.dexterity} ·{" "}
                       {HERO_STAT_LABELS.recovery} {myCharacter.recovery}
@@ -363,6 +369,7 @@ export function PlayerSession({
                 {/* Spent during a fight, and this player's own to spend. */}
                 <Vitals
                   character={myCharacter}
+                  wrap={false}
                   onChange={(patch) => void setVitals(myCharacter.id, patch)}
                   onRecover={() => void recover(myCharacter.id)}
                   onRest={() => void rest(myCharacter.id)}

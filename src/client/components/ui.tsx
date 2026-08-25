@@ -125,26 +125,27 @@ export function Field({
 /**
  * The page frame every route sits in.
  *
- * On a tall screen this is the centred column the app has always been: the page
- * grows downwards and the window scrolls. On a wide screen it becomes a fixed
- * frame exactly one viewport high that never scrolls itself — the panels inside
- * are laid out side by side and each scrolls its own list, so the controls at the
- * top of the page stay put while a list moves underneath them.
+ * It takes the whole window, whatever the window is. There used to be a centred
+ * column with a maximum width, which is right for a page of prose and wrong for
+ * this: every screen here is panels of lists and cards, and a tall monitor —
+ * wide enough for two columns but not wide *enough* to count as a dashboard —
+ * left two thirds of the glass empty while a panel inside it needed a scrollbar.
  *
- * `max` is the cap for the tall layout only; the wide layout uses the full width.
+ * On a tall screen the page grows downwards and the window scrolls. On a wide
+ * one it becomes a fixed frame exactly one viewport high that never scrolls
+ * itself — the panels are laid out side by side and each scrolls its own list,
+ * so the controls at the top stay put while a list moves underneath them.
  */
 export function AppPage({
-  max = "max-w-6xl",
   children,
   className = "",
 }: {
-  max?: string;
   children: ReactNode;
   className?: string;
 }) {
   return (
     <div
-      className={`mx-auto ${max} space-y-5 p-4 sm:p-6 wide:flex wide:h-dvh wide:max-w-none wide:flex-col wide:gap-5 wide:space-y-0 wide:overflow-hidden ${className}`}
+      className={`w-full space-y-5 p-4 sm:p-6 wide:flex wide:h-dvh wide:flex-col wide:gap-5 wide:space-y-0 wide:overflow-hidden ${className}`}
     >
       {children}
     </div>

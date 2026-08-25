@@ -14,13 +14,15 @@ document explains the requirements that must be adhered to.
   elements. Every page carries the light/dark/system control, so the choice can
   be made or changed wherever the reader happens to be.
 
-* Make good use of the screen. On a wide, short screen — a 16:9 monitor — a page
-  should fill one viewport with its panels side by side, each scrolling its own
-  content, rather than stacking them into a page that scrolls as a whole. Narrow
-  or tall screens keep the stacked layout. Where cards sit side by side with
-  another panel, as the campaigns do, the panel holding them is no wider than the
-  whole number of cards it can show — never part of a further column — and the
-  panel beside it takes the room that leaves.
+* Make good use of the screen. A page always takes the full width of the window
+  it is in: never a centred column with empty glass either side of it, and never
+  a scrollbar inside a panel that had room to be wider. On a wide, short screen —
+  a 16:9 monitor — a page should fill one viewport with its panels side by side,
+  each scrolling its own content, rather than stacking them into a page that
+  scrolls as a whole. Narrow or tall screens keep the stacked layout. Where cards
+  sit side by side with another panel, as the campaigns do, the panel holding
+  them is no wider than the whole number of cards it can show — never part of a
+  further column — and the panel beside it takes the room that leaves.
 
 * How large a card's picture is drawn is a deployment setting, not a constant in
   the code. It measures the picture: the card comes out larger, since its border
@@ -189,6 +191,20 @@ The app should have the following features:
   single `My sheet` control on their `My character` panel, and no other sheet is
   theirs to open.
 
+* Nothing in a player's own character panel wraps. It is one character's line of
+  numbers, and a row folded in half reads at a glance as two characters; where
+  the screen is too narrow to hold the line, the numbers themselves draw a little
+  tighter, and a name too long for the panel is cut short rather than wrapped —
+  the whole of it heads the page anyway.
+
+* No panel on the session console is stretched to fill the screen either, and
+  the round sits above the initiative order and shares its width — it is the same
+  fight. Where the screen is a dashboard the console is three equal columns: the
+  round over the initiative order, then the library the GM adds from, then the
+  players. Narrower, it is two equal halves: the round over the initiative order
+  on one side, the players over the library on the other. Narrower still, one
+  column in that same reading order.
+
 * No panel on a player's session page is stretched to fill the screen: each is
   only as tall as what it holds. Where the screen is wide enough for two columns,
   the round, the player's own character and the list of players sit in the first
@@ -246,9 +262,7 @@ The app should have the following features:
 
 * The GM should be able to add and remove NPCs from the session. When this
   happens, the player's screens should update instantly without a refresh. Use
-  websockets or SSE for this. Where the session console has room for three
-  columns, the library the GM adds from sits next to the initiative order it
-  feeds, with the players in the last column.
+  websockets or SSE for this.
 
 * The GM should be able to indicate what PC or NPC is currently active, i.e.,
   whose turn it is. When the GM makes this selection, the player screens should

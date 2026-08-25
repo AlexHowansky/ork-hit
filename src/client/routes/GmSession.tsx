@@ -261,24 +261,39 @@ export function GmSessionConsole() {
         {invite}
       </Panel>
 
-      <TurnControls
-        className="shrink-0"
-        round={snapshot?.session.round ?? session.round}
-        activeCharacterName={
-          activeCharacter ? stageLabel(snapshot?.characters ?? [], activeCharacter) : null
-        }
-        editable
-        onAdvance={advanceTurn}
-        onRestart={() => void restartTurns()}
-        disabled={busy || (snapshot?.characters.length ?? 0) === 0}
-      />
+      {/*
+        Three panels' worth of console, in as many columns as the glass allows:
+        one on a phone, two halves on anything wider, three thirds where the
+        screen is a dashboard. The round belongs above the initiative order and
+        the width of it — it is the same fight — so the two travel together as
+        one column, and the library and the players share the other half until
+        there is room for each to have a column of its own.
 
-      <div className="grid gap-5 lg:grid-cols-2 wide:min-h-0 wide:flex-1 wide:grid-cols-3">
-        <Panel
-          title={`Initiative order (${snapshot?.characters.length ?? 0})`}
-          scroll
-          className="wide:order-1"
-        >
+        The wrappers are `display: contents` until their column exists, so the
+        panels are items of one flow while stacked and `order` alone puts the
+        library between the order it feeds and the players, rather than a second
+        copy of the markup saying so.
+
+        Nothing here grows: every panel is a flex item at its natural height, so
+        a short list ends where its content does. `scroll` on the lists is the
+        guard for the other direction — a list taller than the fixed wide frame
+        shrinks back and scrolls its own body instead of being clipped by it.
+      */}
+      <div className="flex flex-col gap-5 sm:grid sm:grid-cols-2 sm:items-start sm:gap-5 wide:min-h-0 wide:flex-1 wide:grid-cols-3 wide:items-stretch">
+        <div className="contents sm:flex sm:min-w-0 sm:flex-col sm:gap-5 wide:order-1 wide:min-h-0">
+          <TurnControls
+            className="sm:shrink-0"
+            round={snapshot?.session.round ?? session.round}
+            activeCharacterName={
+              activeCharacter ? stageLabel(snapshot?.characters ?? [], activeCharacter) : null
+            }
+            editable
+            onAdvance={advanceTurn}
+            onRestart={() => void restartTurns()}
+            disabled={busy || (snapshot?.characters.length ?? 0) === 0}
+          />
+
+          <Panel title={`Initiative order (${snapshot?.characters.length ?? 0})`} scroll>
           {snapshot && snapshot.characters.length > 0 ? (
             <>
               <p className="mb-2 text-xs text-stone-500 dark:text-stone-400">
@@ -302,21 +317,17 @@ export function GmSessionConsole() {
               No characters in the session yet. Add some from the library.
             </EmptyState>
           )}
-        </Panel>
+          </Panel>
+        </div>
 
         {/*
-          Stacked, these read in the order they are written: who is here, then who
-          could be added. Side by side, the library belongs next to the initiative
-          order it feeds, so the three columns are ordered rather than rewritten —
-          reading order is only out of step with the columns on a wide screen, and
-          only for these two.
+          The other half: who is here, then who could be added. On a wide screen
+          the two part company — the library belongs beside the order it feeds,
+          which puts the players last — so each takes a column of its own.
         */}
-        <div className="space-y-5 wide:contents">
-          <Panel
-            title={`Players (${snapshot?.players.length ?? 0})`}
-            scroll
-            className="wide:order-3"
-          >
+        <div className="contents sm:flex sm:min-w-0 sm:flex-col sm:gap-5 wide:contents">
+          <div className="contents wide:order-3 wide:flex wide:min-h-0 wide:min-w-0 wide:flex-col">
+          <Panel title={`Players (${snapshot?.players.length ?? 0})`} scroll>
             {snapshot && snapshot.players.length > 0 ? (
               <ul className="divide-y divide-stone-100 dark:divide-stone-800">
                 {snapshot.players.map((player) => {
@@ -364,8 +375,10 @@ export function GmSessionConsole() {
               <EmptyState>Nobody has joined yet. Send them the code above.</EmptyState>
             )}
           </Panel>
+          </div>
 
-          <Panel title="Add from library" scroll className="wide:order-2">
+          <div className="contents wide:order-2 wide:flex wide:min-h-0 wide:min-w-0 wide:flex-col">
+          <Panel title="Add from library" scroll>
             {availableCharacters.length === 0 ? (
               <EmptyState>
                 This campaign has no NPCs, and every player character is already in the
@@ -401,6 +414,7 @@ export function GmSessionConsole() {
               </ul>
             )}
           </Panel>
+          </div>
         </div>
       </div>
 
