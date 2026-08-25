@@ -131,7 +131,11 @@ export function Login({ onIdentity }: { onIdentity: (identity: Identity) => void
                   placeholder="What should everyone call you?"
                   autoComplete="nickname"
                   required
-                  hint="You will select a character after logging in."
+                  hint={
+                    <>
+                      This is <em>your</em> name. You will select a character after logging in.
+                    </>
+                  }
                 />
                 <Button variant="primary" type="submit" disabled={busy} className="w-full">
                   {busy ? "Joining…" : "Join session"}
@@ -158,9 +162,6 @@ export function Login({ onIdentity }: { onIdentity: (identity: Identity) => void
                 <Button variant="primary" type="submit" disabled={busy} className="w-full">
                   {busy ? "Signing in…" : "Sign in"}
                 </Button>
-                <p className="text-center text-xs text-stone-500 dark:text-stone-400">
-                  Accounts are created with the command line tool.
-                </p>
               </form>
             )}
           </div>

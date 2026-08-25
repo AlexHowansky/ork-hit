@@ -9,6 +9,7 @@ import { api } from "../api.ts";
 import {
   faCirclePlay,
   faPlay,
+  faRightFromBracket,
   faScroll,
   faSquarePlus,
   faStop,
@@ -594,7 +595,9 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
         </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          <Button onClick={onSignOut}>Sign out</Button>
+          <Button onClick={onSignOut}>
+            <Icon icon={faRightFromBracket} /> Sign out
+          </Button>
         </div>
       </header>
 

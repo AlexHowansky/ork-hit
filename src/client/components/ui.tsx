@@ -100,13 +100,18 @@ export function Button({
 /**
  * A labelled text input. `className` extends the input, as it does on `Button` —
  * not the wrapping label, or it would restyle the label and hint along with it.
+ *
+ * The caption and the hint are nodes rather than strings, so a caller can put a
+ * word in italics or a piece of code in a `<code>` without the component
+ * learning about either. Markup goes in as JSX, never as a string of HTML:
+ * `hint={<>This is <em>your</em> name.</>}`.
  */
 export function Field({
   label,
   hint,
   className = "",
   ...props
-}: InputHTMLAttributes<HTMLInputElement> & { label: string; hint?: string }) {
+}: InputHTMLAttributes<HTMLInputElement> & { label: ReactNode; hint?: ReactNode }) {
   return (
     <label className="block">
       <span className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">
