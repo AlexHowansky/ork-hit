@@ -6,7 +6,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { api } from "../api.ts";
-import { faScroll } from "@fortawesome/free-solid-svg-icons";
+import {
+  faCirclePlay,
+  faPlay,
+  faScroll,
+  faSquarePlus,
+  faStop,
+} from "@fortawesome/free-solid-svg-icons";
 import { HERO_STAT_FIELDS, HERO_STAT_LABELS } from "../../lib/hero.ts";
 import { useSessionSocket } from "../useSessionSocket.ts";
 import { useLiveSessions } from "../useLiveSessions.ts";
@@ -286,9 +292,11 @@ function SessionRow({
       </span>
       <div className="flex shrink-0 items-center gap-2">
         <Button variant="dangerGhost" onClick={onEnd}>
-          End session
+          <Icon icon={faStop} /> End
         </Button>
-        <Button onClick={onOpen}>Open console</Button>
+        <Button onClick={onOpen}>
+          <Icon icon={faPlay} /> Open
+        </Button>
       </div>
     </div>
   );
@@ -619,7 +627,7 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
               variant="primary"
               onClick={() => setCampaignDialog({ open: true, editing: null })}
             >
-              New campaign
+              <Icon icon={faSquarePlus} /> New
             </Button>
           }
         >
@@ -658,14 +666,16 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
                   variant="primary"
                   onClick={() => setCharacterDialog({ open: true, editing: null, file: null })}
                 >
-                  Add character
+                  <Icon icon={faSquarePlus} /> Add
                 </Button>
                 {runningHere ? (
                   <Button onClick={() => navigate(`/gm/sessions/${runningHere.id}`)}>
-                    Open console
+                    <Icon icon={faPlay} /> Open
                   </Button>
                 ) : (
-                  <Button onClick={() => void startSession()}>Start session</Button>
+                  <Button onClick={() => void startSession()}>
+                    <Icon icon={faCirclePlay} /> Start
+                  </Button>
                 )}
               </div>
             }

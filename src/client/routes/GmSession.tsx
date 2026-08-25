@@ -21,7 +21,14 @@ import {
   KindBadge,
   Panel,
 } from "../components/ui.tsx";
-import { faArrowLeft, faCopy, faLink, faStop } from "@fortawesome/free-solid-svg-icons";
+import {
+  faArrowLeft,
+  faCopy,
+  faLink,
+  faStop,
+  faUserPlus,
+  faUserSlash,
+} from "@fortawesome/free-solid-svg-icons";
 import type { VitalsPatch } from "../components/Vitals.tsx";
 import { InitiativeList, stageLabel } from "../components/InitiativeList.tsx";
 import { TurnControls } from "../components/TurnControls.tsx";
@@ -366,7 +373,7 @@ export function GmSessionConsole() {
                         variant="dangerGhost"
                         onClick={() => void kickPlayer(player.id, player.name)}
                       >
-                        Kick
+                        <Icon icon={faUserSlash} /> Kick
                       </Button>
                     </li>
                   );
@@ -408,7 +415,7 @@ export function GmSessionConsole() {
                     ) : null}
                     <KindBadge kind={character.kind} />
                     <Button onClick={() => void addCharacter(character.id)} disabled={busy}>
-                      Add
+                      <Icon icon={faUserPlus} /> Add
                     </Button>
                   </li>
                 ))}

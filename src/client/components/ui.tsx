@@ -6,7 +6,7 @@ import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import {
   faCheck,
   faDragon,
-  faFileLines,
+  faEye,
   faPenToSquare,
   faShieldHalved,
   faTrash,
@@ -333,7 +333,7 @@ export function Icon({
  * libraries draw the same three buttons, and they must not drift apart.
  */
 export const EditIcon = () => <Icon icon={faPenToSquare} />;
-export const SheetIcon = () => <Icon icon={faFileLines} />;
+export const SheetIcon = () => <Icon icon={faEye} />;
 export const DeleteIcon = () => <Icon icon={faTrash} />;
 
 export function EmptyState({ children }: { children: ReactNode }) {

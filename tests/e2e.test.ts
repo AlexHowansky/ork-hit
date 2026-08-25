@@ -64,7 +64,7 @@ async function gmWithSession(): Promise<{ page: Page; code: string; campaignName
 
   // A campaign and three characters, created through the dialogs.
   const campaignName = unique("Campaign");
-  await page.getByRole("button", { name: "New campaign" }).click();
+  await page.getByRole("button", { name: "New", exact: true }).click();
   await page.getByLabel("Campaign name").fill(campaignName);
   await page.getByRole("button", { name: "Create campaign" }).click();
   // The panel of *this* campaign: an account with campaigns already has one on
@@ -72,7 +72,7 @@ async function gmWithSession(): Promise<{ page: Page; code: string; campaignName
   await page.getByText(`Characters in ${campaignName}`).waitFor();
 
   for (const [name, kind] of [["Thorin", "pc"], ["Elara", "pc"], ["Strahd", "npc"]] as const) {
-    await page.getByRole("button", { name: "Add character" }).click();
+    await page.getByRole("button", { name: "Add", exact: true }).click();
     await page.getByLabel("Name").fill(name);
     await page.getByLabel("Type").selectOption(kind);
     await page.getByLabel(/Character sheet/).setInputFiles({
@@ -89,7 +89,7 @@ async function gmWithSession(): Promise<{ page: Page; code: string; campaignName
     await page.getByRole("button", { name, exact: true }).waitFor();
   }
 
-  await page.getByRole("button", { name: "Start session" }).click();
+  await page.getByRole("button", { name: "Start", exact: true }).click();
   await page.waitForURL("**/gm/sessions/**");
   const code = (await page.locator("code").first().innerText()).trim();
 
@@ -410,7 +410,7 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     const gm = await signedInGm();
 
     const campaignName = unique("Campaign");
-    await gm.getByRole("button", { name: "New campaign" }).click();
+    await gm.getByRole("button", { name: "New", exact: true }).click();
     await gm.getByLabel("Campaign name").fill(campaignName);
     await gm.getByRole("button", { name: "Create campaign" }).click();
     await gm.getByText(`Characters in ${campaignName}`).waitFor();
@@ -435,11 +435,11 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     const gm = await signedInGm();
 
     const campaignName = unique("Campaign");
-    await gm.getByRole("button", { name: "New campaign" }).click();
+    await gm.getByRole("button", { name: "New", exact: true }).click();
     await gm.getByLabel("Campaign name").fill(campaignName);
     await gm.getByRole("button", { name: "Create campaign" }).click();
     await gm.getByText(`Characters in ${campaignName}`).waitFor();
-    await gm.getByRole("button", { name: "Add character" }).click();
+    await gm.getByRole("button", { name: "Add", exact: true }).click();
 
     // Every field is a label whose first span is its caption, so reading them in
     // document order is reading the form.
@@ -469,7 +469,7 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     const gm = await signedInGm();
 
     const campaignName = unique("Campaign");
-    await gm.getByRole("button", { name: "New campaign" }).click();
+    await gm.getByRole("button", { name: "New", exact: true }).click();
     await gm.getByLabel("Campaign name").fill(campaignName);
     await gm.getByRole("button", { name: "Create campaign" }).click();
     await gm.getByText(`Characters in ${campaignName}`).waitFor();
@@ -508,12 +508,12 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     const gm = await signedInGm();
 
     const campaignName = unique("Campaign");
-    await gm.getByRole("button", { name: "New campaign" }).click();
+    await gm.getByRole("button", { name: "New", exact: true }).click();
     await gm.getByLabel("Campaign name").fill(campaignName);
     await gm.getByRole("button", { name: "Create campaign" }).click();
     await gm.getByText(`Characters in ${campaignName}`).waitFor();
 
-    await gm.getByRole("button", { name: "Add character" }).click();
+    await gm.getByRole("button", { name: "Add", exact: true }).click();
     await gm.getByLabel(/Character sheet/).setInputFiles({
       name: "Bilbo Baggins.html",
       mimeType: "text/html",
@@ -558,12 +558,12 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     const gm = await signedInGm();
 
     const campaignName = unique("Campaign");
-    await gm.getByRole("button", { name: "New campaign" }).click();
+    await gm.getByRole("button", { name: "New", exact: true }).click();
     await gm.getByLabel("Campaign name").fill(campaignName);
     await gm.getByRole("button", { name: "Create campaign" }).click();
     await gm.getByText(`Characters in ${campaignName}`).waitFor();
 
-    await gm.getByRole("button", { name: "Add character" }).click();
+    await gm.getByRole("button", { name: "Add", exact: true }).click();
     await gm.getByLabel("Name").fill("Dropped");
 
     // A real drop, not `setInputFiles`: the point of the feature is that the
@@ -594,7 +594,7 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     const other = await signedInGm();
 
     const name = unique("Campaign");
-    await other.getByRole("button", { name: "New campaign" }).click();
+    await other.getByRole("button", { name: "New", exact: true }).click();
     await other.getByLabel("Campaign name").fill(name);
     await other.getByRole("button", { name: "Create campaign" }).click();
     await other.getByText(`Characters in ${name}`).waitFor();
@@ -605,7 +605,7 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     expect(await listed.count()).toBe(0);
 
     // The watching tab is never reloaded, and never touched at all.
-    await other.getByRole("button", { name: "Start session" }).click();
+    await other.getByRole("button", { name: "Start", exact: true }).click();
     await other.waitForURL("**/gm/sessions/**");
     await listed.waitFor({ timeout: 5000 });
 
@@ -629,7 +629,7 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     // Other tests of this same game master leave sessions running, so the row has
     // to be found by its own campaign rather than by being the only one.
     const row = gm.locator("li").filter({ hasText: campaignName });
-    await row.getByRole("button", { name: "End session" }).click();
+    await row.getByRole("button", { name: "End", exact: true }).click();
 
     // The question names the campaign, since the library can be showing several.
     const ending = gm.getByRole("dialog", { name: `End the session on “${campaignName}”?` });
@@ -650,12 +650,12 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     await gm.waitForURL("**/gm");
 
     const row = gm.locator("li").filter({ hasText: campaignName });
-    await row.getByRole("button", { name: "End session" }).click();
+    await row.getByRole("button", { name: "End", exact: true }).click();
     await gm.getByRole("dialog", { name: `End the session on “${campaignName}”?` })
       .getByRole("button", { name: "Cancel" }).click();
 
     await gm.waitForTimeout(300);
-    expect(await row.getByRole("button", { name: "Open console" }).count()).toBe(1);
+    expect(await row.getByRole("button", { name: "Open", exact: true }).count()).toBe(1);
   }, 60_000);
 
   test("a player who closes their browser leaves the table", async () => {
@@ -722,14 +722,14 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
 
     const [alpha, beta] = [unique("Alpha"), unique("Beta")];
     for (const name of [alpha, beta]) {
-      await page.getByRole("button", { name: "New campaign" }).click();
+      await page.getByRole("button", { name: "New", exact: true }).click();
       await page.getByLabel("Campaign name").fill(name);
       await page.getByRole("button", { name: "Create campaign" }).click();
       await page.getByText(`Characters in ${name}`).waitFor();
     }
 
     await page.getByRole("button", { name: `Select ${alpha}` }).click();
-    await page.getByRole("button", { name: "Add character" }).click();
+    await page.getByRole("button", { name: "Add", exact: true }).click();
     await page.getByLabel("Name").fill("Thorin");
     await page.getByLabel(/Character sheet/).setInputFiles({
       name: "thorin.html",
@@ -801,12 +801,12 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     await page.setViewportSize({ width: 1600, height: 900 });
 
     const campaign = unique("Campaign");
-    await page.getByRole("button", { name: "New campaign" }).click();
+    await page.getByRole("button", { name: "New", exact: true }).click();
     await page.getByLabel("Campaign name").fill(campaign);
     await page.getByRole("button", { name: "Create campaign" }).click();
     await page.getByText(`Characters in ${campaign}`).waitFor();
 
-    await page.getByRole("button", { name: "Add character" }).click();
+    await page.getByRole("button", { name: "Add", exact: true }).click();
     await page.getByLabel("Name").fill("Thorin");
     await page.getByLabel(/Character sheet/).setInputFiles({
       name: "thorin.html",
