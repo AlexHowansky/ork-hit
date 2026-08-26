@@ -475,7 +475,7 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     await player.getByText("Choose your character").waitFor({ timeout: 5000 });
   }, 60_000);
 
-  test("the library keeps every character, and ghosts the ones already on", async () => {
+  test("the library keeps every character, blocked by who is in the scene", async () => {
     if (!browser) return;
     const { page: gm } = await gmWithSession();
 
@@ -483,16 +483,17 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     const rowFor = (name: string) =>
       library.getByRole("listitem").filter({ hasText: name });
 
-    // Heroes first and alphabetically, then the monsters. Elara and Thorin came
-    // on with the session and Strahd was added by hand, so all three are on the
-    // stage — and all three are still listed here.
-    expect(
-      await library.locator("li").evaluateAll((rows) =>
-        // The name span, not the placeholder icon's — a character with no
-        // picture draws one of those first.
+    // The name span, not the placeholder icon's — a character with no picture
+    // draws one of those first.
+    const namesInLibrary = () =>
+      library.locator("li").evaluateAll((rows) =>
         rows.map((row) => row.querySelector("span.truncate")?.textContent ?? ""),
-      ),
-    ).toEqual(["Elara", "Thorin", "Strahd"]);
+      );
+
+    // Elara and Thorin came on with the session and Strahd was added by hand, so
+    // all three are in the scene — and all three are still listed here, in the
+    // first two blocks: heroes in the scene, then monsters in the scene.
+    expect(await namesInLibrary()).toEqual(["Elara", "Thorin", "Strahd"]);
 
     // A hero already in the session cannot come on twice, so their Add is quiet.
     // A monster's never is — a fight can always want another goblin.
@@ -506,15 +507,19 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     expect(await rowFor("Thorin").innerText()).not.toContain("1");
     expect(await rowFor("Strahd").innerText()).toContain("1");
 
-    // Taking a hero off the stage gives their Add back, and it works.
+    // Taking a hero off the stage gives their Add back, and drops them out of the
+    // blocks that are in the scene — below the monster who still is.
     await stagePanel(gm).getByRole("listitem").filter({ hasText: "Elara" })
       .getByRole("button", { name: /Remove Elara/ }).click();
     await stageCount(gm, 2);
     expect(await add("Elara").isDisabled()).toBe(false);
+    expect(await namesInLibrary()).toEqual(["Thorin", "Strahd", "Elara"]);
 
+    // And bringing them back puts them at the top again.
     await add("Elara").click();
     await stageCount(gm, 3);
     expect(await add("Elara").isDisabled()).toBe(true);
+    expect(await namesInLibrary()).toEqual(["Elara", "Thorin", "Strahd"]);
   }, 60_000);
 
   test("the clock button narrows each screen to whoever is acting", async () => {

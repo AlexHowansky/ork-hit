@@ -342,9 +342,13 @@ The app should have the following features:
   a character that was never in the campaign, and it would reshuffle the list
   under the GM mid-fight.
 
-* The library panel is ordered PCs first and NPCs after, alphabetically within
-  each. The two are reached for at different moments of a fight, and one flat run
-  of both is neither list.
+* The library panel is ordered in four blocks — the PCs already in the scene, the
+  NPCs already in the scene, then the PCs who are not, then the NPCs who are not
+  — alphabetically within each. Who is in the scene is what the GM is looking the
+  panel up against, so it groups before kind does; one flat run of everybody is
+  none of those four lists. A row therefore moves between blocks as its character
+  comes on or goes off, which is the point: where a row sits is what says whether
+  it is in the fight.
 
 * The GM should be able to restart the turn order, taking the session back to
   Turn 1, Segment 12 with no turn set, as though the fight had not begun. The

@@ -228,19 +228,24 @@ export function GmSessionConsole() {
 
   // Nobody leaves the library, on stage or not. A row that vanishes when its
   // character walks on reads the same as a character that was never in the
-  // campaign, and it reshuffles the list under the game master's cursor
-  // mid-fight; a row that stays, with its Add ghosted and its count beside it,
-  // says the hero is already in.
+  // campaign; a row that stays, with its Add ghosted, says the hero is already
+  // in.
   //
-  // Heroes first and monsters after, each alphabetically: the two are reached
-  // for at different moments, and one flat run of both is neither list. The
-  // comparison matches the `COLLATE NOCASE` the characters endpoint already
-  // orders by — sorted here as well so the grouping is this panel's own rather
-  // than something inherited from a query.
-  const libraryOrder = [...library].sort((a, b) => {
-    if (a.kind !== b.kind) return a.kind === "pc" ? -1 : 1;
-    return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
-  });
+  // Four blocks, in the order a fight asks for them: whoever is already in the
+  // scene first — heroes, then monsters — and then everybody who is not, in the
+  // same two kinds. Who is in the scene is the thing a game master is looking
+  // this panel up against, so it sorts before what kind they are. Alphabetically
+  // inside each block, matching the `COLLATE NOCASE` the characters endpoint
+  // already orders by — sorted here as well so the grouping is this panel's own
+  // rather than something inherited from a query.
+  const libraryRank = (character: Character) =>
+    (staged.has(character.id) ? 0 : 2) + (character.kind === "pc" ? 0 : 1);
+
+  const libraryOrder = [...library].sort(
+    (a, b) =>
+      libraryRank(a) - libraryRank(b) ||
+      a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
+  );
   const activeCharacter =
     snapshot?.characters.find((character) => character.id === snapshot.session.activeSlotId) ??
     null;
