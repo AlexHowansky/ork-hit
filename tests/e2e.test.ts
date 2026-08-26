@@ -75,15 +75,19 @@ async function gmWithSession(): Promise<{ page: Page; code: string; campaignName
   // SPD and DEX are what the segment panel is built out of. The two heroes are
   // SPD 12 and so act in every segment, which keeps the turn walk in these tests
   // one press per character; Strahd is SPD 2 and acts only in segments 6 and 12,
-  // which is what the clock filter has to have something to hide. DEX puts them
-  // in the order Elara, Thorin, Strahd.
+  // which is what the clock filter has to have something to hide.
+  //
+  // Thorin carries an INIT bonus as well, so the character panel has a number
+  // there that is not the zero every unfilled character reads as. It is small on
+  // purpose: DEX+INIT orders them Elara 20, Thorin 18, Strahd 10, which is the
+  // order the turn walk below is written against.
   const cast = [
-    ["Thorin", "pc", 12, 15],
-    ["Elara", "pc", 12, 20],
-    ["Strahd", "npc", 2, 10],
+    ["Thorin", "pc", 12, 15, 3],
+    ["Elara", "pc", 12, 20, 0],
+    ["Strahd", "npc", 2, 10, 0],
   ] as const;
 
-  for (const [name, kind, speed, dexterity] of cast) {
+  for (const [name, kind, speed, dexterity, initiative] of cast) {
     await page.getByRole("button", { name: "Add", exact: true }).click();
     await page.getByLabel("Name").fill(name);
     await page.getByLabel("Type").selectOption(kind);
@@ -95,6 +99,7 @@ async function gmWithSession(): Promise<{ page: Page; code: string; campaignName
     // Characteristics, so the session screens have totals to count down from.
     await page.getByLabel("SPD", { exact: true }).fill(String(speed));
     await page.getByLabel("DEX", { exact: true }).fill(String(dexterity));
+    await page.getByLabel("INIT", { exact: true }).fill(String(initiative));
     await page.getByLabel("REC", { exact: true }).fill("8");
     await page.getByLabel("END", { exact: true }).fill("30");
     await page.getByLabel("STUN", { exact: true }).fill("25");
@@ -141,6 +146,10 @@ async function playerIn(code: string, name: string, campaignName?: string): Prom
   const mine = page.locator("section", { hasText: /My character/ });
   await mine.getByText("Thorin", { exact: true }).waitFor();
   await mine.getByRole("button", { name: "My sheet" }).waitFor();
+  // The four characteristics that are looked up rather than spent, in the order
+  // the sheet reads them. INIT is the one that would go unnoticed if it were
+  // dropped, since every character the rest of the suite makes has it at zero.
+  await mine.getByText("SPD 12 · DEX 15 · INIT 3 · REC 8").waitFor();
   return page;
 }
 
@@ -263,6 +272,19 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     const gmRow = stagePanel(gm)
       .getByRole("listitem").filter({ hasText: "Thorin" });
     const myPanel = player.locator("section", { hasText: /My character/ });
+
+    // The game master's row carries the four looked-up characteristics, in the
+    // same line the player reads on their own panel, and does not repeat who is
+    // playing what — the players panel beside it already says.
+    await gmRow.getByText("SPD 12 · DEX 15 · INIT 3 · REC 8").waitFor();
+    expect(await gmRow.innerText()).not.toContain("Played by");
+
+    // The player's scene is the other way round: who holds which character, and
+    // nobody's characteristics but their own.
+    const playerRow = stagePanel(player)
+      .getByRole("listitem").filter({ hasText: "Thorin" });
+    await playerRow.getByText("Played by Nia (you)").waitFor();
+    expect(await playerRow.innerText()).not.toContain("SPD");
 
     // Both screens start at the totals the library carries.
     await waitForValue(gmRow.getByLabel("STUN left for Thorin"), "25");

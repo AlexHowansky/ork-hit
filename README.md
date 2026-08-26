@@ -517,6 +517,14 @@ none. What the monster has left is the game master's information to give out or
 hold back at the table, and a player's own numbers are on their `My character`
 panel rather than a second time in the scene.
 
+The looked-up four — SPD, DEX, INIT and REC — divide the same way, on `editable`:
+the game master's rows carry them, since the segment panel is where the order is
+worked out and those are what it is worked out from, and a player's rows carry
+who is playing what instead. `StatLine` draws that line for both the game
+master's rows and a player's own character panel, so the numbers are written
+identically wherever they are read — the counterpart to `Vitals` for the three
+that are spent.
+
 **A box asks for the change, not the total.** What anyone at the table says is
 "that's eleven STUN", never "you're on fourteen", so pressing a box opens a
 dialog of every step from 50 off to 50 on and the app does the subtraction —

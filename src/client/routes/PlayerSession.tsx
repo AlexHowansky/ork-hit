@@ -36,9 +36,9 @@ import {
 } from "../components/ui.tsx";
 import { InitiativeList, stageLabel } from "../components/InitiativeList.tsx";
 import { SegmentFilterToggle, useSegmentFilter } from "../components/SegmentFilter.tsx";
+import { StatLine } from "../components/StatLine.tsx";
 import { Vitals, type VitalsPatch } from "../components/Vitals.tsx";
 import { faShieldHalved } from "@fortawesome/free-solid-svg-icons";
-import { HERO_STAT_LABELS } from "../../lib/hero.ts";
 import { TurnControls } from "../components/TurnControls.tsx";
 import { SheetOverlay } from "../components/SheetFrame.tsx";
 import { ThemeToggle } from "../components/ThemeToggle.tsx";
@@ -357,11 +357,7 @@ export function PlayerSession({
                   />
                   <div className="min-w-0">
                     <p className={`truncate font-medium ${TEXT_STRONG}`}>{myCharacter.name}</p>
-                    <p className={`truncate text-xs tabular-nums ${TEXT_MUTED}`}>
-                      {HERO_STAT_LABELS.speed} {myCharacter.speed} ·{" "}
-                      {HERO_STAT_LABELS.dexterity} {myCharacter.dexterity} ·{" "}
-                      {HERO_STAT_LABELS.recovery} {myCharacter.recovery}
-                    </p>
+                    <StatLine character={myCharacter} />
                   </div>
                 </div>
                 {/* Spent during a fight, and this player's own to spend. */}

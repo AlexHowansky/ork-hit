@@ -192,8 +192,12 @@ The app should have the following features:
   single `My sheet` control on their `My character` panel, and no other sheet is
   theirs to open.
 
-* Nothing in a player's own character panel wraps. It is one character's line of
-  numbers, and a row folded in half reads at a glance as two characters; where
+* A player's own character panel carries the four characteristics that are looked
+  up rather than spent — SPD, DEX, INIT and REC — on one line under the name, with
+  what they have left of ENDURANCE, STUN and BODY below it.
+
+* Nothing in that panel wraps. It is one character's line of numbers, and a row
+  folded in half reads at a glance as two characters; where
   the screen is too narrow to hold the line, the numbers themselves draw a little
   tighter, and a name too long for the panel is cut short rather than wrapped —
   the whole of it heads the page anyway.
@@ -287,11 +291,19 @@ The app should have the following features:
 * The panel that holds the list is the **segment panel**, headed `Segment <n>`.
   It carries a button on the right which switches between showing every character
   and showing only the ones acting in the current segment; it is labelled with
-  what pressing it will do, `Show Acting` or `Show All`. That choice is one reader's own — the
-  GM's does not reach the players and a player's reaches nobody — it applies to
-  every segment rather than to the one it was pressed on, and it is remembered
-  until the session ends. With it off, a character with no phase this segment is
-  dimmed rather than hidden, since the GM may still want to reach their numbers.
+  what pressing it will do, `Show Acting` or `Show All`. That choice is one
+  reader's own — the GM's does not reach the players and a player's reaches
+  nobody — it applies to every segment rather than to the one it was pressed on,
+  and it is remembered until the session ends. With it off, a character with no
+  phase this segment is dimmed rather than hidden, since the GM may still want to
+  reach their numbers.
+
+* On the GM's segment panel each row carries SPD, DEX, INIT and REC under the
+  name, written the same way as on a player's `My character` panel — this is the
+  panel where the order is worked out, so the numbers it is worked out from
+  belong in it. It does not repeat which player holds which character: that is on
+  the GM's players panel already, and another table's characteristics are not a
+  player's to read, so the two lists carry one line each rather than both.
 
 * A fight opens on Turn 1, Segment 12, with no turn set, which is where HERO
   starts a combat. The first press of `Next` gives the phase to the first

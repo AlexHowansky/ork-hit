@@ -2,8 +2,14 @@
  * The segment panel: everybody on the stage, in the order they act.
  *
  * The same component serves both audiences: the game master can click a row to
- * hand it the turn, while players get the identical list as a read-only view.
- * That keeps the two screens honestly in agreement about what the order is.
+ * hand it the turn, while players get the same list as a read-only view. That
+ * keeps the two screens honestly in agreement about what the order is.
+ *
+ * The two rows are not identical under the name, though, and `editable` is what
+ * decides: the game master's carries the four looked-up characteristics, since
+ * this is where the order is worked out and those are what it is worked out
+ * from, and a player's carries who is playing what, which is what their scene is
+ * asked for. Neither is missing the other for want of room.
  *
  * Nothing here decides the order. It arrives already sorted — SPD says which
  * segments a character acts in, DEX+INIT says who goes first inside one — and
@@ -14,6 +20,7 @@
 import type { SessionCharacter } from "../types.ts";
 import { faEye, faPlay, faUserMinus } from "@fortawesome/free-solid-svg-icons";
 import { actsIn } from "../../lib/hero.ts";
+import { StatLine } from "./StatLine.tsx";
 import {
   CharacterThumb,
   CountBadge,
@@ -46,7 +53,7 @@ interface RowProps {
   /** Whether this character has a phase in the segment the fight is on. */
   isActing: boolean;
   editable: boolean;
-  /** Highlights the viewing player's own character. */
+  /** Marks the viewing player's own character in the association line. */
   isYours: boolean;
   /**
    * Absent where this reader may read the numbers but not write them. Separate
@@ -161,8 +168,21 @@ function Row({
           ) : null}
         </div>
 
-        {/* Only player characters carry an association, per the spec. */}
-        {character.kind === "pc" ? (
+        {/*
+          The game master gets the four looked-up characteristics under the name,
+          in the same line a player reads on their own character panel: this is
+          the panel where the order is worked out, so the numbers it is worked
+          out from belong in it.
+
+          A player gets who is playing what instead, which is what the spec asks
+          of their scene. The trade is deliberate rather than a want of room —
+          another table's DEX is the game master's to give out, and who holds
+          which character is already on the game master's players panel, so
+          neither screen is carrying the other's line as well as its own.
+        */}
+        {editable ? (
+          <StatLine character={character} className="mt-0.5" />
+        ) : character.kind === "pc" ? (
           <p
             className={`mt-0.5 truncate text-xs ${
               isUnclaimed
