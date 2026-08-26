@@ -539,6 +539,27 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     expect(await add("Elara").isDisabled()).toBe(false);
     expect(await namesInLibrary()).toEqual(["Thorin", "Strahd", "Elara"]);
 
+    // The rule above the first row out of the scene is heavier than the ones
+    // between rows, so the boundary between the two halves is found at a glance.
+    const ruleAbove = (name: string) =>
+      rowFor(name).evaluate((row) => {
+        const style = window.getComputedStyle(row);
+        return { width: Number.parseFloat(style.borderTopWidth), colour: style.borderTopColor };
+      });
+
+    // In both themes, and by colour as well as by weight: a boundary that is only
+    // a pixel heavier than the rule below it, in the same shade, is one nobody
+    // can see. Checked in dark as well because that is exactly how it was missed.
+    for (const theme of ["Light", "Dark"] as const) {
+      await gm.getByRole("button", { name: theme, exact: true }).click();
+      await gm.waitForTimeout(100);
+
+      const boundary = await ruleAbove("Elara");
+      const ordinary = await ruleAbove("Strahd");
+      expect(boundary.width).toBeGreaterThan(ordinary.width);
+      expect(boundary.colour).not.toBe(ordinary.colour);
+    }
+
     // Out of the scene, so the row is dimmed — but not the control that would
     // bring them back, which is the whole point of a row in this state.
     expect(await brightness(rowFor("Elara").locator("span.truncate"))).toBeLessThan(1);

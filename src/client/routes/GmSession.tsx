@@ -250,6 +250,14 @@ export function GmSessionConsole() {
       libraryRank(a) - libraryRank(b) ||
       a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
   );
+
+  // The one row that has the scene above it and the rest of the campaign below.
+  // There is at most one, since the sort puts everybody on stage first, and none
+  // at all when the whole library is in the scene or none of it is.
+  const opensTheOffStageBlock = (index: number) =>
+    index > 0 &&
+    !staged.has(libraryOrder[index]!.id) &&
+    staged.has(libraryOrder[index - 1]!.id);
   const activeCharacter =
     snapshot?.characters.find((character) => character.id === snapshot.session.activeSlotId) ??
     null;
@@ -436,9 +444,29 @@ export function GmSessionConsole() {
                 This campaign has no characters yet. They are made on the library page.
               </EmptyState>
             ) : (
-              <ul className="divide-y divide-stone-100 dark:divide-stone-800">
-                {libraryOrder.map((character) => (
-                  <li key={character.id} className="flex items-center gap-3 py-2">
+              // The rules between rows are drawn per row rather than by `divide-y`,
+              // because one of them is not like the others: where the scene ends
+              // and the rest of the campaign begins, the line thickens. The four
+              // blocks are otherwise told apart only by dimming and by kind
+              // badges, and the eye finds a heavier rule before it reads either.
+              //
+              // It carries its own colour rather than `HAIRLINE`, which shares
+              // its dark shade with the hairline below — two rules the same
+              // colour and a pixel apart in weight is not a boundary anybody can
+              // see. These two are picked to stand off the row rule in both
+              // themes: darker than it on white, lighter than it on stone.
+              <ul>
+                {libraryOrder.map((character, index) => (
+                  <li
+                    key={character.id}
+                    className={`flex items-center gap-3 py-2 ${
+                      index === 0
+                        ? ""
+                        : opensTheOffStageBlock(index)
+                          ? "border-t-2 border-stone-400 dark:border-stone-500"
+                          : "border-t border-stone-100 dark:border-stone-800"
+                    }`}
+                  >
                     {/*
                       A character who is not in the scene is dimmed, the same way
                       the segment panel dims whoever has no phase this segment:

@@ -356,7 +356,9 @@ The app should have the following features:
   it is in the fight. A row whose character is not in the scene is also dimmed,
   the same way the segment panel dims whoever has no phase this segment — except
   its `Add`, which stays at full strength, since bringing them on is exactly what
-  the GM is reaching for on such a row.
+  the GM is reaching for on such a row. The rule between the last character in the
+  scene and the first one out of it is drawn heavier than the rules between rows,
+  so where the scene ends is found before any row is read.
 
 * The GM should be able to restart the turn order, taking the session back to
   Turn 1, Segment 12 with no turn set, as though the fight had not begun. The
