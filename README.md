@@ -197,7 +197,7 @@ one goblin, so `session_characters` rows carry an id of their own and two of the
 may name the same character. That id is what the turn marker points at
 (`game_sessions.active_slot_id`) and what a removal names — because "remove
 Strahd" stopped being a question with one answer. It is also the `id` in the
-snapshot, so every id-keyed thing on the client — React keys, `Set turn`,
+snapshot, so every id-keyed thing on the client — React keys, `Go now`,
 `Remove` — kept working and simply means the slot now; the
 character it shows rides alongside as `characterId`, which is what a claim and a
 sheet are about. The one place this had to be watched is `advanceTurn`: matching

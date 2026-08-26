@@ -213,7 +213,7 @@ function Row({
             onClick={onSetTurn}
             className="rounded px-2 py-1 text-xs text-stone-600 hover:bg-stone-200 dark:text-stone-400 dark:hover:bg-stone-700"
           >
-            <Icon icon={faPlay} /> Set turn
+            <Icon icon={faPlay} /> Go now
           </button>
         ) : null}
         {editable && onRemove ? (
