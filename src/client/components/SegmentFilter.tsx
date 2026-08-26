@@ -19,7 +19,7 @@
 
 import { useCallback, useState } from "react";
 import { faClock } from "@fortawesome/free-solid-svg-icons";
-import { Icon } from "./ui.tsx";
+import { Button, Icon } from "./ui.tsx";
 
 function storageKey(sessionId: string): string {
   return `segment-filter:${sessionId}`;
@@ -56,7 +56,16 @@ export function useSegmentFilter(sessionId: string): [boolean, () => void] {
   return [showActingOnly, toggle];
 }
 
-/** The control itself, for the `actions` slot of the segment panel. */
+/**
+ * The control itself, for the `actions` slot of the segment panel.
+ *
+ * The label names what pressing it will do rather than what state it is in, and
+ * that is the whole of the state readout: a button that says `Show All` is a
+ * button on a list that is already narrowed. So there is no pressed tint and no
+ * `aria-pressed` — a toggle either changes its accessible name or reports itself
+ * pressed, and doing both would have it announce "Show All, pressed" on a screen
+ * showing anything but.
+ */
 export function SegmentFilterToggle({
   showActingOnly,
   onToggle,
@@ -64,26 +73,20 @@ export function SegmentFilterToggle({
   showActingOnly: boolean;
   onToggle: () => void;
 }) {
-  // The label says what pressing it will do rather than what state it is in,
-  // since the icon and `aria-pressed` already say the latter.
-  const label = showActingOnly
-    ? "Show every character on the stage"
-    : "Show only the characters acting this segment";
-
   return (
-    <button
+    <Button
       type="button"
+      variant="ghost"
       onClick={onToggle}
-      aria-pressed={showActingOnly}
-      title={label}
-      aria-label={label}
-      className={`rounded-md px-2 py-1 transition-colors ${
+      // The whole sentence, for anyone who wants it; two words on the button
+      // itself is as much as a panel heading has room for.
+      title={
         showActingOnly
-          ? "bg-amber-500 text-white dark:text-stone-950"
-          : "text-stone-500 hover:bg-stone-200 hover:text-stone-900 dark:text-stone-400 dark:hover:bg-stone-700 dark:hover:text-stone-100"
-      }`}
+          ? "Show every character on the stage"
+          : "Show only the characters acting this segment"
+      }
     >
-      <Icon icon={faClock} />
-    </button>
+      <Icon icon={faClock} /> {showActingOnly ? "Show All" : "Show Acting"}
+    </Button>
   );
 }

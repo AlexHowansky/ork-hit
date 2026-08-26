@@ -475,7 +475,7 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     expect(await namesIn(gm)).toEqual(["Elara", "Thorin", "Strahd"]);
 
     const clock = (page: Page) =>
-      stagePanel(page).getByRole("button", { name: /characters acting this segment|every character/ });
+      stagePanel(page).getByRole("button", { name: /Show All|Show Acting/ });
 
     await clock(gm).click();
     await gm.waitForTimeout(200);
