@@ -284,9 +284,8 @@ The app should have the following features:
   dragging: the order is a reading of the characters' own numbers, so a manual
   override could only ever put it out of agreement with the rules.
 
-* The panel that holds the list is the **segment panel**, headed `Segment <n>`
-  with the number of characters on the stage beside it. It carries a clock button
-  on the right which switches between showing every character and showing only
+* The panel that holds the list is the **segment panel**, headed `Segment <n>`.
+  It carries a clock button on the right which switches between showing every character and showing only
   the ones acting in the current segment. That choice is one reader's own — the
   GM's does not reach the players and a player's reaches nobody — it applies to
   every segment rather than to the one it was pressed on, and it is remembered

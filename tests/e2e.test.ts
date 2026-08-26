@@ -150,11 +150,31 @@ async function playerIn(code: string, name: string, campaignName?: string): Prom
  * Matched on the shape of the heading rather than on its words, since the segment
  * in it changes as the fight walks the clock.
  */
-const stagePanel = (page: Page) => page.locator("section", { hasText: /Segment \d+ \(/ });
+const stagePanel = (page: Page) => page.locator("section", { hasText: /Segment \d+/ });
 
-/** Waits for the panel to say it holds `count` characters. */
-const stageCount = (page: Page, count: number) =>
-  page.getByText(new RegExp(`Segment \\d+ \\(${count}\\)`)).waitFor({ timeout: 5000 });
+/**
+ * Waits for the panel to hold `count` characters.
+ *
+ * Counted off the rows themselves, since the heading says only which segment the
+ * fight is on. That makes this "how many rows are drawn" rather than "how many
+ * are on the stage" — the two are the same only while the clock filter is off,
+ * which every caller here is; the clock test does its own counting with
+ * `namesIn`.
+ *
+ * Written as a retry loop because the number may still be crossing a socket and
+ * bun:test's `expect` does not retry on its own. On timeout it asserts what it
+ * last saw, so a failure says how many rows there actually were.
+ */
+const stageCount = async (page: Page, count: number) => {
+  const deadline = Date.now() + 5000;
+  let seen = -1;
+  while (Date.now() < deadline) {
+    seen = await stagePanel(page).locator("li").count();
+    if (seen === count) return;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  expect(seen).toBe(count);
+};
 
 const namesIn = (page: Page) =>
   stagePanel(page)
@@ -448,8 +468,8 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
       await gm.getByRole("button", { name: "Next" }).click();
       await gm.waitForTimeout(120);
     }
-    await gm.getByText("Segment 1 (3)").waitFor({ timeout: 5000 });
-    await player.getByText("Segment 1 (3)").waitFor({ timeout: 5000 });
+    await gm.getByText("Segment 1", { exact: true }).waitFor({ timeout: 5000 });
+    await player.getByText("Segment 1", { exact: true }).waitFor({ timeout: 5000 });
 
     // Everyone is still listed until the clock button is pressed.
     expect(await namesIn(gm)).toEqual(["Elara", "Thorin", "Strahd"]);
@@ -476,19 +496,19 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
       await gm.getByRole("button", { name: "Next" }).click();
       await gm.waitForTimeout(120);
     }
-    await gm.getByText("Segment 6 (3)").waitFor({ timeout: 5000 });
+    await gm.getByText("Segment 6", { exact: true }).waitFor({ timeout: 5000 });
     expect(await namesIn(gm)).toEqual(["Elara", "Thorin", "Strahd"]);
 
     // Remembered across a reload, for the length of the session. Three more
     // presses finish segment 6 — Strahd's second phase is in it — and open 7,
     // which is the heroes' alone again.
     await gm.reload();
-    await gm.getByText("Segment 6 (3)").waitFor({ timeout: 5000 });
+    await gm.getByText("Segment 6", { exact: true }).waitFor({ timeout: 5000 });
     for (let i = 0; i < 3; i += 1) {
       await gm.getByRole("button", { name: "Next" }).click();
       await gm.waitForTimeout(120);
     }
-    await gm.getByText("Segment 7 (3)").waitFor({ timeout: 5000 });
+    await gm.getByText("Segment 7", { exact: true }).waitFor({ timeout: 5000 });
     expect(await namesIn(gm)).toEqual(["Elara", "Thorin"]);
 
     // Pressed again, the whole stage comes back.

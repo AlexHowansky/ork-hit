@@ -322,7 +322,7 @@ export function GmSessionConsole() {
           />
 
           <Panel
-            title={`Segment ${segment} (${snapshot?.characters.length ?? 0})`}
+            title={`Segment ${segment}`}
             actions={
               <SegmentFilterToggle showActingOnly={showActingOnly} onToggle={toggleSegmentFilter} />
             }

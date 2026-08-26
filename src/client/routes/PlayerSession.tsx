@@ -412,7 +412,7 @@ export function PlayerSession({
         <div className="contents lg:flex lg:min-w-0 lg:flex-[1.4] lg:flex-col wide:min-h-0">
           <Panel
             scroll
-            title={`Segment ${snapshot.session.segment} (${snapshot.characters.length})`}
+            title={`Segment ${snapshot.session.segment}`}
             actions={
               <SegmentFilterToggle showActingOnly={showActingOnly} onToggle={toggleSegmentFilter} />
             }
