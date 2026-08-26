@@ -33,6 +33,7 @@ function atInitialSchema(): Database {
 function addActiveSession(target: Database, id: string, createdAt: string): void {
   target.query(`
     INSERT INTO game_sessions (id, campaign_id, gm_id, code, status, round, created_at)
+    -- round is the column 001 created; 006 renames it to turn.
     VALUES ($id, 'c1', 'gm1', $code, 'active', 1, $createdAt)
   `).run({ id, code: id.toUpperCase(), createdAt });
 }
@@ -44,14 +45,16 @@ describe("one active session per campaign", () => {
     addActiveSession(target, "mid", "2026-01-01T11:00:00.000Z");
     addActiveSession(target, "new", "2026-01-01T12:00:00.000Z");
 
-    expect(migrate(target)).toBe(4);
+    expect(migrate(target)).toBe(5);
 
     const statuses = Object.fromEntries(
       target.query<{ id: string; status: string }, []>(
         "SELECT id, status FROM game_sessions",
       ).all().map((row) => [row.id, row.status]),
     );
-    expect(statuses).toEqual({ old: "ended", mid: "ended", new: "active" });
+    // 002 ends the two it cannot keep, and 006 ends the survivor too — a fight
+    // tracked in rounds has no honest reading as turns and segments.
+    expect(statuses).toEqual({ old: "ended", mid: "ended", new: "ended" });
 
     // Ended by the migration, so they carry the timestamp the app writes.
     const endedAt = target.query<{ ended_at: string | null }, []>(
@@ -62,22 +65,61 @@ describe("one active session per campaign", () => {
 
   test("and then refuses a second one", () => {
     const target = atInitialSchema();
-    addActiveSession(target, "only", "2026-01-01T10:00:00.000Z");
     migrate(target);
 
-    expect(() => addActiveSession(target, "second", "2026-01-01T13:00:00.000Z"))
-      .toThrow(/UNIQUE constraint/i);
+    // The index is what enforces it, so it has to be tested after the migrations
+    // rather than through them — 006 leaves nothing active to collide with.
+    const add = (id: string) =>
+      target.query(`
+        INSERT INTO game_sessions (id, campaign_id, gm_id, code, status, turn, segment, created_at)
+        VALUES ($id, 'c1', 'gm1', $code, 'active', 1, 12, '2026-01-01T10:00:00.000Z')
+      `).run({ id, code: id.toUpperCase() });
+
+    add("first");
+    expect(() => add("second")).toThrow(/UNIQUE constraint/i);
+  });
+});
+
+describe("turns and segments", () => {
+  test("the round column becomes a turn, with a segment beside it", () => {
+    const target = atInitialSchema();
+    migrate(target);
+
+    const columns = target.query<{ name: string }, []>(
+      "SELECT name FROM pragma_table_info('game_sessions')",
+    ).all().map((row) => row.name);
+    expect(columns).toContain("turn");
+    expect(columns).toContain("segment");
+    expect(columns).not.toContain("round");
   });
 
-  test("a campaign that was already well behaved is left alone", () => {
+  test("a fight that was being tracked in rounds is ended rather than guessed at", () => {
     const target = atInitialSchema();
     addActiveSession(target, "only", "2026-01-01T10:00:00.000Z");
+
     migrate(target);
 
-    const row = target.query<{ status: string; ended_at: string | null }, []>(
-      "SELECT status, ended_at FROM game_sessions WHERE id = 'only'",
-    ).get()!;
-    expect(row).toEqual({ status: "active", ended_at: null });
+    const row = target.query<
+      { status: string; ended_at: string | null; turn: number; segment: number },
+      []
+    >("SELECT status, ended_at, turn, segment FROM game_sessions WHERE id = 'only'").get()!;
+    expect(row.status).toBe("ended");
+    expect(row.ended_at).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+    // Left where a fresh session starts: turn one, segment twelve.
+    expect(row.turn).toBe(1);
+    expect(row.segment).toBe(12);
+  });
+
+  test("the campaign and its characters survive it", () => {
+    const target = atInitialSchema();
+    addActiveSession(target, "only", "2026-01-01T10:00:00.000Z");
+
+    migrate(target);
+
+    // Only the fight is thrown away. The library is the game master's work.
+    expect(
+      target.query<{ n: number }, []>("SELECT COUNT(*) AS n FROM campaigns").get()!.n,
+    ).toBe(1);
   });
 });
 

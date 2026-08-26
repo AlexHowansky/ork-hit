@@ -15,7 +15,15 @@ export interface SessionSnapshot {
   session: {
     id: string;
     status: string;
-    round: number;
+    /** How many HERO Turns of twelve segments the fight has reached. */
+    turn: number;
+    /**
+     * Which of those twelve segments it is on.
+     *
+     * Always 1–12, and a fight that has not begun sits on 12 with no active
+     * slot, because HERO opens combat on Segment 12 rather than Segment 1.
+     */
+    segment: number;
     /**
      * What the players call the game they are in. The campaign's name rather
      * than the session's, because a session has no name of its own — and it is
@@ -67,7 +75,8 @@ export function buildSnapshot(sessionId: string): SessionSnapshot | null {
     session: {
       id: session.id,
       status: session.status,
-      round: session.round,
+      turn: session.turn,
+      segment: session.segment,
       campaignName: campaigns.byId(session.campaign_id)?.name ?? "",
       activeSlotId: session.active_slot_id,
     },

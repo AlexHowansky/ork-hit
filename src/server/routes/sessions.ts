@@ -29,7 +29,8 @@ import {
   sessionCharacters,
 } from "../../db/queries.ts";
 import { db } from "../../db/index.ts";
-import type { GameSessionRow } from "../../db/types.ts";
+import type { GameSessionRow, SessionCharacterRow } from "../../db/types.ts";
+import { actsIn, OPENING_SEGMENT, SEGMENTS_PER_TURN } from "../../lib/hero.ts";
 import { presentSessionForGm } from "../presenters.ts";
 import { buildGmSessionList, buildSnapshot } from "../session-state.ts";
 import {
@@ -92,43 +93,133 @@ function publish(sessionId: string) {
 /* ---------------------------------------------------------------- turn logic */
 
 /**
- * Moves the turn marker one step through the initiative order.
+ * Who acts in one segment, in the order they act.
  *
- * Wrapping past the end advances the round; wrapping backwards past the start
- * takes it back, never below one. Computed from the stored order on the server so
- * that two game master tabs can't disagree about whose turn it is.
+ * The stage arrives from `list` already in DEX+INIT order, so this only has to
+ * drop the characters whose SPD gives them no phase here. A SPD of nought is an
+ * empty row of the chart and so is never in the answer — a character nobody has
+ * filled in has no phases, and never comes up on turn.
+ */
+function actorsIn(stage: SessionCharacterRow[], segment: number): SessionCharacterRow[] {
+  return stage.filter((row) => actsIn(row.speed, segment));
+}
+
+/** The segment after this one, wrapping 12 back to 1. */
+function nextSegment(segment: number): number {
+  return segment === SEGMENTS_PER_TURN ? 1 : segment + 1;
+}
+
+/** And the one before, wrapping 1 back to 12. */
+function prevSegment(segment: number): number {
+  return segment === 1 ? SEGMENTS_PER_TURN : segment - 1;
+}
+
+/**
+ * Moves the turn marker one phase through the HERO clock.
+ *
+ * A Turn is twelve segments, and which of them a character acts in is their SPD
+ * read off the Speed Chart; within a segment they go in DEX+INIT order, highest
+ * first. So stepping forward is: the next character acting in this segment, or
+ * else the first character of the next segment anybody acts in.
+ *
+ * The turn counter goes up on *arriving at segment 1*, not on passing segment
+ * 12. That is what makes a fight open on Turn 1 Segment 12 and the first Segment
+ * 1 belong to Turn 2, which is how HERO starts a combat.
+ *
+ * Segments nobody acts in are stepped straight over rather than shown empty: a
+ * segment with no phases in it is not a moment anyone at the table waits through.
+ *
+ * All of it is computed here from the stored state rather than in the browser, so
+ * two game master tabs cannot disagree about where in the turn the fight is.
  */
 function advanceTurn(sessionId: string, direction: "next" | "prev") {
   const session = gameSessions.byId(sessionId)!;
-  const order = sessionCharacters.list(sessionId);
+  const stage = sessionCharacters.list(sessionId);
 
-  if (order.length === 0) {
+  if (stage.length === 0) {
     throw errors.badRequest("Add some characters to the session before tracking turns.");
   }
 
-  // On the slot, not the character: with three goblins on the stage, matching on
-  // the character would find the first of them every time, so the marker would
-  // spring back to it and the other two would never get a turn.
-  const currentIndex = session.active_slot_id
-    ? order.findIndex((row) => row.slot_id === session.active_slot_id)
-    : -1;
+  // Every walk below looks for the next segment somebody acts in, so a stage
+  // where nobody acts at all would search all twelve and find nothing. Said
+  // plainly here rather than left to a loop guard, because the fix is on the
+  // character sheets and the game master is the one who can make it.
+  if (!stage.some((row) => row.speed > 0)) {
+    throw errors.badRequest(
+      "Nobody on the stage has a SPD above zero, so no one has a phase to take. Fill in their SPEED first.",
+    );
+  }
 
-  // With no turn set yet, stepping forward starts at the top of the order and
-  // stepping back starts at the bottom.
-  if (currentIndex === -1) {
-    const startIndex = direction === "next" ? 0 : order.length - 1;
-    gameSessions.setTurn(sessionId, order[startIndex]!.slot_id, session.round);
+  // Nothing happened before the fight started, so there is nowhere for Previous
+  // to go from the state Restart leaves behind.
+  if (
+    direction === "prev" &&
+    session.active_slot_id === null &&
+    session.turn === 1 &&
+    session.segment === OPENING_SEGMENT
+  ) {
     return;
   }
 
   const step = direction === "next" ? 1 : -1;
-  const nextIndex = (currentIndex + step + order.length) % order.length;
+  const here = actorsIn(stage, session.segment);
 
-  let round = session.round;
-  if (direction === "next" && nextIndex === 0) round += 1;
-  if (direction === "prev" && currentIndex === 0) round = Math.max(1, round - 1);
+  // Where the marker is in this segment. -1 covers both "no turn set" and a
+  // marker left on a character who has since been taken off the stage.
+  const index = session.active_slot_id
+    ? here.findIndex((row) => row.slot_id === session.active_slot_id)
+    : -1;
 
-  gameSessions.setTurn(sessionId, order[nextIndex]!.slot_id, round);
+  // Somewhere still to go inside this segment: the common case, and the only one
+  // that leaves the clock alone.
+  if (index !== -1) {
+    const withinSegment = index + step;
+    if (withinSegment >= 0 && withinSegment < here.length) {
+      gameSessions.setTurn(sessionId, here[withinSegment]!.slot_id, session.turn, session.segment);
+      return;
+    }
+
+    // Stepping back off the very first phase of the fight. There is nothing
+    // before it, so this puts the session where Restart leaves it — Turn 1,
+    // Segment 12, nobody on turn — rather than walking into a segment that has
+    // not happened.
+    if (direction === "prev" && session.turn === 1 && session.segment === OPENING_SEGMENT) {
+      gameSessions.setTurn(sessionId, null, 1, OPENING_SEGMENT);
+      return;
+    }
+  } else if (here.length > 0) {
+    // No marker, but this segment has phases in it: take the end the direction
+    // came from. Stepping forward opens the segment; stepping back closes it.
+    const entry = direction === "next" ? here[0]! : here[here.length - 1]!;
+    gameSessions.setTurn(sessionId, entry.slot_id, session.turn, session.segment);
+    return;
+  }
+
+  // Off the end of the segment, so walk the clock to the next one anybody acts
+  // in. Bounded by the twelve segments of a turn: with someone on stage who has
+  // a SPD at all, one of them is theirs.
+  let segment = session.segment;
+  let turn = session.turn;
+
+  for (let hops = 0; hops < SEGMENTS_PER_TURN; hops += 1) {
+    if (direction === "next") {
+      segment = nextSegment(segment);
+      // Arriving at segment 1 is what starts a new turn.
+      if (segment === 1) turn += 1;
+    } else {
+      // And leaving it is what ends one. Never below turn 1: the start of the
+      // fight is a floor, not a wrap.
+      if (segment === 1) turn = Math.max(1, turn - 1);
+      segment = prevSegment(segment);
+    }
+
+    const actors = actorsIn(stage, segment);
+    if (actors.length === 0) continue;
+
+    const entry = direction === "next" ? actors[0]! : actors[actors.length - 1]!;
+    gameSessions.setTurn(sessionId, entry.slot_id, turn, segment);
+    return;
+  }
 }
 
 /* ------------------------------------------------------------------- routes */
@@ -347,39 +438,6 @@ export const sessionRoutes = {
     ),
   },
 
-  /* ------------------------------------------------------ initiative order */
-
-  "/api/sessions/:id/order": {
-    PUT: handler(
-      async (request: BunRequest<"/api/sessions/:id/order">, { logger }: RequestContext) => {
-        const { session } = requireOwnedActiveSession(request, request.params.id);
-        const { order } = await parseJsonBody(request, schemas.reorder);
-
-        const current = sessionCharacters.list(session.id).map((row) => row.slot_id);
-
-        // The request must describe exactly the current stage. Rejecting a
-        // stale list is what keeps two game master tabs from fighting: the loser
-        // is told to re-read rather than silently dropping a character.
-        const submitted = new Set(order);
-        const matches =
-          submitted.size === order.length &&
-          order.length === current.length &&
-          current.every((id) => submitted.has(id));
-
-        if (!matches) {
-          throw errors.conflict(
-            "The session changed while you were reordering. It has been refreshed — please try again.",
-          );
-        }
-
-        sessionCharacters.reorder(session.id, order);
-        logger.info("initiative reordered", { sessionId: session.id, count: order.length });
-
-        return publish(session.id);
-      },
-    ),
-  },
-
   /* ----------------------------------------------------------- turn marker */
 
   "/api/sessions/:id/turn": {
@@ -392,7 +450,7 @@ export const sessionRoutes = {
           throw errors.badRequest("That character isn't active in this session.");
         }
 
-        gameSessions.setTurn(session.id, slotId, session.round);
+        gameSessions.setTurn(session.id, slotId, session.turn, session.segment);
         logger.info("turn set", { sessionId: session.id, slotId });
 
         return publish(session.id);
@@ -415,25 +473,26 @@ export const sessionRoutes = {
   },
 
   /**
-   * Back to the top of the order, at round one.
+   * Back to the start of the fight: Turn 1, Segment 12, nobody on turn.
+   *
+   * Segment 12 rather than 1 because that is where HERO opens a combat, so this
+   * is the same state a brand new session is created in.
    *
    * The turn marker is cleared rather than parked on the first character, which
    * puts the session in exactly the state it started in: "No turn set yet", and
-   * the first press of Next opens round one with whoever leads the order. That
-   * matters because the order may well have been rearranged since the fight
-   * began, and restarting should not quietly decide the new leader has already
-   * acted.
+   * the first press of Next opens Segment 12 with whoever leads it. That matters
+   * because the stage may well have changed since the fight began, and restarting
+   * should not quietly decide the new leader has already acted.
    *
-   * Nothing else is touched — the characters on the stage, their order, and who
-   * has claimed what all survive, since this restarts the fight rather than the
-   * session.
+   * Nothing else is touched — the characters on the stage and who has claimed
+   * what all survive, since this restarts the fight rather than the session.
    */
   "/api/sessions/:id/turn/restart": {
     POST: handler(
       (request: BunRequest<"/api/sessions/:id/turn/restart">, { logger }: RequestContext) => {
         const { session } = requireOwnedActiveSession(request, request.params.id);
 
-        gameSessions.setTurn(session.id, null, 1);
+        gameSessions.setTurn(session.id, null, 1, OPENING_SEGMENT);
         logger.info("turn restarted", { sessionId: session.id });
 
         return publish(session.id);

@@ -155,7 +155,7 @@ The app should have the following features:
   more than one session may be listed.
 
 * The game master's library lists the sessions in progress in campaign name
-  order, each with the round it has reached and how many players have joined.
+  order, each with the turn it has reached and how many players have joined.
   Both update live as players join or leave, without the game master reloading
   the page. The list itself is live too: a session started or ended elsewhere —
   another tab, another device — appears or disappears on its own.
@@ -185,7 +185,7 @@ The app should have the following features:
   console is. Who the player is and which character they hold are on their own
   panel below, so the heading is not spent repeating them.
 
-* Once a session is joined, players should see four panels: the round, their own
+* Once a session is joined, players should see four panels: the turn, their own
   character, a list of all the joined players, and a list of all active PCs and
   NPCs. For the PCs, that last list should include which player is associated.
   No row in it offers to open a sheet; a player reaches their own through a
@@ -207,19 +207,19 @@ The app should have the following features:
   control.
 
 * No panel on the session console is stretched to fill the screen either, and
-  the round sits above the initiative order and shares its width — it is the same
+  the turn sits above the segment panel and shares its width — it is the same
   fight. Where the screen is a dashboard the console is three equal columns: the
-  round over the initiative order, then the library the GM adds from, then the
-  code over the players. Narrower, it is two equal halves: the round over the
-  initiative order on one side, the code, the players and the library on the
+  turn over the segment panel, then the library the GM adds from, then the
+  code over the players. Narrower, it is two equal halves: the turn over the
+  segment panel on one side, the code, the players and the library on the
   other. Narrower still, one column, with the code first — it is the first thing
   a game master needs.
 
 * No panel on a player's session page is stretched to fill the screen: each is
   only as tall as what it holds. Where the screen is wide enough for two columns,
-  the round, the player's own character and the list of players sit in the first
-  column — so the round is the width of the player list rather than of the page —
-  and the scene sits in the second. Stacked, the order is the round, their
+  the turn, the player's own character and the list of players sit in the first
+  column — so the turn is the width of the player list rather than of the page —
+  and the scene sits in the second. Stacked, the order is the turn, their
   character, the scene, then the players.
 
 * Every character, PC and NPC alike, is a HERO System 5th Edition Revised
@@ -271,9 +271,36 @@ The app should have the following features:
   itself — in the scene, and in the list the game master adds them from —
   falling back to a placeholder for a character that has no background image.
 
-* The list of PCs and NPCs should be presented in initiative order. For now this
-  will be controlled manually. Allow the GM to drag PCs and NPCs to change the
-  order.
+* Combat runs on the HERO System clock rather than on a flat list. A **Turn** is
+  twelve **segments**; a character's SPEED decides which of those twelve they act
+  in, off the published Speed Chart, and within one segment characters act in
+  DEXTERITY + INITIATIVE order, highest first. A tie is broken by the order the
+  characters came on stage. A character with SPEED 0 — one nobody has filled in
+  — has no phases at all and never comes up on turn.
+
+* The list of PCs and NPCs is therefore ordered by the app rather than by hand:
+  it is presented in DEXTERITY + INITIATIVE order, and a character brought on
+  mid-fight lands in its own place in it rather than at the end. There is no
+  dragging: the order is a reading of the characters' own numbers, so a manual
+  override could only ever put it out of agreement with the rules.
+
+* The panel that holds the list is the **segment panel**, headed `Segment <n>`
+  with the number of characters on the stage beside it. It carries a clock button
+  on the right which switches between showing every character and showing only
+  the ones acting in the current segment. That choice is one reader's own — the
+  GM's does not reach the players and a player's reaches nobody — it applies to
+  every segment rather than to the one it was pressed on, and it is remembered
+  until the session ends. With it off, a character with no phase this segment is
+  dimmed rather than hidden, since the GM may still want to reach their numbers.
+
+* A fight opens on Turn 1, Segment 12, with no turn set, which is where HERO
+  starts a combat. The first press of `Next` gives the phase to the first
+  character acting in segment 12. Stepping forward walks the characters acting in
+  the current segment and then moves to the next segment anybody acts in;
+  arriving at segment 1 is what increments the Turn counter, so the first
+  Segment 1 of a fight belongs to Turn 2. Segments nobody acts in are stepped
+  over rather than shown empty. `Previous` retraces the same path exactly, and
+  there is nothing before the first phase of the fight.
 
 * Taking a character off the stage asks first only when a player is actually
   playing it: that player is dropped back to choosing a character, which is not
@@ -290,19 +317,19 @@ The app should have the following features:
   instantly update without a refresh.
 
 * An NPC may be on the stage more than once. Adding it again brings on another
-  copy with its own place in the initiative order and its own turn, and its card
-  stays in the library panel so it can be added again. Where a character has more
+  copy with its own place on the stage and its own phase in a segment, and its
+  card stays in the library panel so it can be added again. Where a character has more
   than one copy on the stage, each is numbered beside its name, and the library
   card shows how many of it are out. A copy keeps its number for the whole fight:
-  removing one or dragging the order about never renumbers the rest, and the next
-  copy added takes the next number up rather than filling a gap. Player characters
+  removing one never renumbers the rest, and the next copy added takes the next
+  number up rather than filling a gap. Player characters
   are unchanged — one each, and their card leaves the library once they are on.
 
 * The GM should be able to restart the turn order, taking the session back to
-  round one with no turn set, as though the fight had not begun. The characters
-  on the stage, their initiative order and the players' claims are all left
-  alone: this restarts the fight, not the session. Since it throws away however
-  many rounds have been tracked, it asks before doing it.
+  Turn 1, Segment 12 with no turn set, as though the fight had not begun. The
+  characters on the stage and the players' claims are both left alone: this
+  restarts the fight, not the session. Since it throws away however many turns
+  have been tracked, it asks before doing it.
 
 * When the turn reaches a player's character, that player should get a toast and
   an audible chime. Only that player: the turn passing to anyone else must stay

@@ -36,6 +36,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import type { VitalsPatch } from "../components/Vitals.tsx";
 import { InitiativeList, stageLabel } from "../components/InitiativeList.tsx";
+import { SegmentFilterToggle, useSegmentFilter } from "../components/SegmentFilter.tsx";
 import { TurnControls } from "../components/TurnControls.tsx";
 import { SheetOverlay } from "../components/SheetFrame.tsx";
 import { ThemeToggle } from "../components/ThemeToggle.tsx";
@@ -54,6 +55,7 @@ export function GmSessionConsole() {
   const [library, setLibrary] = useState<Character[]>([]);
   const [viewingSheet, setViewingSheet] = useState<SessionCharacter | null>(null);
   const [busy, setBusy] = useState(false);
+  const [showActingOnly, toggleSegmentFilter] = useSegmentFilter(sessionId);
 
   // Loaded once: the code and the campaign don't change while a session runs.
   useEffect(() => {
@@ -142,41 +144,21 @@ export function GmSessionConsole() {
   );
 
   /**
-   * Starts the fight over: round one, no turn set.
+   * Starts the fight over: turn one, segment twelve, no turn set.
    *
    * It asks first because it is the one turn control that throws work away —
-   * several rounds of tracking gone on one click, and the only way back is to
+   * several turns of tracking gone on one click, and the only way back is to
    * press Next as many times as it took to get there.
    */
   const restartTurns = async () => {
     const ok = await confirm({
-      title: "Start over at round 1?",
-      body: "The turn goes back to the top of the order. Characters and initiative stay as they are.",
+      title: "Start over at turn 1?",
+      body: "The fight goes back to turn 1, segment 12, with no turn set. Characters and their claims stay as they are.",
       confirmLabel: "Restart",
     });
     if (!ok) return;
     void mutate(() =>
       api.post<{ snapshot: Snapshot }>(`/api/sessions/${sessionId}/turn/restart`),
-    );
-  };
-
-  const reorder = (orderedIds: string[]) => {
-    // Apply the drop immediately so the list doesn't snap back under the cursor;
-    // if the write is rejected, the broadcast snapshot restores the real order.
-    if (snapshot) {
-      const byId = new Map(snapshot.characters.map((character) => [character.id, character]));
-      applySnapshot({
-        ...snapshot,
-        characters: orderedIds.flatMap((id, index) => {
-          const character = byId.get(id);
-          return character ? [{ ...character, position: index }] : [];
-        }),
-      });
-    }
-    void mutate(() =>
-      api.putJson<{ snapshot: Snapshot }>(`/api/sessions/${sessionId}/order`, {
-        order: orderedIds,
-      }),
     );
   };
 
@@ -254,6 +236,9 @@ export function GmSessionConsole() {
     snapshot?.characters.find((character) => character.id === snapshot.session.activeSlotId) ??
     null;
   const playerCharacters = snapshot?.characters.filter((c) => c.kind === "pc") ?? [];
+  // The socket is the truth once it has spoken; the loaded session covers the
+  // moment before it does.
+  const segment = snapshot?.session.segment ?? session.segment;
 
   const joinUrl = `${location.origin}/join?code=${encodeURIComponent(session.code)}`;
 
@@ -307,7 +292,7 @@ export function GmSessionConsole() {
       {/*
         Three panels' worth of console, in as many columns as the glass allows:
         one on a phone, two halves on anything wider, three thirds where the
-        screen is a dashboard. The round belongs above the initiative order and
+        screen is a dashboard. The turn belongs above the segment panel and
         the width of it — it is the same fight — so the two travel together as
         one column, and the library and the players share the other half until
         there is room for each to have a column of its own.
@@ -326,7 +311,7 @@ export function GmSessionConsole() {
         <div className="contents sm:flex sm:min-w-0 sm:flex-col sm:gap-2.5 wide:order-1 wide:min-h-0">
           <TurnControls
             className="sm:shrink-0"
-            round={snapshot?.session.round ?? session.round}
+            turn={snapshot?.session.turn ?? session.turn}
             activeCharacterName={
               activeCharacter ? stageLabel(snapshot?.characters ?? [], activeCharacter) : null
             }
@@ -336,17 +321,24 @@ export function GmSessionConsole() {
             disabled={busy || (snapshot?.characters.length ?? 0) === 0}
           />
 
-          <Panel title={`Initiative order (${snapshot?.characters.length ?? 0})`} scroll>
+          <Panel
+            title={`Segment ${segment} (${snapshot?.characters.length ?? 0})`}
+            actions={
+              <SegmentFilterToggle showActingOnly={showActingOnly} onToggle={toggleSegmentFilter} />
+            }
+            scroll
+          >
           {snapshot && snapshot.characters.length > 0 ? (
             <>
               <p className={`mb-2 text-xs ${TEXT_MUTED}`}>
-                Drag to reorder. Use the arrow keys to move the turn marker.
+                Ordered by SPD, then DEX+INIT. Use the arrow keys to move the turn marker.
               </p>
               <InitiativeList
                 characters={snapshot.characters}
+                segment={segment}
+                showActingOnly={showActingOnly}
                 activeSlotId={snapshot.session.activeSlotId}
                 editable
-                onReorder={reorder}
                 onSetVitals={(id, patch) => void setVitals(id, patch)}
                 onRecover={(id) => void recover(id)}
                 onRest={(id) => void rest(id)}

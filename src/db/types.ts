@@ -68,7 +68,9 @@ export interface GameSessionRow {
   code: string;
   status: SessionStatus;
   active_slot_id: string | null;
-  round: number;
+  turn: number;
+  /** Which of the twelve segments of that turn the session has reached. */
+  segment: number;
   created_at: string;
   ended_at: string | null;
 }

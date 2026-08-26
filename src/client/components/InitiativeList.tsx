@@ -1,43 +1,23 @@
 /**
- * The initiative order.
+ * The segment panel: everybody on the stage, in the order they act.
  *
- * The same component serves both audiences: the game master gets drag handles and
- * can click a row to hand it the turn, while players get the identical list as a
- * read-only view. That keeps the two screens honestly in agreement about what the
- * order is.
+ * The same component serves both audiences: the game master can click a row to
+ * hand it the turn, while players get the identical list as a read-only view.
+ * That keeps the two screens honestly in agreement about what the order is.
  *
- * Reordering is applied locally the moment a drop lands, then written to the
- * server. If the write fails, the broadcast snapshot puts the truth back.
+ * Nothing here decides the order. It arrives already sorted — SPD says which
+ * segments a character acts in, DEX+INIT says who goes first inside one — and
+ * this only draws it, dimming the characters who have no phase in the segment
+ * the fight is on, or hiding them outright when the reader asks for that.
  */
 
-import {
-  DndContext,
-  KeyboardSensor,
-  PointerSensor,
-  closestCenter,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from "@dnd-kit/core";
-import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
-import {
-  SortableContext,
-  arrayMove,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import type { SessionCharacter } from "../types.ts";
-import {
-  faEye,
-  faGripVertical,
-  faPlay,
-  faUserMinus,
-} from "@fortawesome/free-solid-svg-icons";
+import { faEye, faPlay, faUserMinus } from "@fortawesome/free-solid-svg-icons";
+import { actsIn } from "../../lib/hero.ts";
 import {
   CharacterThumb,
   CountBadge,
+  EmptyState,
   Icon,
   KindBadge,
   TEXT_BODY,
@@ -50,7 +30,7 @@ import { Vitals, type VitalsPatch } from "./Vitals.tsx";
  *
  * The copy number only appears while there is another copy to tell this one
  * apart from — a lone goblin is just "Goblin". Shared so the turn banner and the
- * initiative row never disagree about what the monster on turn is called.
+ * segment row never disagree about what the monster on turn is called.
  */
 export function stageLabel(characters: SessionCharacter[], slot: SessionCharacter): string {
   const copies = characters.filter((entry) => entry.characterId === slot.characterId).length;
@@ -63,14 +43,16 @@ interface RowProps {
   /** How many copies of this character are on the stage, counting this one. */
   copies: number;
   isActive: boolean;
+  /** Whether this character has a phase in the segment the fight is on. */
+  isActing: boolean;
   editable: boolean;
   /** Highlights the viewing player's own character. */
   isYours: boolean;
   /**
    * Absent where this reader may read the numbers but not write them. Separate
-   * from `editable`, which is the game master's drag-and-remove: on the player's
-   * screen the whole list is read-only, and on the game master's every row is
-   * writable, but the two are different questions.
+   * from `editable`, which is the game master's remove: on the player's screen
+   * the whole list is read-only, and on the game master's every row is writable,
+   * but the two are different questions.
    */
   onSetVitals?: (patch: VitalsPatch) => void;
   onRecover?: () => void;
@@ -85,6 +67,7 @@ function Row({
   index,
   copies,
   isActive,
+  isActing,
   editable,
   isYours,
   onSetVitals,
@@ -94,24 +77,17 @@ function Row({
   onRemove,
   onOpenSheet,
 }: RowProps) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: character.id,
-    disabled: !editable,
-  });
-
   // A player character nobody has taken yet: an open seat at the table, and the
   // one thing both audiences want to spot without reading.
   const isUnclaimed = character.kind === "pc" && character.claimedByPlayerId === null;
 
   // The number only earns its place while there is another copy to tell this one
   // apart from; a lone goblin is just the goblin. Spoken names take it too, or
-  // two rows of "Reorder Goblin" would be the same instruction twice.
+  // two rows of "Remove Goblin" would be the same instruction twice.
   const copyLabel = copies > 1 ? `${character.name} ${character.copyNumber}` : character.name;
 
   return (
     <li
-      ref={setNodeRef}
-      style={{ transform: CSS.Transform.toString(transform), transition }}
       // The active turn is marked by a heavy left border and bolder text as well
       // as colour, so it reads in both themes and without colour vision. The
       // turn keeps the border when a row is both on turn and unclaimed — the
@@ -121,13 +97,18 @@ function Row({
       // hairline between rows is the list's own `divide-y`, drawn on each row's
       // bottom edge, and a bare `border-transparent` would paint that out along
       // with the three sides it was meant for.
+      //
+      // A character with no phase this segment is dimmed rather than removed, so
+      // the game master can still see and reach them — their STUN is still theirs
+      // to change on a segment they are not acting in. The clock button above
+      // takes them out of the list entirely for a reader who would rather that.
       className={`flex flex-col gap-1 border-l-4 px-3 py-2.5 ${
         isActive
           ? "border-l-amber-500 bg-amber-50 dark:bg-amber-950/40"
           : isUnclaimed
             ? "border-l-rose-400 bg-rose-50 hover:bg-rose-100 dark:border-l-rose-500/70 dark:bg-rose-950/40 dark:hover:bg-rose-950/60"
             : "border-l-transparent hover:bg-stone-50 dark:hover:bg-stone-800/50"
-      } ${isDragging ? "relative z-10 opacity-80 shadow-lg" : ""}`}
+      } ${isActing ? "" : "opacity-60"}`}
       aria-current={isActive ? "true" : undefined}
     >
       {/*
@@ -139,24 +120,12 @@ function Row({
         to zero first and never trigger it.
       */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-      {editable ? (
-        <button
-          type="button"
-          {...attributes}
-          {...listeners}
-          className="cursor-grab touch-none px-1 text-stone-400 hover:text-stone-700 active:cursor-grabbing dark:hover:text-stone-200"
-          aria-label={`Reorder ${copyLabel}. Press space, then use the arrow keys.`}
-        >
-          <Icon icon={faGripVertical} />
-        </button>
-      ) : (
-        <span
-          className="w-5 text-center text-xs tabular-nums text-stone-400 dark:text-stone-500"
-          aria-hidden="true"
-        >
-          {index + 1}
-        </span>
-      )}
+      <span
+        className="w-5 text-center text-xs tabular-nums text-stone-400 dark:text-stone-500"
+        aria-hidden="true"
+      >
+        {index + 1}
+      </span>
 
       <CharacterThumb kind={character.kind} backgroundUrl={character.backgroundUrl} />
 
@@ -168,7 +137,9 @@ function Row({
             className={`max-w-full truncate ${
               isActive
                 ? "font-semibold text-stone-900 dark:text-stone-50"
-                : TEXT_BODY
+                : isActing
+                  ? TEXT_BODY
+                  : TEXT_MUTED
             }`}
           >
             {character.name}
@@ -272,10 +243,11 @@ function Row({
 
 export function InitiativeList({
   characters,
+  segment,
+  showActingOnly = false,
   activeSlotId,
   editable = false,
   yourCharacterId = null,
-  onReorder,
   onSetVitals,
   onRecover,
   onRest,
@@ -284,12 +256,15 @@ export function InitiativeList({
   onOpenSheet,
 }: {
   characters: SessionCharacter[];
+  /** Which of the twelve segments the fight is on: what decides who is acting. */
+  segment: number;
+  /** Drop the characters who have no phase this segment instead of dimming them. */
+  showActingOnly?: boolean;
   /** The slot whose turn it is. A slot, not a character: one may fill two. */
   activeSlotId: string | null;
   editable?: boolean;
   /** The viewing player's character, matched on the character rather than the slot. */
   yourCharacterId?: string | null;
-  onReorder?: (orderedSlotIds: string[]) => void;
   /**
    * Lets this reader write what a slot has left. The game master passes it; a
    * player does not — their own numbers are theirs to change, but they change
@@ -309,23 +284,6 @@ export function InitiativeList({
    */
   onOpenSheet?: (character: SessionCharacter) => void;
 }) {
-  const sensors = useSensors(
-    // A small activation distance so a click on a row button isn't read as a drag.
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  );
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id || !onReorder) return;
-
-    const from = characters.findIndex((character) => character.id === active.id);
-    const to = characters.findIndex((character) => character.id === over.id);
-    if (from === -1 || to === -1) return;
-
-    onReorder(arrayMove(characters, from, to).map((character) => character.id));
-  };
-
   // Counted once here rather than per row, which would be a scan of the list
   // inside a scan of the list.
   const copies = new Map<string, number>();
@@ -333,44 +291,41 @@ export function InitiativeList({
     copies.set(character.characterId, (copies.get(character.characterId) ?? 0) + 1);
   }
 
-  const rows = characters.map((character, index) => (
-    <Row
-      key={character.id}
-      character={character}
-      index={index}
-      copies={copies.get(character.characterId) ?? 1}
-      isActive={character.id === activeSlotId}
-      editable={editable}
-      // On the character: a player's own PC is theirs wherever it stands.
-      isYours={character.characterId === yourCharacterId}
-      onSetVitals={onSetVitals ? (patch) => onSetVitals(character.id, patch) : undefined}
-      onRecover={onRecover ? () => onRecover(character.id) : undefined}
-      onRest={onRest ? () => onRest(character.id) : undefined}
-      onSetTurn={onSetTurn ? () => onSetTurn(character.id) : undefined}
-      onRemove={onRemove ? () => onRemove(character.id) : undefined}
-      onOpenSheet={onOpenSheet ? () => onOpenSheet(character) : undefined}
-    />
-  ));
+  // Numbered against the whole stage rather than against what survives the
+  // filter, so a character keeps the same number whichever way the clock button
+  // is set and the two views can be read against each other.
+  const rows = characters
+    .map((character, index) => ({
+      character,
+      index,
+      isActing: actsIn(character.speed, segment),
+    }))
+    .filter((row) => row.isActing || !showActingOnly)
+    .map(({ character, index, isActing }) => (
+      <Row
+        key={character.id}
+        character={character}
+        index={index}
+        copies={copies.get(character.characterId) ?? 1}
+        isActive={character.id === activeSlotId}
+        isActing={isActing}
+        editable={editable}
+        // On the character: a player's own PC is theirs wherever it stands.
+        isYours={character.characterId === yourCharacterId}
+        onSetVitals={onSetVitals ? (patch) => onSetVitals(character.id, patch) : undefined}
+        onRecover={onRecover ? () => onRecover(character.id) : undefined}
+        onRest={onRest ? () => onRest(character.id) : undefined}
+        onSetTurn={onSetTurn ? () => onSetTurn(character.id) : undefined}
+        onRemove={onRemove ? () => onRemove(character.id) : undefined}
+        onOpenSheet={onOpenSheet ? () => onOpenSheet(character) : undefined}
+      />
+    ));
 
-  const list = (
-    <ul className="divide-y divide-stone-100 dark:divide-stone-800">{rows}</ul>
-  );
+  // Only reachable with the filter on: an empty stage is answered by the panels
+  // above, which know whether the session has anyone in it at all.
+  if (rows.length === 0) {
+    return <EmptyState>Nobody acts in segment {segment}.</EmptyState>;
+  }
 
-  if (!editable) return list;
-
-  return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      modifiers={[restrictToVerticalAxis]}
-      onDragEnd={handleDragEnd}
-    >
-      <SortableContext
-        items={characters.map((character) => character.id)}
-        strategy={verticalListSortingStrategy}
-      >
-        {list}
-      </SortableContext>
-    </DndContext>
-  );
+  return <ul className="divide-y divide-stone-100 dark:divide-stone-800">{rows}</ul>;
 }

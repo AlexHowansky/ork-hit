@@ -57,11 +57,16 @@ async function makeTable(cookie: string) {
     await fetch(`${base}/api/campaigns`, authed(cookie, { method: "POST", body: campaignForm }))
   ).json();
 
-  const addCharacter = async (kind: "pc" | "npc") => {
+  // SPD 12 and a DEX apiece: everyone acts in every segment, so the clock walks
+  // one character per press and these tests can talk about steps rather than
+  // about the Speed Chart. The chart itself is exercised in `initiative.test.ts`.
+  const addCharacter = async (kind: "pc" | "npc", dexterity = 20) => {
     const form = new FormData();
     form.set("campaignId", campaign.campaign.id);
     form.set("kind", kind);
     form.set("name", unique(kind));
+    form.set("speed", "12");
+    form.set("dexterity", String(dexterity));
     form.set("sheet", new File(["<h1>sheet</h1>"], "sheet.html"));
     const response = await fetch(
       `${base}/api/characters`,
@@ -70,8 +75,9 @@ async function makeTable(cookie: string) {
     return (await response.json()).character;
   };
 
-  const pc = await addCharacter("pc");
-  const npc = await addCharacter("npc");
+  // The PC leads on DEX, so the order is the same one the old fixture had.
+  const pc = await addCharacter("pc", 20);
+  const npc = await addCharacter("npc", 10);
 
   const session = (
     await (
@@ -473,18 +479,18 @@ describe("what a character has left", () => {
 });
 
 describe("players are read-only", () => {
-  test("a player cannot reorder, set the turn, or touch the library", async () => {
+  test("a player cannot stage a character, set the turn, or touch the library", async () => {
     const gm = await signIn();
     const { pc, session } = await makeTable(gm.cookie);
     const player = await joinAs(session.code, "Bob");
 
     const attempts = [
       fetch(
-        `${base}/api/sessions/${session.id}/order`,
+        `${base}/api/sessions/${session.id}/stage`,
         authed(player, {
-          method: "PUT",
+          method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ order: [pc.id] }),
+          body: JSON.stringify({ characterId: pc.id }),
         }),
       ),
       fetch(
@@ -809,33 +815,14 @@ describe("more than one copy of an NPC", () => {
     );
   });
 
-  test("the order can be rewritten with copies in it", async () => {
-    const gm = await signIn();
-    const { npc, session } = await makeTable(gm.cookie);
-    const { snapshot: staged } = await stage(gm.cookie, session.id, npc.id);
-
-    const ids = staged.characters.map((character: { id: string }) => character.id);
-    const reversed = [...ids].reverse();
-
-    const response = await fetch(
-      `${base}/api/sessions/${session.id}/order`,
-      authed(gm.cookie, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ order: reversed }),
-      }),
-    );
-    expect(response.status).toBe(200);
-
-    const { snapshot } = await response.json();
-    expect(snapshot.characters.map((character: { id: string }) => character.id)).toEqual(reversed);
-  });
 });
 
 describe("restarting the turn order", () => {
   /** Walks the tracker forward `steps` times and reports where it ended up. */
   async function advance(cookie: string, sessionId: string, steps: number) {
-    let body!: { snapshot: { session: { round: number; activeSlotId: string | null } } };
+    let body!: {
+      snapshot: { session: { turn: number; segment: number; activeSlotId: string | null } };
+    };
     for (let i = 0; i < steps; i += 1) {
       const response = await fetch(
         `${base}/api/sessions/${sessionId}/turn/advance`,
@@ -850,7 +837,7 @@ describe("restarting the turn order", () => {
     return body.snapshot.session;
   }
 
-  test("goes back to round one with no turn set, leaving the stage alone", async () => {
+  test("goes back to the start of the fight, leaving the stage alone", async () => {
     const gm = await signIn();
     const { session } = await makeTable(gm.cookie);
 
@@ -860,9 +847,11 @@ describe("restarting the turn order", () => {
     const staged = opening.characters.map((character: { id: string }) => character.id);
     expect(staged.length).toBeGreaterThan(0);
 
-    // Two characters on the stage, so five steps is two full rounds and one over.
+    // Two SPD 12 characters, so five steps is segment 12 of turn 1 and then two
+    // segments of turn 2.
     const before = await advance(gm.cookie, session.id, 5);
-    expect(before.round).toBe(3);
+    expect(before.turn).toBe(2);
+    expect(before.segment).toBe(2);
     expect(before.activeSlotId).not.toBeNull();
 
     const response = await fetch(
@@ -872,14 +861,15 @@ describe("restarting the turn order", () => {
     expect(response.status).toBe(200);
 
     const { snapshot } = await response.json();
-    expect(snapshot.session.round).toBe(1);
+    expect(snapshot.session.turn).toBe(1);
+    expect(snapshot.session.segment).toBe(12);
     expect(snapshot.session.activeSlotId).toBeNull();
     // The fight restarts, not the session: the same characters are on the stage,
     // in the same order they were in before.
     expect(snapshot.characters.map((character: { id: string }) => character.id)).toEqual(staged);
   });
 
-  test("leaves the next step opening round one at the top of the order", async () => {
+  test("leaves the next step opening turn 1 segment 12 at the top of the order", async () => {
     const gm = await signIn();
     const { session } = await makeTable(gm.cookie);
 
@@ -890,7 +880,8 @@ describe("restarting the turn order", () => {
     );
 
     const after = await advance(gm.cookie, session.id, 1);
-    expect(after.round).toBe(1);
+    expect(after.turn).toBe(1);
+    expect(after.segment).toBe(12);
 
     const { snapshot } = await (
       await fetch(`${base}/api/sessions/${session.id}`, authed(gm.cookie))
@@ -912,11 +903,11 @@ describe("ending a session", () => {
         authed(gm.cookie, { method: "DELETE" }),
       ),
       fetch(
-        `${base}/api/sessions/${session.id}/order`,
+        `${base}/api/sessions/${session.id}/stage`,
         authed(gm.cookie, {
-          method: "PUT",
+          method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ order: [pc.id] }),
+          body: JSON.stringify({ characterId: pc.id }),
         }),
       ),
       fetch(

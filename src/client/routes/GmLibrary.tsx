@@ -308,14 +308,14 @@ function SessionRow({
 }) {
   const { snapshot } = useSessionSocket(session.id);
   const playerCount = snapshot?.players.length ?? session.playerCount;
-  const round = snapshot?.session.round ?? session.round;
+  const turn = snapshot?.session.turn ?? session.turn;
 
   return (
     <div className="flex items-center justify-between gap-3">
       <span className="text-sm text-stone-700 dark:text-stone-300">
         {session.campaignName}
         <span className={`ml-2 text-xs ${TEXT_MUTED}`}>
-          round {round} ·{" "}
+          turn {turn} ·{" "}
           {playerCount === 0
             ? "nobody has joined"
             : `${playerCount} player${playerCount === 1 ? "" : "s"}`}

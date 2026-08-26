@@ -56,7 +56,7 @@ data/        SQLite database and uploads (gitignored, never served statically)
 A few things are worth knowing before reading the code.
 
 **The library watches the sessions it lists.** Each row in "sessions in progress"
-opens that session's socket, so the round and the player count follow the table
+opens that session's socket, so the turn and the player count follow the table
 without a reload — the same snapshots the console gets, read for two numbers. The
 list's own figures stand in until the first snapshot arrives, and again if the
 socket drops. The rows sit in campaign
@@ -95,13 +95,14 @@ is away, the player screen asks `/api/auth/me` who it is; an answer that is no
 longer this player means the seat is gone, and it says so instead of spinning.
 
 **Every change republishes the whole session.** Rather than sending diffs, any
-mutation recomputes a complete snapshot — session, players, characters in
-initiative order — and publishes it to everyone watching. The lists are a dozen
-rows at most, and it means a client can never merge updates in the wrong order:
-a reorder racing a turn change cannot leave someone highlighting the wrong row.
+mutation recomputes a complete snapshot — session, players, the stage in the
+order it acts — and publishes it to everyone watching. The lists are a dozen rows
+at most, and it means a client can never merge updates in the wrong order: a
+character arriving racing a turn change cannot leave someone highlighting the
+wrong row.
 
 **One live session per campaign.** Two would give the same characters two
-initiative orders and two turn markers, and a code would not say which table a
+clocks and two turn markers, and a code would not say which table a
 player had joined. The rule is a partial unique index on `game_sessions`
 (`002_one_active_session_per_campaign.sql`) covering active rows only, so a
 campaign can still be played again and again; the start handler checks first and
@@ -109,24 +110,47 @@ answers 409 with something a game master can act on, and the index is what makes
 that check impossible to get around.
 
 **A session opens with the party in it.** Starting one inserts every PC in the
-campaign into the initiative order in a single statement, inside the same
+campaign onto the stage in a single statement, inside the same
 transaction that creates the session — `sessionCharacters.addCampaignPcs` in
 `src/db/queries.ts`. Characters already in the session are filtered out of that
 statement rather than left to `ON CONFLICT DO NOTHING`, because a skipped row
 would leave a hole in the positions.
 
+**The fight runs on the HERO clock, and the clock lives on the server.** A Turn
+is twelve segments; SPEED says which of them a character acts in, off the Speed
+Chart in `src/lib/hero.ts`, and DEX+INIT says who goes first inside one. The
+session carries `turn` and `segment` alongside `active_slot_id`, and `advanceTurn`
+(`src/server/routes/sessions.ts`) is the only thing that moves any of the three —
+so two open game master tabs cannot come to different views about where in the
+fight the table is. Stepping forward takes the next character acting in this
+segment, or else the first character of the next segment anybody acts in;
+segments with no phases in them are stepped straight over rather than shown empty.
+
+The turn counter goes up on *arriving at segment 1*, not on passing segment 12,
+which is what makes a fight open on Turn 1 Segment 12 and the first Segment 1
+belong to Turn 2. That is how HERO starts a combat, and it reads as an off-by-one
+without being one. A SPEED of nought is an empty row of the chart, so a character
+nobody has filled in never comes up on turn — and a stage where *nobody* has a
+SPEED is refused outright with something the game master can act on, since the
+segment walk would otherwise have all twelve to search and nothing to find.
+
+The Speed Chart is written out longhand rather than derived. It is a published
+table, not a formula: the segments SPD 7 gets are not the segments an even spread
+of seven phases would give, and a clever reconstruction that came close would be
+wrong exactly where nobody checks. `tests/hero.test.ts` pins every row of it.
+
 **Restarting the fight clears the turn rather than parking it.** `POST
-/api/sessions/:id/turn/restart` sets the round to one and the active character to
-`null`, which is the state a session opens in — "No turn set yet", with the first
-press of Next opening round one on whoever leads the order. Putting the marker on
-the first character instead would look equivalent and is not: the order may well
-have been rearranged since the fight began, and it would quietly decide the new
-leader had already acted. Nothing else is touched, so the stage, the initiative
-order and the players' claims all survive a restart; it restarts the fight, not
-the session. The button asks first (`Confirm.tsx`), since it is the one turn
-control that throws work away and the only way back is to press Next as many
-times as it took to get there — and it is disabled outright at round one with no
-turn set, where there is nothing to go back to.
+/api/sessions/:id/turn/restart` sets the clock to Turn 1, Segment 12 and the
+active slot to `null`, which is the state a session opens in — "No turn set yet",
+with the first press of Next opening segment 12 on whoever leads it. Putting the
+marker on the first character instead would look equivalent and is not: the stage
+may well have changed since the fight began, and it would quietly decide the new
+leader had already acted. Nothing else is touched, so the stage and the players'
+claims both survive a restart; it restarts the fight, not the session. The button
+asks first (`Confirm.tsx`), since it is the one turn control that throws work away
+and the only way back is to press Next as many times as it took to get there — and
+it is disabled outright at turn one with no turn set, where there is nothing to go
+back to.
 
 **Every picture comes from one set.** Icons are FontAwesome v7's free solid
 icons, imported one at a time from `@fortawesome/free-solid-svg-icons` and drawn
@@ -159,7 +183,7 @@ of a live session cannot be deleted; `DELETE /api/characters/:id` answers 409 an
 says which way out to take. Without the guard the `ON DELETE CASCADE` on
 `session_characters.character_id` would do it silently — the character would
 disappear from the players' screens mid-fight on the next broadcast, and the
-initiative order would be left with a hole in it, since a cascade removes rows
+stage would be left with a hole in its positions, since a cascade removes rows
 without renumbering `position` the way `sessionCharacters.remove` does. The guard is
 `sessionIdsWith` (`src/server/session-state.ts`), the same check that already
 refuses to refile a character out of a campaign they are playing in; it filters on
@@ -171,10 +195,10 @@ fire on a stage anyone is looking at.
 **The stage is a list of slots, not of characters.** A fight usually has more than
 one goblin, so `session_characters` rows carry an id of their own and two of them
 may name the same character. That id is what the turn marker points at
-(`game_sessions.active_slot_id`), what a reorder sends, and what a removal names —
-because "remove Strahd" stopped being a question with one answer. It is also the
-`id` in the snapshot, so every id-keyed thing on the client — React keys, dnd-kit
-ids, `Set turn`, `Remove` — kept working and simply means the slot now; the
+(`game_sessions.active_slot_id`) and what a removal names — because "remove
+Strahd" stopped being a question with one answer. It is also the `id` in the
+snapshot, so every id-keyed thing on the client — React keys, `Set turn`,
+`Remove` — kept working and simply means the slot now; the
 character it shows rides alongside as `characterId`, which is what a claim and a
 sheet are about. The one place this had to be watched is `advanceTurn`: matching
 the marker on the character would find the first goblin every time, so the marker
@@ -199,10 +223,25 @@ keyed on the character rather than the slot, which is the reason the whole playe
 side of this — claiming, "Playing as", the sheet check — needed no schema change at
 all.
 
-**Initiative positions are dense.** `session_characters.position` is always
-`0..n-1`. Adds append, removes close the gap, and a reorder sends the entire
-ordered list rather than a move — which makes it idempotent and lets the server
-reject a list built from a stale view instead of silently dropping a character.
+**The order is derived, not stored.** `sessionCharacters.list` sorts by
+`dexterity + initiative` descending, which is what HERO runs a segment in, and
+`session_characters.position` survives only as the tiebreak between two characters
+on the same DEX+INIT: it is the order they came on stage. Sorting at read time
+rather than writing positions when a character walks on is what keeps the panel
+right the moment a DEX is edited mid-session — a stored order has somewhere to
+drift to, and this has nowhere. `position` is still dense `0..n-1`, since adds
+append and removes close the gap, so the tiebreak stays a real sequence.
+
+**The clock filter is one reader's own.** The button on the segment panel narrows
+it to the characters acting in the current segment, and both audiences get one:
+which rows a game master would rather not scroll past is not a fact about the
+session, so it is never broadcast and never reaches anyone else's screen. It lives
+in `sessionStorage`, keyed by session (`SegmentFilter.tsx`) — it should survive a
+reload mid-fight and it should not still be set months later at another table. It
+is one setting rather than one per segment, so it stays on as the fight walks the
+clock. Turned off, a character with no phase this segment is dimmed rather than
+hidden: their STUN is still the game master's to change on a segment they are not
+acting in.
 
 **Card styling is shared.** The campaign and character grids are different
 components, so their shape and hover treatment live in one place — `CARD_BASE`
@@ -307,8 +346,8 @@ window-level swallow is narrowed the same way, for the same reason.
 
 **Dragging a character onto a campaign refiles it.** Both libraries are on screen
 together on the wide layout, so the shortest way to move a character is to drop its
-card on the campaign it belongs to. It is native HTML5 drag rather than `@dnd-kit`,
-which the initiative order uses: the two panels are separate `overflow-y-auto` scroll
+card on the campaign it belongs to. It is native HTML5 drag: the two panels are
+separate `overflow-y-auto` scroll
 containers that would clip a dragged card, and the accessible path here already
 exists — the edit dialog's campaign field — so the drag is an accelerator rather
 than the only way in. During `dragover` the payload is unreadable, only its type, so
@@ -432,8 +471,8 @@ list. `AppPage` and `Panel`'s `scroll` prop in `src/client/components/ui.tsx`
 carry this; the routes only choose how the panels divide the frame, and — on both
 session pages, with `order` rather than a second copy of the markup — what
 sequence they sit in once there are columns. The console goes one column, to two
-equal halves, to three equal thirds, and the round travels with the initiative
-order the whole way: it is the same fight, so it sits above it and shares its
+equal halves, to three equal thirds, and the turn travels with the segment
+panel the whole way: it is the same fight, so it sits above it and shares its
 width rather than running the width of the page. The code travels with the
 players in the same way — and stacked, `order-first` lifts it above everything,
 since handing out the code is the first thing a game master does. On the player's page the column
@@ -472,7 +511,7 @@ in `buildSnapshot` (`src/server/session-state.ts`) beside the other things that
 are true of a slot rather than of a character.
 
 Who may read them is the same question as who may write them, which is why the
-initiative list gates both on one prop: the game master's list is handed
+segment panel gates both on one prop: the game master's list is handed
 `onSetVitals` and draws every row's numbers, a player's list is not and draws
 none. What the monster has left is the game master's information to give out or
 hold back at the table, and a player's own numbers are on their `My character`
@@ -526,8 +565,9 @@ own if audio is refused.
 
 Announcing the turn is deliberately about *changes*: the snapshot that arrives on
 a reconnect or a page load says nothing has changed, so a player who was already
-up is not chimed at again. The alert is keyed on the round as well as the
-character, so a scene with one character in it still announces each new lap.
+up is not chimed at again. The alert is keyed on the turn and the segment as well
+as the character, so a SPD 12 hero is announced for each of their twelve phases
+rather than once for the whole turn.
 
 ## Character sheets
 
@@ -648,10 +688,10 @@ bun run test:e2e   # the above plus real-browser tests
 bun run typecheck
 ```
 
-The browser tests cover what only exists in a live page — dragging the
-initiative order with a mouse and with the keyboard, dragging a character card
-onto another campaign, player screens updating without a refresh, a sheet opening
-in the window's own shape, and the sheet sandbox holding. They need Playwright's
+The browser tests cover what only exists in a live page — the segment panel's
+clock filter narrowing one reader's list without touching anyone else's, dragging
+a character card onto another campaign, player screens updating without a refresh,
+a sheet opening in the window's own shape, and the sheet sandbox holding. They need Playwright's
 Chromium (`bunx playwright install chromium`) and are skipped without it.
 
 In development you may see a console warning that an inline script was blocked

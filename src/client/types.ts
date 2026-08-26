@@ -33,8 +33,8 @@ export interface Character {
 /**
  * A slot on the stage.
  *
- * `id` is the slot, not the character: it is the React key, the drag id, and what
- * a reorder, a turn or a removal names. The character in it is `characterId` —
+ * `id` is the slot, not the character: it is the React key, and what a turn or a
+ * removal names. The character in it is `characterId` —
  * what a claim is about, and what two copies of one NPC share. `sheetUrl` is the
  * character's too, so both copies open the same sheet.
  */
@@ -42,6 +42,7 @@ export interface SessionCharacter extends Character {
   characterId: string;
   /** Which copy of that character this is. Shown only when there is more than one. */
   copyNumber: number;
+  /** The order it came on stage. Only the tiebreak between equal DEX+INIT. */
   position: number;
   /** What this slot has left, against the totals above. Two goblins differ. */
   currentEndurance: number;
@@ -63,7 +64,8 @@ export interface GameSession {
   campaignName: string;
   code: string;
   status: "active" | "ended";
-  round: number;
+  turn: number;
+  segment: number;
   playerCount: number;
   createdAt: string;
   endedAt: string | null;
@@ -73,7 +75,10 @@ export interface Snapshot {
   session: {
     id: string;
     status: string;
-    round: number;
+    /** How many HERO Turns of twelve segments the fight has reached. */
+    turn: number;
+    /** Which of those twelve segments it is on. Always 1–12. */
+    segment: number;
     /** The campaign's name: what heads a player's screen. */
     campaignName: string;
     activeSlotId: string | null;

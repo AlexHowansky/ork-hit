@@ -1,6 +1,7 @@
 /**
- * Browser tests for the behaviour that only exists in a real page: dragging the
- * initiative order, and player screens updating live without a refresh.
+ * Browser tests for the behaviour that only exists in a real page: the segment
+ * panel and its clock filter, and player screens updating live without a
+ * refresh.
  *
  * These start their own server and drive a real Chromium, so they are slower than
  * the rest of the suite. They are skipped automatically when Playwright's browser
@@ -71,7 +72,18 @@ async function gmWithSession(): Promise<{ page: Page; code: string; campaignName
   // screen, and it blinks out while the new campaign is being fetched.
   await page.getByText(`Characters in ${campaignName}`).waitFor();
 
-  for (const [name, kind] of [["Thorin", "pc"], ["Elara", "pc"], ["Strahd", "npc"]] as const) {
+  // SPD and DEX are what the segment panel is built out of. The two heroes are
+  // SPD 12 and so act in every segment, which keeps the turn walk in these tests
+  // one press per character; Strahd is SPD 2 and acts only in segments 6 and 12,
+  // which is what the clock filter has to have something to hide. DEX puts them
+  // in the order Elara, Thorin, Strahd.
+  const cast = [
+    ["Thorin", "pc", 12, 15],
+    ["Elara", "pc", 12, 20],
+    ["Strahd", "npc", 2, 10],
+  ] as const;
+
+  for (const [name, kind, speed, dexterity] of cast) {
     await page.getByRole("button", { name: "Add", exact: true }).click();
     await page.getByLabel("Name").fill(name);
     await page.getByLabel("Type").selectOption(kind);
@@ -81,6 +93,8 @@ async function gmWithSession(): Promise<{ page: Page; code: string; campaignName
       buffer: Buffer.from(`<h1>${name}</h1><script>window.loaded = true;</script>`),
     });
     // Characteristics, so the session screens have totals to count down from.
+    await page.getByLabel("SPD", { exact: true }).fill(String(speed));
+    await page.getByLabel("DEX", { exact: true }).fill(String(dexterity));
     await page.getByLabel("REC", { exact: true }).fill("8");
     await page.getByLabel("END", { exact: true }).fill("30");
     await page.getByLabel("STUN", { exact: true }).fill("25");
@@ -93,12 +107,12 @@ async function gmWithSession(): Promise<{ page: Page; code: string; campaignName
   await page.waitForURL("**/gm/sessions/**");
   const code = (await page.locator("code").first().innerText()).trim();
 
-  // Starting a session brings the campaign's player characters in by itself, in
-  // name order, so only the NPC is added by hand. The order is Elara, Thorin,
-  // Strahd.
+  // Starting a session brings the campaign's player characters in by itself, so
+  // only the NPC is added by hand. DEX puts them in the order Elara, Thorin,
+  // Strahd whichever way round they arrived.
   await page.getByRole("listitem").filter({ hasText: "Strahd" })
     .getByRole("button", { name: "Add" }).click();
-  await page.getByText("Initiative order (3)").waitFor();
+  await stageCount(page, 3);
 
   return { page, code, campaignName };
 }
@@ -130,9 +144,20 @@ async function playerIn(code: string, name: string, campaignName?: string): Prom
   return page;
 }
 
+/**
+ * The segment panel, on either screen.
+ *
+ * Matched on the shape of the heading rather than on its words, since the segment
+ * in it changes as the fight walks the clock.
+ */
+const stagePanel = (page: Page) => page.locator("section", { hasText: /Segment \d+ \(/ });
+
+/** Waits for the panel to say it holds `count` characters. */
+const stageCount = (page: Page, count: number) =>
+  page.getByText(new RegExp(`Segment \\d+ \\(${count}\\)`)).waitFor({ timeout: 5000 });
+
 const namesIn = (page: Page) =>
-  page
-    .locator("section", { hasText: /Initiative order|In the scene/ })
+  stagePanel(page)
     .locator("li")
     .evaluateAll((rows) => rows.map((row) => row.querySelector("span.truncate")?.textContent ?? ""));
 
@@ -175,17 +200,17 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     await player.locator("p", { hasText: "Up now:" }).getByText("Strahd")
       .waitFor({ timeout: 5000 });
 
-    // Walking off the end of the order advances the round on both screens.
+    // Walking off the end of segment 12 opens turn 2 on both screens.
     for (let i = 0; i < 3; i += 1) {
       await gm.getByRole("button", { name: "Next" }).click();
       await gm.waitForTimeout(120);
     }
-    await player.getByText("Round 2").waitFor({ timeout: 5000 });
+    await player.getByText("Turn 2").waitFor({ timeout: 5000 });
 
     // Removing an NPC takes it off the player's list.
     await gm.getByRole("listitem").filter({ hasText: "Strahd" })
       .getByRole("button", { name: "Remove" }).click();
-    await player.getByText("In the scene (2)").waitFor({ timeout: 5000 });
+    await stageCount(player, 2);
   }, 60_000);
 
   /**
@@ -215,7 +240,7 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     const { page: gm, code } = await gmWithSession();
     const player = await playerIn(code, "Nia");
 
-    const gmRow = gm.locator("section", { hasText: "Initiative order" })
+    const gmRow = stagePanel(gm)
       .getByRole("listitem").filter({ hasText: "Thorin" });
     const myPanel = player.locator("section", { hasText: /My character/ });
 
@@ -258,11 +283,11 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
 
     // The scene carries none of these for a player: someone else's are not
     // theirs to see, and their own are on the panel above rather than twice.
-    const scene = player.locator("section", { hasText: "In the scene" });
+    const scene = stagePanel(player);
     expect((await scene.innerText()).replace(/\s+/g, " ")).not.toContain("STUN");
 
     // And the game master still sees every row's.
-    const strahdOnConsole = gm.locator("section", { hasText: "Initiative order" })
+    const strahdOnConsole = stagePanel(gm)
       .getByRole("listitem").filter({ hasText: "Strahd" });
     expect(await strahdOnConsole.getByLabel("STUN left for Strahd").count()).toBe(1);
   }, 60_000);
@@ -276,10 +301,10 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     const library = gm.locator("section", { hasText: "Add from library" });
     await library.getByRole("listitem").filter({ hasText: "Strahd" })
       .getByRole("button", { name: "Add" }).click();
-    await gm.getByText("Initiative order (4)").waitFor({ timeout: 5000 });
+    await stageCount(gm, 4);
     await library.getByRole("listitem").filter({ hasText: "Strahd" })
       .getByRole("button", { name: "Add" }).click();
-    await gm.getByText("Initiative order (5)").waitFor({ timeout: 5000 });
+    await stageCount(gm, 5);
 
     // The NPC stayed in the library — that is what lets it be added again — and
     // says how many of it are out.
@@ -289,13 +314,13 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     expect((await strahdCard.innerText()).replace(/\s+/g, " ")).toContain("3");
 
     // Each copy is numbered, and the player sees the same numbers.
-    const stage = gm.locator("section", { hasText: "Initiative order" });
+    const stage = stagePanel(gm);
     for (const n of ["1", "2", "3"]) {
       await stage.getByRole("listitem").filter({ hasText: `Strahd${n}` }).waitFor({ timeout: 5000 });
     }
-    await player.getByText("In the scene (5)").waitFor({ timeout: 5000 });
+    await stageCount(player, 5);
 
-    // A full round gives every copy its own turn rather than sticking on the first.
+    // A full segment gives every copy its own phase rather than sticking on the first.
     const seen: string[] = [];
     for (let i = 0; i < 5; i += 1) {
       await gm.getByRole("button", { name: "Next" }).click();
@@ -308,48 +333,48 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     // Removing the middle copy leaves the other two with the numbers they had.
     await stage.getByRole("listitem").filter({ hasText: "Strahd2" })
       .getByRole("button", { name: "Remove" }).click();
-    await gm.getByText("Initiative order (4)").waitFor({ timeout: 5000 });
+    await stageCount(gm, 4);
     await stage.getByRole("listitem").filter({ hasText: "Strahd1" }).waitFor({ timeout: 5000 });
     await stage.getByRole("listitem").filter({ hasText: "Strahd3" }).waitFor({ timeout: 5000 });
     expect(await stage.getByRole("listitem").filter({ hasText: "Strahd2" }).count()).toBe(0);
   }, 60_000);
 
-  test("restarting takes both screens back to round 1", async () => {
+  test("restarting takes both screens back to turn 1", async () => {
     if (!browser) return;
     const { page: gm, code } = await gmWithSession();
     const player = await playerIn(code, "Fran");
 
-    // Into round 2, with a turn set, so there is something to go back from.
+    // Into turn 2, with a phase set, so there is something to go back from.
     for (let i = 0; i < 4; i += 1) {
       await gm.getByRole("button", { name: "Next" }).click();
       await gm.waitForTimeout(120);
     }
-    await player.getByText("Round 2").waitFor({ timeout: 5000 });
+    await player.getByText("Turn 2").waitFor({ timeout: 5000 });
 
     // Restarting asks first, and backing out of the question changes nothing.
     await gm.getByRole("button", { name: "Restart" }).click();
-    await gm.getByRole("dialog", { name: "Start over at round 1?" })
+    await gm.getByRole("dialog", { name: "Start over at turn 1?" })
       .getByRole("button", { name: "Cancel" }).click();
     await gm.waitForTimeout(200);
-    expect(await gm.getByText("Round 2").count()).toBe(1);
+    expect(await gm.getByText("Turn 2").count()).toBe(1);
 
     await gm.getByRole("button", { name: "Restart" }).click();
-    await gm.getByRole("dialog", { name: "Start over at round 1?" })
+    await gm.getByRole("dialog", { name: "Start over at turn 1?" })
       .getByRole("button", { name: "Restart" }).click();
 
-    // Round one, nobody up, and the player sees it without a refresh.
+    // Turn one, nobody up, and the player sees it without a refresh.
     await gm.getByText("No turn set yet").waitFor({ timeout: 5000 });
-    await player.getByText("Round 1").waitFor({ timeout: 5000 });
+    await player.getByText("Turn 1").waitFor({ timeout: 5000 });
     await player.getByText("No turn set yet").waitFor({ timeout: 5000 });
 
     // The stage is untouched: the same three are still in the scene.
     expect(await namesIn(gm)).toEqual(["Elara", "Thorin", "Strahd"]);
 
-    // And the next step opens round one at the top of the order.
+    // And the next step opens turn one, segment twelve, at the top of the order.
     await gm.getByRole("button", { name: "Next" }).click();
     await gm.locator("p", { hasText: "Up now:" }).getByText("Elara")
       .waitFor({ timeout: 5000 });
-    expect(await gm.getByText("Round 1").count()).toBe(1);
+    expect(await gm.getByText("Turn 1").count()).toBe(1);
   }, 60_000);
 
   test("the player whose turn it is gets told", async () => {
@@ -378,17 +403,17 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     const { page: gm, code } = await gmWithSession();
     const player = await playerIn(code, "Ivy");
 
-    const stage = gm.locator("section", { hasText: "Initiative order" });
+    const stage = stagePanel(gm);
 
     // An NPC nobody is playing goes without a question.
     await stage.getByRole("listitem").filter({ hasText: "Strahd" })
       .getByRole("button", { name: /Remove Strahd/ }).click();
-    await gm.getByText("Initiative order (2)").waitFor({ timeout: 5000 });
+    await stageCount(gm, 2);
 
     // Elara is a player character, but unclaimed — still no question.
     await stage.getByRole("listitem").filter({ hasText: "Elara" })
       .getByRole("button", { name: /Remove Elara/ }).click();
-    await gm.getByText("Initiative order (1)").waitFor({ timeout: 5000 });
+    await stageCount(gm, 1);
 
     // Thorin is being played, so this one is asked about — and refusing it
     // leaves the scene exactly as it was.
@@ -397,49 +422,79 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     const asking = gm.getByRole("dialog", { name: "Take Thorin out of the scene?" });
     await asking.getByText("Ivy is playing them").waitFor();
     await asking.getByRole("button", { name: "Cancel" }).click();
-    await gm.getByText("Initiative order (1)").waitFor({ timeout: 5000 });
+    await stageCount(gm, 1);
 
     // Going through with it drops the player back to choosing a character.
     await stage.getByRole("listitem").filter({ hasText: "Thorin" })
       .getByRole("button", { name: /Remove Thorin/ }).click();
     await gm.getByRole("dialog", { name: "Take Thorin out of the scene?" })
       .getByRole("button", { name: "Remove" }).click();
-    await gm.getByText("Initiative order (0)").waitFor({ timeout: 5000 });
+    await stageCount(gm, 0);
     await player.getByText("Choose your character").waitFor({ timeout: 5000 });
   }, 60_000);
 
-  test("the initiative order can be dragged, and players see the new order", async () => {
+  test("the clock button narrows each screen to whoever is acting", async () => {
     if (!browser) return;
     const { page: gm, code } = await gmWithSession();
     const player = await playerIn(code, "Bob");
 
+    // The fight opens on segment 12, where all three act — DEX orders them.
+    expect(await namesIn(gm)).toEqual(["Elara", "Thorin", "Strahd"]);
+    expect(await namesIn(player)).toEqual(["Elara", "Thorin", "Strahd"]);
+
+    // Four presses walks segment 12 and opens segment 1 of turn 2, which belongs
+    // to the two SPD 12 heroes alone: Strahd is SPD 2 and has no phase there.
+    for (let i = 0; i < 4; i += 1) {
+      await gm.getByRole("button", { name: "Next" }).click();
+      await gm.waitForTimeout(120);
+    }
+    await gm.getByText("Segment 1 (3)").waitFor({ timeout: 5000 });
+    await player.getByText("Segment 1 (3)").waitFor({ timeout: 5000 });
+
+    // Everyone is still listed until the clock button is pressed.
     expect(await namesIn(gm)).toEqual(["Elara", "Thorin", "Strahd"]);
 
-    // Drag the third row above the first.
-    const handles = gm.locator('[aria-label^="Reorder"]');
-    const third = (await handles.nth(2).boundingBox())!;
-    const first = (await handles.nth(0).boundingBox())!;
-    await gm.mouse.move(third.x + third.width / 2, third.y + third.height / 2);
-    await gm.mouse.down();
-    await gm.mouse.move(first.x + first.width / 2, first.y - 10, { steps: 12 });
-    await gm.mouse.up();
-    await gm.waitForTimeout(600);
+    const clock = (page: Page) =>
+      stagePanel(page).getByRole("button", { name: /characters acting this segment|every character/ });
 
-    expect(await namesIn(gm)).toEqual(["Strahd", "Elara", "Thorin"]);
-    // The same order reached the player over the socket.
-    expect(await namesIn(player)).toEqual(["Strahd", "Elara", "Thorin"]);
+    await clock(gm).click();
+    await gm.waitForTimeout(200);
+    expect(await namesIn(gm)).toEqual(["Elara", "Thorin"]);
 
-    // The keyboard path matters for anyone not using a mouse.
-    await handles.nth(0).focus();
-    await gm.keyboard.press("Space");
-    await gm.waitForTimeout(150);
-    await gm.keyboard.press("ArrowDown");
-    await gm.waitForTimeout(150);
-    await gm.keyboard.press("Space");
-    await gm.waitForTimeout(600);
+    // One reader's choice is their own: the player still sees everybody.
+    expect(await namesIn(player)).toEqual(["Elara", "Thorin", "Strahd"]);
 
-    expect(await namesIn(gm)).toEqual(["Elara", "Strahd", "Thorin"]);
-    expect(await namesIn(player)).toEqual(["Elara", "Strahd", "Thorin"]);
+    // And the player has the same button, working the same way.
+    await clock(player).click();
+    await player.waitForTimeout(200);
+    expect(await namesIn(player)).toEqual(["Elara", "Thorin"]);
+
+    // It is one setting, not one per segment: walking on to a segment Strahd
+    // does act in brings them back without the button being touched.
+    // Two heroes a segment, so ten presses walks segments 1 to 5 and opens 6.
+    for (let i = 0; i < 10; i += 1) {
+      await gm.getByRole("button", { name: "Next" }).click();
+      await gm.waitForTimeout(120);
+    }
+    await gm.getByText("Segment 6 (3)").waitFor({ timeout: 5000 });
+    expect(await namesIn(gm)).toEqual(["Elara", "Thorin", "Strahd"]);
+
+    // Remembered across a reload, for the length of the session. Three more
+    // presses finish segment 6 — Strahd's second phase is in it — and open 7,
+    // which is the heroes' alone again.
+    await gm.reload();
+    await gm.getByText("Segment 6 (3)").waitFor({ timeout: 5000 });
+    for (let i = 0; i < 3; i += 1) {
+      await gm.getByRole("button", { name: "Next" }).click();
+      await gm.waitForTimeout(120);
+    }
+    await gm.getByText("Segment 7 (3)").waitFor({ timeout: 5000 });
+    expect(await namesIn(gm)).toEqual(["Elara", "Thorin"]);
+
+    // Pressed again, the whole stage comes back.
+    await clock(gm).click();
+    await gm.waitForTimeout(200);
+    expect(await namesIn(gm)).toEqual(["Elara", "Thorin", "Strahd"]);
   }, 60_000);
 
   test("cards are drawn at the size the deployment asked for", async () => {

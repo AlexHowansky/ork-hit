@@ -432,8 +432,8 @@ export const gameSessions = {
   create(input: { campaignId: string; gmId: string; code: string }): GameSessionRow {
     const id = newId();
     db.query(`
-      INSERT INTO game_sessions (id, campaign_id, gm_id, code, status, round, created_at)
-      VALUES ($id, $campaignId, $gmId, $code, 'active', 1, $ts)
+      INSERT INTO game_sessions (id, campaign_id, gm_id, code, status, turn, segment, created_at)
+      VALUES ($id, $campaignId, $gmId, $code, 'active', 1, 12, $ts)
     `).run({ ...input, id, ts: now() });
     return gameSessions.byId(id)!;
   },
@@ -444,18 +444,36 @@ export const gameSessions = {
     ).run({ id, ts: now() });
   },
 
-  /** Points the turn marker at a stage slot, or nowhere. */
-  setTurn(id: string, slotId: string | null, round: number): void {
+  /**
+   * Points the turn marker at a stage slot, or nowhere, and says where on the
+   * clock that is.
+   *
+   * The three move together because they are one position: a slot without the
+   * turn and segment it was reached on is not a place in the fight, and writing
+   * them separately would let a broadcast catch the pair half updated.
+   */
+  setTurn(id: string, slotId: string | null, turn: number, segment: number): void {
     db.query(
-      "UPDATE game_sessions SET active_slot_id = $slotId, round = $round WHERE id = $id",
-    ).run({ id, slotId, round });
+      "UPDATE game_sessions SET active_slot_id = $slotId, turn = $turn, segment = $segment WHERE id = $id",
+    ).run({ id, slotId, turn, segment });
   },
 };
 
 /* --------------------------------------------------------- session membership */
 
 export const sessionCharacters = {
-  /** The stage in initiative order, each slot joined with the character in it. */
+  /**
+   * The stage in initiative order, each slot joined with the character in it.
+   *
+   * The order is derived rather than stored: HERO runs a segment in DEX order,
+   * plus whatever INITIATIVE bonus the sheet carries, highest first. Sorting
+   * here rather than writing positions when a character walks on means the list
+   * is right the moment a DEX is edited, and there is nowhere for a stored order
+   * to drift out of agreement with the characteristics it was built from.
+   *
+   * `position` survives only as the tiebreak: two characters on the same DEX+INIT
+   * go in the order they came on stage, which is stable and is at least a reason.
+   */
   list(sessionId: string): SessionCharacterRow[] {
     return db.query<SessionCharacterRow, { sessionId: string }>(`
       SELECT c.*, sc.id AS slot_id, sc.copy_number, sc.position,
@@ -463,7 +481,7 @@ export const sessionCharacters = {
       FROM session_characters sc
       JOIN characters c ON c.id = sc.character_id
       WHERE sc.game_session_id = $sessionId
-      ORDER BY sc.position
+      ORDER BY (c.dexterity + c.initiative) DESC, sc.position
     `).all({ sessionId });
   },
 
@@ -588,9 +606,11 @@ export const sessionCharacters = {
    *
    * A session all but always opens with the whole party present, so the game
    * master shouldn't have to add them one at a time before the first turn. NPCs
-   * stay out — they arrive when the scene calls for them. Ordered by name so the
-   * starting initiative list is predictable, and appended after anything already
-   * in the session. Anyone already there is filtered out rather than left to
+   * stay out — they arrive when the scene calls for them. Ordered by name and
+   * appended after anything already in the session: the initiative order is
+   * derived from SPD and DEX+INIT by `list`, so `position` is only the tiebreak
+   * between equal characters, and by name is a defensible way to settle it.
+   * Anyone already there is filtered out rather than left to
    * `ON CONFLICT`, because a skipped row would leave a hole in the positions,
    * which the rest of the code takes to be dense.
    */
@@ -620,7 +640,11 @@ export const sessionCharacters = {
   },
 
   /**
-   * Appends a copy of a character at the end of the initiative order.
+   * Brings a copy of a character on stage.
+   *
+   * It takes the next `position`, which is not where it lands in the initiative
+   * order — `list` derives that from SPD and DEX+INIT — but only its place in
+   * the queue of arrivals, used to break a tie with someone on the same DEX+INIT.
    *
    * An NPC can be added over and over — that is the point, a fight has more than
    * one goblin — and each add is a slot of its own with its own turn. A PC is
@@ -699,30 +723,6 @@ export const sessionCharacters = {
     db.query(
       "UPDATE game_sessions SET active_slot_id = NULL WHERE id = $sessionId AND active_slot_id = $slotId",
     ).run({ sessionId, slotId });
-  }),
-
-  /**
-   * Rewrites the whole initiative order. `orderedIds` is slot ids, and the
-   * caller has already checked it is exactly the session's current stage.
-   *
-   * Positions are first pushed into a range that cannot collide with the final
-   * one, then written down into 0..n-1. Without that two-pass approach an
-   * intermediate state could momentarily duplicate a position.
-   */
-  reorder: db.transaction((sessionId: string, orderedIds: string[]) => {
-    const offset = orderedIds.length + 1000;
-    db.query(`
-      UPDATE session_characters SET position = position + $offset
-      WHERE game_session_id = $sessionId
-    `).run({ sessionId, offset });
-
-    const setPosition = db.query(`
-      UPDATE session_characters SET position = $position
-      WHERE game_session_id = $sessionId AND id = $slotId
-    `);
-    orderedIds.forEach((slotId, position) => {
-      setPosition.run({ sessionId, slotId, position });
-    });
   }),
 };
 

@@ -35,6 +35,7 @@ import {
   TEXT_STRONG,
 } from "../components/ui.tsx";
 import { InitiativeList, stageLabel } from "../components/InitiativeList.tsx";
+import { SegmentFilterToggle, useSegmentFilter } from "../components/SegmentFilter.tsx";
 import { Vitals, type VitalsPatch } from "../components/Vitals.tsx";
 import { faShieldHalved } from "@fortawesome/free-solid-svg-icons";
 import { HERO_STAT_LABELS } from "../../lib/hero.ts";
@@ -74,6 +75,7 @@ export function PlayerSession({
   const [claiming, setClaiming] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [dropped, setDropped] = useState(false);
+  const [showActingOnly, toggleSegmentFilter] = useSegmentFilter(sessionId);
 
   /**
    * A player who is away long enough is removed from the session, and a removed
@@ -101,8 +103,9 @@ export function PlayerSession({
   // Identifies this player's turn, changing again if the order comes back round
   // to them — with one character in the scene the id alone would never change.
   //
-  // Keyed on the slot rather than the character, which is also what would tell
-  // two turns in one round apart if a character ever stood in two places.
+  // Keyed on the slot and on where the clock is, so a character with two phases
+  // in one turn is announced for each of them — a SPD 12 hero would otherwise be
+  // chimed at once and then sit through eleven silent segments of their own.
   const myTurnKey = (() => {
     if (!snapshot) return null;
     const claimed =
@@ -112,7 +115,7 @@ export function PlayerSession({
     const mine = snapshot.characters.some(
       (character) => character.id === active && character.characterId === claimed,
     );
-    return mine ? `${active}#${snapshot.session.round}` : null;
+    return mine ? `${active}#${snapshot.session.turn}#${snapshot.session.segment}` : null;
   })();
 
   // `undefined` until the first snapshot lands: arriving mid-turn is not a change,
@@ -320,7 +323,7 @@ export function PlayerSession({
         <div className="contents lg:flex lg:min-w-0 lg:flex-1 lg:flex-col lg:gap-2.5 wide:min-h-0">
           <TurnControls
             className="lg:shrink-0"
-            round={snapshot.session.round}
+            turn={snapshot.session.turn}
             activeCharacterName={(() => {
               const active = snapshot.characters.find(
                 (character) => character.id === snapshot.session.activeSlotId,
@@ -407,12 +410,20 @@ export function PlayerSession({
         </div>
 
         <div className="contents lg:flex lg:min-w-0 lg:flex-[1.4] lg:flex-col wide:min-h-0">
-          <Panel scroll title={`In the scene (${snapshot.characters.length})`}>
+          <Panel
+            scroll
+            title={`Segment ${snapshot.session.segment} (${snapshot.characters.length})`}
+            actions={
+              <SegmentFilterToggle showActingOnly={showActingOnly} onToggle={toggleSegmentFilter} />
+            }
+          >
             {snapshot.characters.length === 0 ? (
               <EmptyState>Your game master hasn't brought anyone into the scene yet.</EmptyState>
             ) : (
               <InitiativeList
                 characters={snapshot.characters}
+                segment={snapshot.session.segment}
+                showActingOnly={showActingOnly}
                 activeSlotId={snapshot.session.activeSlotId}
                 yourCharacterId={myCharacterId}
               />

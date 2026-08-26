@@ -90,3 +90,66 @@ export function bandFor(current: number, max: number): VitalBand {
   if (share <= 67) return "middling";
   return "full";
 }
+
+/* ------------------------------------------------------------ the speed chart */
+
+/** A HERO Turn is twelve segments long, and always has been. */
+export const SEGMENTS_PER_TURN = 12;
+
+/**
+ * Where a fight starts.
+ *
+ * HERO opens combat on Segment 12 rather than Segment 1, which is why a session
+ * begins on Turn 1 Segment 12 and the first Segment 1 anyone sees belongs to
+ * Turn 2. It reads as an off-by-one and is not one.
+ */
+export const OPENING_SEGMENT = 12;
+
+/**
+ * The Speed Chart: which of the twelve segments a character acts in, by SPD.
+ *
+ * Indexed by SPD, so `SPEED_CHART[5]` is what a SPD 5 character gets. SPD 0 is
+ * the empty list and means exactly what it says — a character nobody has filled
+ * in has no phases, and never comes up on turn. `HERO_STAT_RANGES.speed` is what
+ * keeps the index inside this array on the way in; `segmentsFor` clamps anyway,
+ * because a stored number that predates that bound would otherwise read as
+ * `undefined` under `noUncheckedIndexedAccess`.
+ */
+export const SPEED_CHART: readonly (readonly number[])[] = [
+  [],
+  [7],
+  [6, 12],
+  [4, 8, 12],
+  [3, 6, 9, 12],
+  [3, 5, 8, 10, 12],
+  [2, 4, 6, 8, 10, 12],
+  [2, 4, 6, 7, 9, 11, 12],
+  [2, 3, 5, 6, 8, 9, 11, 12],
+  [2, 3, 4, 6, 7, 8, 10, 11, 12],
+  [2, 3, 4, 5, 6, 8, 9, 10, 11, 12],
+  [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+  [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+];
+
+/** The segments a SPD acts in, ascending. Out-of-range SPDs clamp into the chart. */
+export function segmentsFor(speed: number): readonly number[] {
+  const clamped = Math.min(Math.max(Math.trunc(speed), 0), SEGMENTS_PER_TURN);
+  return SPEED_CHART[clamped]!;
+}
+
+/** Whether a SPD acts in a given segment. The chart read the other way round. */
+export function actsIn(speed: number, segment: number): boolean {
+  return segmentsFor(speed).includes(segment);
+}
+
+/**
+ * How a character is placed against the others acting in the same segment:
+ * highest first.
+ *
+ * DEX is the order HERO runs a segment in, and INITIATIVE is the bonus on top of
+ * it that DEX does not explain. Summed in one place so "DEX+INIT" means the same
+ * thing in the query that sorts the stage and in any screen that says so.
+ */
+export function initiativeRank(character: { dexterity: number; initiative: number }): number {
+  return character.dexterity + character.initiative;
+}

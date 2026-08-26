@@ -119,11 +119,6 @@ export const schemas = {
     characterId: z.string().min(1).max(64),
   }),
 
-  /** The whole initiative order, as stage slot ids. */
-  reorder: z.object({
-    order: z.array(z.string().min(1).max(64)).max(200),
-  }),
-
   setTurn: z.object({
     slotId: z.string().min(1).max(64).nullable(),
   }),

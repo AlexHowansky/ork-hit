@@ -81,22 +81,22 @@ export function makePlayer(sessionId: string, name?: string) {
   });
 }
 
-/** The current initiative order as a list of names, for readable assertions. */
+/** The stage in the order it is drawn, as names, for readable assertions. */
 export function orderOf(sessionId: string): string[] {
   return sessionCharacters.list(sessionId).map((character) => character.name);
 }
 
-/** The stage as slot ids, which is what a reorder and the turn marker name. */
+/** The stage as slot ids, which is what the turn marker names. */
 export function slotsOf(sessionId: string): string[] {
   return sessionCharacters.list(sessionId).map((row) => row.slot_id);
 }
 
-/** The copy number of each slot, in initiative order. */
+/** The copy number of each slot, in the order the stage is drawn. */
 export function copiesOf(sessionId: string): number[] {
   return sessionCharacters.list(sessionId).map((row) => row.copy_number);
 }
 
-/** What each slot has left, in initiative order. */
+/** What each slot has left, in the order the stage is drawn. */
 export function vitalsOf(sessionId: string): { end: number; stun: number; body: number }[] {
   return sessionCharacters.list(sessionId).map((row) => ({
     end: row.cur_endurance,
@@ -105,7 +105,7 @@ export function vitalsOf(sessionId: string): { end: number; stun: number; body: 
   }));
 }
 
-/** The stored positions, to assert they stay dense and gap-free. */
+/** The stored positions — the DEX+INIT tiebreak — to assert they stay dense. */
 export function positionsOf(sessionId: string): number[] {
   return sessionCharacters.list(sessionId).map((character) => character.position);
 }

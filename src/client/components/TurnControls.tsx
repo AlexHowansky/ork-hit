@@ -1,13 +1,15 @@
 /**
  * The turn tracker.
  *
- * The game master gets the round counter and the controls that walk the
- * initiative order; players get the same counter with no controls, so both
- * screens read the same round at the same time.
+ * The game master gets the Turn counter and the controls that walk the HERO
+ * clock; players get the same counter with no controls, so both screens read the
+ * same turn at the same time. Which segment of that turn the fight is on heads
+ * the segment panel below rather than sitting here — the counter answers "how
+ * long has this fight been going", the panel answers "who is up".
  *
- * Stepping past the end of the order wraps to the top and advances the round —
- * that arithmetic lives on the server, so two open game master tabs can't
- * disagree about it.
+ * Stepping off the end of a segment walks to the next segment anybody acts in,
+ * and arriving at segment 1 advances the turn — that arithmetic lives on the
+ * server, so two open game master tabs can't disagree about it.
  */
 
 import { useEffect } from "react";
@@ -15,7 +17,7 @@ import { faArrowLeft, faArrowRight, faRotateLeft } from "@fortawesome/free-solid
 import { Button, Icon, PANEL_CAPTION, SURFACE, TEXT_BODY, TEXT_MUTED } from "./ui.tsx";
 
 export function TurnControls({
-  round,
+  turn,
   activeCharacterName,
   editable,
   onAdvance,
@@ -23,7 +25,7 @@ export function TurnControls({
   disabled = false,
   className = "",
 }: {
-  round: number;
+  turn: number;
   activeCharacterName: string | null;
   editable: boolean;
   onAdvance?: (direction: "next" | "prev") => void;
@@ -60,7 +62,7 @@ export function TurnControls({
       className={`flex flex-wrap items-center justify-between gap-3 px-4 py-3 ${SURFACE} ${className}`}
     >
       <div>
-        <p className={`text-xs ${PANEL_CAPTION}`}>Round {round}</p>
+        <p className={`text-xs ${PANEL_CAPTION}`}>Turn {turn}</p>
         <p className={`mt-0.5 text-sm ${TEXT_BODY}`} aria-live="polite">
           {activeCharacterName ? (
             <>
@@ -82,8 +84,8 @@ export function TurnControls({
               onClick={onRestart}
               // Nothing to go back to at the very start, and the disabled state
               // says so more usefully than a dialog asking about a no-op would.
-              disabled={disabled || (round === 1 && activeCharacterName === null)}
-              title="Back to round 1, with no turn set"
+              disabled={disabled || (turn === 1 && activeCharacterName === null)}
+              title="Back to turn 1, segment 12, with no turn set"
               className="mr-1"
             >
               <Icon icon={faRotateLeft} /> Restart
