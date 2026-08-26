@@ -507,6 +507,16 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     expect(await rowFor("Thorin").innerText()).not.toContain("1");
     expect(await rowFor("Strahd").innerText()).toContain("1");
 
+    // Sheets are opened from here, not from the segment panel, and a character
+    // who is not in the scene still has one to read.
+    await rowFor("Strahd").getByRole("button", { name: "Sheet" }).click();
+    await gm.locator("iframe").waitFor({ timeout: 5000 });
+    await gm.keyboard.press("Escape");
+    await gm.locator("iframe").waitFor({ state: "detached", timeout: 5000 });
+    expect(
+      await stagePanel(gm).getByRole("button", { name: "Sheet" }).count(),
+    ).toBe(0);
+
     // Taking a hero off the stage gives their Add back, and drops them out of the
     // blocks that are in the scene — below the monster who still is.
     await stagePanel(gm).getByRole("listitem").filter({ hasText: "Elara" })

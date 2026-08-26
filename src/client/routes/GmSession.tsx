@@ -29,6 +29,7 @@ import {
 import {
   faBook,
   faCopy,
+  faEye,
   faLink,
   faStop,
   faUserPlus,
@@ -42,7 +43,7 @@ import { SheetOverlay } from "../components/SheetFrame.tsx";
 import { ThemeToggle } from "../components/ThemeToggle.tsx";
 import { useConfirm } from "../components/Confirm.tsx";
 import { useToast } from "../components/Toast.tsx";
-import type { Character, GameSession, SessionCharacter, Snapshot } from "../types.ts";
+import type { Character, GameSession, Snapshot } from "../types.ts";
 
 export function GmSessionConsole() {
   const { id: sessionId = "" } = useParams();
@@ -53,7 +54,10 @@ export function GmSessionConsole() {
   const { snapshot, connection, applySnapshot } = useSessionSocket(sessionId);
   const [session, setSession] = useState<GameSession | null>(null);
   const [library, setLibrary] = useState<Character[]>([]);
-  const [viewingSheet, setViewingSheet] = useState<SessionCharacter | null>(null);
+  // A library character rather than a stage slot: sheets are opened from the
+  // library panel, which lists the campaign's characters whether they are in the
+  // scene or not, and a sheet belongs to the character rather than to the copy.
+  const [viewingSheet, setViewingSheet] = useState<Character | null>(null);
   const [busy, setBusy] = useState(false);
   const [showActingOnly, toggleSegmentFilter] = useSegmentFilter(sessionId);
 
@@ -358,7 +362,6 @@ export function GmSessionConsole() {
                 onRest={(id) => void rest(id)}
                 onSetTurn={(id) => void setTurn(id)}
                 onRemove={(id) => void removeCharacter(id)}
-                onOpenSheet={setViewingSheet}
               />
             </>
           ) : (
@@ -452,6 +455,14 @@ export function GmSessionConsole() {
                       </CountBadge>
                     ) : null}
                     <KindBadge kind={character.kind} />
+                    {/* Sheets are opened from here rather than from the segment
+                        panel: this list has every character in the campaign, so
+                        one that has not walked on yet can still be read, and a
+                        sheet is the character's rather than the copy's — two
+                        goblins have one between them. */}
+                    <Button variant="ghost" onClick={() => setViewingSheet(character)}>
+                      <Icon icon={faEye} /> Sheet
+                    </Button>
                     {/* A hero is on the stage once and no more, so their Add goes
                         quiet rather than away — the ghosting is `Button`'s own
                         `disabled:` styling. A monster's never does. */}

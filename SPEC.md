@@ -342,6 +342,11 @@ The app should have the following features:
   a character that was never in the campaign, and it would reshuffle the list
   under the GM mid-fight.
 
+* The GM opens a character's sheet from the library panel rather than from the
+  segment panel: that list holds every character in the campaign, so one who has
+  not walked on yet can still be read, and a sheet belongs to the character rather
+  than to a copy of them — two goblins have one sheet between them.
+
 * The library panel is ordered in four blocks — the PCs already in the scene, the
   NPCs already in the scene, then the PCs who are not, then the NPCs who are not
   — alphabetically within each. Who is in the scene is what the GM is looking the

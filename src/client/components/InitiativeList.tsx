@@ -18,7 +18,7 @@
  */
 
 import type { SessionCharacter } from "../types.ts";
-import { faEye, faPlay, faUserMinus } from "@fortawesome/free-solid-svg-icons";
+import { faPlay, faUserMinus } from "@fortawesome/free-solid-svg-icons";
 import { actsIn } from "../../lib/hero.ts";
 import { StatLine } from "./StatLine.tsx";
 import {
@@ -66,7 +66,6 @@ interface RowProps {
   onRest?: () => void;
   onSetTurn?: () => void;
   onRemove?: () => void;
-  onOpenSheet?: () => void;
 }
 
 function Row({
@@ -82,7 +81,6 @@ function Row({
   onRest,
   onSetTurn,
   onRemove,
-  onOpenSheet,
 }: RowProps) {
   // A player character nobody has taken yet: an open seat at the table, and the
   // one thing both audiences want to spot without reading.
@@ -198,15 +196,6 @@ function Row({
       </div>
 
       <div className="flex shrink-0 items-center gap-1">
-        {onOpenSheet ? (
-          <button
-            type="button"
-            onClick={onOpenSheet}
-            className="rounded px-2 py-1 text-xs text-stone-600 hover:bg-stone-200 dark:text-stone-400 dark:hover:bg-stone-700"
-          >
-            <Icon icon={faEye} /> Sheet
-          </button>
-        ) : null}
         {editable && onSetTurn ? (
           <button
             type="button"
@@ -273,7 +262,6 @@ export function InitiativeList({
   onRest,
   onSetTurn,
   onRemove,
-  onOpenSheet,
 }: {
   characters: SessionCharacter[];
   /** Which of the twelve segments the fight is on: what decides who is acting. */
@@ -297,12 +285,6 @@ export function InitiativeList({
   onRest?: (slotId: string) => void;
   onSetTurn?: (slotId: string) => void;
   onRemove?: (slotId: string) => void;
-  /**
-   * Gives every row a "Sheet" button. The game master passes it; a player's list
-   * has none, since the only sheet they may open is their own and "My sheet"
-   * above the list is where they open it.
-   */
-  onOpenSheet?: (character: SessionCharacter) => void;
 }) {
   // Counted once here rather than per row, which would be a scan of the list
   // inside a scan of the list.
@@ -337,7 +319,6 @@ export function InitiativeList({
         onRest={onRest ? () => onRest(character.id) : undefined}
         onSetTurn={onSetTurn ? () => onSetTurn(character.id) : undefined}
         onRemove={onRemove ? () => onRemove(character.id) : undefined}
-        onOpenSheet={onOpenSheet ? () => onOpenSheet(character) : undefined}
       />
     ));
 
