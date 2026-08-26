@@ -223,9 +223,14 @@ The app should have the following features:
   character, the scene, then the players.
 
 * Every character, PC and NPC alike, is a HERO System 5th Edition Revised
-  character. Each one in the library carries six characteristics — SPEED,
-  DEXTERITY, RECOVERY, ENDURANCE, STUN and BODY — edited in the character
-  editor. A character nobody has filled in yet reads as zeros.
+  character. Each one in the library carries seven characteristics — SPEED,
+  DEXTERITY, INITIATIVE, RECOVERY, ENDURANCE, STUN and BODY — edited in the
+  character editor. A character nobody has filled in yet reads as zeros.
+  INITIATIVE is any bonus to acting first that DEXTERITY does not already
+  account for, such as the Combat Reflexes talent, and the editor says so on
+  hover. SPEED is bounded at 0 to 12, since a turn is twelve segments long —
+  refused by the server and not merely by the form — and the others are
+  unbounded.
 
 * ENDURANCE, STUN and BODY are also tracked per active character in a session,
   as what that copy has left rather than what it started with: two copies of one

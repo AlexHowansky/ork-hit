@@ -229,6 +229,7 @@ export const campaigns = {
 export interface HeroStats {
   speed: number;
   dexterity: number;
+  initiative: number;
   recovery: number;
   endurance: number;
   stun: number;
@@ -240,6 +241,7 @@ function zeroedStats(stats: Partial<HeroStats> | undefined): HeroStats {
   return {
     speed: stats?.speed ?? 0,
     dexterity: stats?.dexterity ?? 0,
+    initiative: stats?.initiative ?? 0,
     recovery: stats?.recovery ?? 0,
     endurance: stats?.endurance ?? 0,
     stun: stats?.stun ?? 0,
@@ -292,9 +294,11 @@ export const characters = {
     db.query(`
       INSERT INTO characters
         (id, campaign_id, kind, name, sheet_upload_id, background_upload_id,
-         speed, dexterity, recovery, endurance, stun, body, created_at, updated_at)
+         speed, dexterity, initiative, recovery, endurance, stun, body,
+         created_at, updated_at)
       VALUES ($id, $campaignId, $kind, $name, $sheetUploadId, $backgroundUploadId,
-         $speed, $dexterity, $recovery, $endurance, $stun, $body, $timestamp, $timestamp)
+         $speed, $dexterity, $initiative, $recovery, $endurance, $stun, $body,
+         $timestamp, $timestamp)
     `).run({ ...rest, ...zeroedStats(stats), id, timestamp });
     return characters.byId(id)!;
   },
@@ -342,6 +346,10 @@ export const characters = {
     if (changes.dexterity !== undefined) {
       db.query("UPDATE characters SET dexterity = $value, updated_at = $ts WHERE id = $id")
         .run({ id, ts, value: changes.dexterity });
+    }
+    if (changes.initiative !== undefined) {
+      db.query("UPDATE characters SET initiative = $value, updated_at = $ts WHERE id = $id")
+        .run({ id, ts, value: changes.initiative });
     }
     if (changes.recovery !== undefined) {
       db.query("UPDATE characters SET recovery = $value, updated_at = $ts WHERE id = $id")

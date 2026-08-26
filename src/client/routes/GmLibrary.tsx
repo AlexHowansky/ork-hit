@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { api } from "../api.ts";
 import {
+  faCircleInfo,
   faCirclePlay,
   faPlay,
   faRightFromBracket,
@@ -14,7 +15,13 @@ import {
   faSquarePlus,
   faStop,
 } from "@fortawesome/free-solid-svg-icons";
-import { HERO_STAT_FIELDS, HERO_STAT_LABELS } from "../../lib/hero.ts";
+import {
+  HERO_STAT_FIELDS,
+  HERO_STAT_HINTS,
+  HERO_STAT_LABELS,
+  HERO_STAT_RANGES,
+} from "../../lib/hero.ts";
+import type { HeroStatField } from "../../lib/hero.ts";
 import { useSessionSocket } from "../useSessionSocket.ts";
 import { useLiveSessions } from "../useLiveSessions.ts";
 import { useCardFit } from "../useCardFit.ts";
@@ -109,6 +116,26 @@ function CampaignForm({
         {busy ? "Saving…" : campaign ? "Save changes" : "Create campaign"}
       </Button>
     </form>
+  );
+}
+
+/**
+ * A characteristic's caption, marked with an info icon on the ones that carry
+ * hover text — INIT, so far. Without it the tooltip is there but invisible:
+ * nobody hovers a word that looks like every other word in the row.
+ *
+ * The tooltip belongs to the whole field rather than to the icon (see `Field`),
+ * so this is a sign that there is something to hover rather than a control of
+ * its own — nothing here is focusable and the glyph is `aria-hidden`.
+ */
+function StatLabel({ field }: { field: HeroStatField }) {
+  const label = HERO_STAT_LABELS[field];
+  if (!HERO_STAT_HINTS[field]) return <>{label}</>;
+  return (
+    <span className="inline-flex items-center gap-1">
+      {label}
+      <Icon icon={faCircleInfo} className="h-3 w-3 text-stone-400 dark:text-stone-500" />
+    </span>
   );
 }
 
@@ -220,23 +247,27 @@ function CharacterForm({
       </label>
 
       {/*
-        The HERO characteristics, six to a block rather than six stacked rows:
-        they are short numbers and reading them across is how a character sheet
-        prints them. A character nobody has filled in yet is all zeros, which is
-        a legitimate thing to save.
+        The HERO characteristics in a block rather than in stacked rows: they are
+        short numbers and reading them across is how a character sheet prints
+        them. Four to a row puts the looked-up ones on the first line and the
+        three spent in a fight on the second. A character nobody has filled in
+        yet is all zeros, which is a legitimate thing to save.
       */}
       <fieldset>
         <legend className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">
           Characteristics
         </legend>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-4 gap-3">
           {HERO_STAT_FIELDS.map((field) => (
             <Field
               key={field}
-              label={HERO_STAT_LABELS[field]}
+              label={<StatLabel field={field} />}
+              title={HERO_STAT_HINTS[field]}
               name={field}
               type="number"
               inputMode="numeric"
+              min={HERO_STAT_RANGES[field]?.min}
+              max={HERO_STAT_RANGES[field]?.max}
               defaultValue={character?.[field] ?? 0}
             />
           ))}

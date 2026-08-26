@@ -240,6 +240,7 @@ describe("HERO characteristics", () => {
     form.set("sheet", new File(["<h1>sheet</h1>"], "sheet.html"));
     form.set("speed", "4");
     form.set("dexterity", "18");
+    form.set("initiative", "2");
     form.set("recovery", "8");
     form.set("endurance", "30");
     form.set("stun", "25");
@@ -252,6 +253,7 @@ describe("HERO characteristics", () => {
     expect(created).toMatchObject({
       speed: 4,
       dexterity: 18,
+      initiative: 2,
       recovery: 8,
       endurance: 30,
       stun: 25,
@@ -289,6 +291,44 @@ describe("HERO characteristics", () => {
       currentStun: 25,
       currentBody: 12,
     });
+  });
+
+  test("SPEED is bounded on the server, not only by the form", async () => {
+    const { cookie } = await signIn();
+    const campaignForm = new FormData();
+    campaignForm.set("name", unique("Campaign"));
+    const campaign = (
+      await (
+        await fetch(`${base}/api/campaigns`, authed(cookie, { method: "POST", body: campaignForm }))
+      ).json()
+    ).campaign;
+
+    // Past the twelve segments of a turn, sent by something that never saw the
+    // editor's `max` — which is the only reason the schema's bound matters.
+    const form = new FormData();
+    form.set("campaignId", campaign.id);
+    form.set("kind", "npc");
+    form.set("name", unique("Blur"));
+    form.set("sheet", new File(["<h1>sheet</h1>"], "sheet.html"));
+    form.set("speed", "13");
+    const response = await fetch(
+      `${base}/api/characters`,
+      authed(cookie, { method: "POST", body: form }),
+    );
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.message).toBe("SPD must be between 0 and 12.");
+
+    // The far end is refused too, and an unbounded characteristic is not.
+    form.set("speed", "-1");
+    expect(
+      (await fetch(`${base}/api/characters`, authed(cookie, { method: "POST", body: form }))).status,
+    ).toBe(400);
+
+    form.set("speed", "12");
+    form.set("stun", "60");
+    expect(
+      (await fetch(`${base}/api/characters`, authed(cookie, { method: "POST", body: form }))).status,
+    ).toBe(201);
   });
 });
 

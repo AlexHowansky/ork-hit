@@ -23,6 +23,7 @@ export interface Character {
    */
   speed: number;
   dexterity: number;
+  initiative: number;
   recovery: number;
   endurance: number;
   stun: number;

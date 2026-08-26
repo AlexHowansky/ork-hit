@@ -34,6 +34,7 @@ export function presentCharacter(character: CharacterRow) {
     // number, carried on the stage slot rather than here.
     speed: character.speed,
     dexterity: character.dexterity,
+    initiative: character.initiative,
     recovery: character.recovery,
     endurance: character.endurance,
     stun: character.stun,

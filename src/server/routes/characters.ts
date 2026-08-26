@@ -66,13 +66,15 @@ async function portraitOrNone(
  *
  * A field the form left out is left out of the result, so a PATCH that never
  * mentions SPEED does not reset it; a field sent empty reads as zero, which is
- * what clearing the box means.
+ * what clearing the box means. Each is parsed with its own schema, because the
+ * bounded ones — SPEED runs 0 to 12 — are bounded here rather than only in the
+ * browser, where an `max` attribute is a courtesy and not a guarantee.
  */
 function statsFromForm(form: FormData): Partial<Record<HeroStatField, number>> {
   const stats: Partial<Record<HeroStatField, number>> = {};
   for (const field of HERO_STAT_FIELDS) {
     const raw = form.get(field);
-    if (typeof raw === "string") stats[field] = parse(schemas.heroStat, raw);
+    if (typeof raw === "string") stats[field] = parse(schemas.heroStat[field], raw);
   }
   return stats;
 }

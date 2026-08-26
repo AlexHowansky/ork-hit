@@ -9,6 +9,8 @@
 import { z } from "zod";
 import { limits } from "./config.ts";
 import { errors } from "./errors.ts";
+import { HERO_STAT_FIELDS, HERO_STAT_LABELS, HERO_STAT_RANGES } from "./hero.ts";
+import type { HeroStatField } from "./hero.ts";
 
 /** Collapses runs of whitespace and trims — display names shouldn't carry layout. */
 const displayName = z
@@ -19,6 +21,38 @@ const displayName = z
       .min(1, "Please enter a name.")
       .max(limits.nameMaxLength, `Names can be at most ${limits.nameMaxLength} characters.`),
   );
+
+/**
+ * The HERO characteristics, one schema each, as they arrive from a form.
+ *
+ * Always a string on the way in, and an empty box means zero rather than an
+ * error: a character nobody has filled in yet is a normal thing to save.
+ *
+ * A characteristic the rules bound takes its bounds from `HERO_STAT_RANGES`,
+ * which is the same map the editor draws its `min` and `max` from — so the
+ * browser and the server cannot come to different views about what SPD 13 is,
+ * and the one that actually protects the database is this one. The rest get a
+ * range that is deliberately signed — a HERO character at -8 STUN is
+ * unconscious, not invalid — and merely wide enough to catch a typed accident.
+ */
+function heroStatSchemas(): Record<HeroStatField, z.ZodType<number>> {
+  const schemasByField = {} as Record<HeroStatField, z.ZodType<number>>;
+  for (const field of HERO_STAT_FIELDS) {
+    const range = HERO_STAT_RANGES[field];
+    // The same sentence at both ends: "SPD must be between 0 and 12."
+    const message = range
+      ? `${HERO_STAT_LABELS[field]} must be between ${range.min} and ${range.max}.`
+      : "";
+    const bounded = range
+      ? z.coerce.number().int().min(range.min, message).max(range.max, message)
+      : z.coerce.number().int().min(-999).max(999);
+    schemasByField[field] = z.preprocess(
+      (value) => (value === "" || value === null || value === undefined ? 0 : value),
+      bounded,
+    );
+  }
+  return schemasByField;
+}
 
 export const schemas = {
   displayName,
@@ -55,18 +89,7 @@ export const schemas = {
     name: displayName,
   }),
 
-  /**
-   * One HERO characteristic, as it arrives from a form.
-   *
-   * Always a string on the way in, and an empty box means zero rather than an
-   * error: a character nobody has filled in yet is a normal thing to save. The
-   * range is deliberately signed — a HERO character at -8 STUN is unconscious,
-   * not invalid — and merely wide enough to catch a typed accident.
-   */
-  heroStat: z.preprocess(
-    (value) => (value === "" || value === null || value === undefined ? 0 : value),
-    z.coerce.number().int().min(-999).max(999),
-  ),
+  heroStat: heroStatSchemas(),
 
   /**
    * What a stage slot has left. Every field is optional: a screen that edits one

@@ -426,11 +426,19 @@ layout unchanged.
 
 ## Two kinds of number
 
-A character carries six HERO System characteristics, and three of them are
+A character carries seven HERO System characteristics, and three of them are
 recorded twice. On the character they are the total — what SPEED, DEXTERITY,
-RECOVERY, ENDURANCE, STUN and BODY *are* — and they change only when the game
-master edits the library. On a stage slot, ENDURANCE, STUN and BODY are recorded
-again as what that copy has left right now.
+INITIATIVE, RECOVERY, ENDURANCE, STUN and BODY *are* — and they change only when
+the game master edits the library. On a stage slot, ENDURANCE, STUN and BODY are
+recorded again as what that copy has left right now.
+
+INITIATIVE is the odd one out and is deliberately its own column rather than
+part of DEXTERITY: it is whatever moves a character up the order that DEX does
+not already explain — Combat Reflexes and its like — and DEX has to keep meaning
+DEX everywhere else it is read. It is the one characteristic whose name does not
+explain itself, so it is also the one with hover text, which is why
+`HERO_STAT_HINTS` sits beside the labels in `src/lib/hero.ts` rather than as a
+string in the form.
 
 The split is what makes two goblins two monsters. A slot is seeded from the
 character's totals as it walks on (`sessionCharacters.add`, and the same columns
@@ -481,7 +489,7 @@ roles may call, and all three share one authorization helper —
 rather than three that could drift apart. The game master runs the fight and may write any slot; a player may write exactly
 the slot holding the character they claimed, checked on the server rather than by
 hiding the boxes. Both end in the same `publish`, so an edit from either screen
-reaches every screen the usual way. `src/lib/hero.ts` names the six
+reaches every screen the usual way. `src/lib/hero.ts` names the seven
 characteristics once, for the form fields, the labels and the API alike.
 
 ## The turn chime

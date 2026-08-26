@@ -52,6 +52,7 @@ export interface CharacterRow {
   /** HERO System characteristics. `endurance`, `stun` and `body` are the full totals. */
   speed: number;
   dexterity: number;
+  initiative: number;
   recovery: number;
   endurance: number;
   stun: number;

@@ -109,11 +109,15 @@ export function Button({
 export function Field({
   label,
   hint,
+  title,
   className = "",
   ...props
 }: InputHTMLAttributes<HTMLInputElement> & { label: ReactNode; hint?: ReactNode }) {
   return (
-    <label className="block">
+    // `title` is lifted off the input and onto the whole label, so the caption
+    // explains itself on hover too: a one-word caption over a number box is
+    // exactly the part a reader points at when they don't know what it means.
+    <label className="block" title={title}>
       <span className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">
         {label}
       </span>

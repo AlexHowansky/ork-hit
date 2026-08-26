@@ -44,7 +44,7 @@ describe("one active session per campaign", () => {
     addActiveSession(target, "mid", "2026-01-01T11:00:00.000Z");
     addActiveSession(target, "new", "2026-01-01T12:00:00.000Z");
 
-    expect(migrate(target)).toBe(3);
+    expect(migrate(target)).toBe(4);
 
     const statuses = Object.fromEntries(
       target.query<{ id: string; status: string }, []>(
@@ -148,8 +148,17 @@ describe("HERO characteristics", () => {
 
     expect(
       target.query<Record<string, number>, []>(
-        "SELECT speed, dexterity, recovery, endurance, stun, body FROM characters WHERE id = 'old'",
+        "SELECT speed, dexterity, initiative, recovery, endurance, stun, body " +
+          "FROM characters WHERE id = 'old'",
       ).get(),
-    ).toEqual({ speed: 0, dexterity: 0, recovery: 0, endurance: 0, stun: 0, body: 0 });
+    ).toEqual({
+      speed: 0,
+      dexterity: 0,
+      initiative: 0,
+      recovery: 0,
+      endurance: 0,
+      stun: 0,
+      body: 0,
+    });
   });
 });
