@@ -24,6 +24,76 @@ import type {
 const BUTTON_BASE =
   "inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50";
 
+/*
+  The colours and shapes the screens repeat, named once.
+
+  These are interpolated into `className` strings rather than written as CSS
+  classes with `@apply`, which is what Tailwind itself recommends for a React
+  codebase and what keeps every class in this app inside one mental model: when
+  two of them set the same property, which wins is decided by the order Tailwind
+  emits them in, and that rule holds for a constant exactly as it does for a
+  literal. It is also why each of these deliberately leaves out any property its
+  callers disagree about — see the notes on the ones that do.
+*/
+
+/** Secondary text: a caption, a hint, a count, anything read after the thing itself. */
+export const TEXT_MUTED = "text-stone-500 dark:text-stone-400";
+
+/** A heading, or a name — the thing on the screen with the most to say. */
+export const TEXT_STRONG = "text-stone-900 dark:text-stone-100";
+
+/** Ordinary running text, a step quieter than a heading and louder than a hint. */
+export const TEXT_BODY = "text-stone-800 dark:text-stone-200";
+
+/**
+ * The colour of a rule between two parts of a panel — and only the colour: which
+ * edge it is drawn on is the caller's, since the four that use it disagree
+ * (`border-b` under a panel heading, `border-t` above the Vitals actions).
+ */
+export const HAIRLINE = "border-stone-200 dark:border-stone-800";
+
+/**
+ * A raised box on the page's ground: panels, dialogs, the sign-in card.
+ *
+ * No shadow and no padding. Most of these want `shadow-sm` and one — the turn
+ * bar — deliberately does not, so it is added at the call site rather than
+ * fought with here.
+ */
+export const SURFACE =
+  "rounded-xl border border-stone-200 bg-white dark:border-stone-800 dark:bg-stone-900";
+
+/**
+ * The caption above a form field. Every field in the app is a `<label>` whose
+ * first child is this, which is the shape `tests/e2e.test.ts` reads a form by.
+ */
+export const FIELD_CAPTION = "mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300";
+
+/**
+ * The small upright heading over a panel or a group of numbers. Carries no font
+ * size: these run from `text-[10px]` over a Vitals box to `text-sm` over a
+ * panel, and the size is the part each caller chooses.
+ */
+export const PANEL_CAPTION =
+  "font-semibold tracking-wide text-stone-500 uppercase dark:text-stone-400";
+
+/** A box someone types or chooses in: text inputs and selects alike. */
+export const FORM_CONTROL =
+  "w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm " +
+  "dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100";
+
+/**
+ * A file input, whose button is styled through `file:` rather than by hiding the
+ * control and drawing our own — the native one already opens the right picker
+ * and says the right thing to a screen reader.
+ */
+export const FILE_INPUT =
+  "w-full text-sm text-stone-600 file:mr-3 file:rounded-md file:border-0 " +
+  "file:bg-stone-200 file:px-3 file:py-1.5 file:text-sm dark:text-stone-400 " +
+  "dark:file:bg-stone-800 dark:file:text-stone-200";
+
+/** A card's name, in the strip under its picture. Truncates rather than wraps. */
+export const CARD_NAME = "truncate font-medium text-stone-900 dark:text-stone-100";
+
 /**
  * The shape and behaviour shared by every card in the library.
  *
@@ -118,16 +188,12 @@ export function Field({
     // explains itself on hover too: a one-word caption over a number box is
     // exactly the part a reader points at when they don't know what it means.
     <label className="block" title={title}>
-      <span className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">
-        {label}
-      </span>
+      <span className={FIELD_CAPTION}>{label}</span>
       <input
         {...props}
-        className={`w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 placeholder:text-stone-400 focus:border-amber-500 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100 dark:placeholder:text-stone-600 ${className}`}
+        className={`${FORM_CONTROL} text-stone-900 placeholder:text-stone-400 focus:border-amber-500 dark:placeholder:text-stone-600 ${className}`}
       />
-      {hint ? (
-        <span className="mt-1 block text-xs text-stone-500 dark:text-stone-400">{hint}</span>
-      ) : null}
+      {hint ? <span className={`mt-1 block text-xs ${TEXT_MUTED}`}>{hint}</span> : null}
     </label>
   );
 }
@@ -192,15 +258,13 @@ export function Panel({
     <section
       {...rest}
       ref={ref}
-      className={`rounded-xl border border-stone-200 bg-white shadow-sm dark:border-stone-800 dark:bg-stone-900 ${
-        scroll ? "flex min-h-0 flex-col" : ""
-      } ${className}`}
+      className={`${SURFACE} shadow-sm ${scroll ? "flex min-h-0 flex-col" : ""} ${className}`}
     >
       {title || actions ? (
-        <header className="flex shrink-0 items-center justify-between gap-3 border-b border-stone-200 px-4 py-3 dark:border-stone-800">
-          <h2 className="text-sm font-semibold tracking-wide text-stone-500 uppercase dark:text-stone-400">
-            {title}
-          </h2>
+        <header
+          className={`flex shrink-0 items-center justify-between gap-3 border-b px-4 py-3 ${HAIRLINE}`}
+        >
+          <h2 className={`${PANEL_CAPTION} text-sm`}>{title}</h2>
           {actions}
         </header>
       ) : null}
@@ -256,8 +320,8 @@ export function Modal({
           wide ? "max-w-5xl wide:max-w-7xl" : "max-w-lg"
         }`}
       >
-        <header className="flex items-center justify-between border-b border-stone-200 px-5 py-3 dark:border-stone-800">
-          <h2 className="font-semibold text-stone-900 dark:text-stone-100">{title}</h2>
+        <header className={`flex items-center justify-between border-b px-5 py-3 ${HAIRLINE}`}>
+          <h2 className={`font-semibold ${TEXT_STRONG}`}>{title}</h2>
           <Button variant="ghost" onClick={onClose} aria-label="Close">
             <Icon icon={faXmark} />
           </Button>
@@ -346,9 +410,16 @@ export const SheetIcon = () => <Icon icon={faEye} />;
 export const DeleteIcon = () => <Icon icon={faTrash} />;
 
 export function EmptyState({ children }: { children: ReactNode }) {
-  return (
-    <p className="py-8 text-center text-sm text-stone-500 dark:text-stone-400">{children}</p>
-  );
+  return <p className={`py-8 text-center text-sm ${TEXT_MUTED}`}>{children}</p>;
+}
+
+/**
+ * A whole screen that has nothing to show yet, as against `EmptyState`, which is
+ * a panel that has nothing in it. Roomier and at full size, because this is the
+ * only thing on the page rather than one empty box among several.
+ */
+export function LoadingNote({ children }: { children: ReactNode }) {
+  return <p className={`p-8 text-center ${TEXT_MUTED}`}>{children}</p>;
 }
 
 /** Distinguishes a PC from an NPC in lists where both appear. */
@@ -363,6 +434,93 @@ export function KindBadge({ kind }: { kind: "pc" | "npc" }) {
     >
       {kind === "pc" ? "PC" : "NPC"}
     </span>
+  );
+}
+
+/**
+ * How many of this thing there are: a second goblin, or three of them waiting in
+ * the library.
+ *
+ * Beside `KindBadge` because it is the same badge in a quieter colour, and the
+ * two are drawn side by side in both lists that use them. `tabular-nums` so a
+ * count changing from 9 to 10 does not shift the row.
+ */
+export function CountBadge({
+  children,
+  title,
+  hidden = false,
+}: {
+  children: ReactNode;
+  title?: string;
+  /** For a count that reads as part of the name beside it rather than as a badge. */
+  hidden?: boolean;
+}) {
+  return (
+    <span
+      title={title}
+      aria-hidden={hidden ? "true" : undefined}
+      className="rounded bg-stone-200 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-stone-700 dark:bg-stone-700 dark:text-stone-200"
+    >
+      {children}
+    </span>
+  );
+}
+
+/**
+ * The square picture well at the top of a card.
+ *
+ * `relative` because the things that sit over a picture — the kind badge, the
+ * card's edit and delete controls, a full-bleed select button — are positioned
+ * against it. It takes children rather than a prop for each, since the three
+ * card libraries overlay different things.
+ */
+export function CardWell({ children }: { children: ReactNode }) {
+  return (
+    <div className="relative aspect-square w-full shrink-0 overflow-hidden bg-stone-200 dark:bg-stone-800">
+      {children}
+    </div>
+  );
+}
+
+/**
+ * What is actually in a card's well: the picture, or a stand-in icon when there
+ * is none.
+ *
+ * Always decorative — every card puts the name in the strip underneath — so the
+ * image carries no alt text and the placeholder is hidden outright. The gentle
+ * zoom is keyed on the card's `group`, which `CARD_BASE` establishes, so hovering
+ * anywhere on the card moves the picture.
+ */
+export function CardPicture({
+  src,
+  icon,
+  draggable,
+}: {
+  src: string | null;
+  /** Drawn in the picture's place when there is none: a shield, a dragon, a scroll. */
+  icon: IconDefinition;
+  /**
+   * Pass `false` on a card that can itself be picked up. An image is draggable in
+   * its own right and would otherwise start a drag carrying the picture's URL
+   * instead of the card's own.
+   */
+  draggable?: boolean;
+}) {
+  if (!src) {
+    return (
+      <div className="flex h-full items-center justify-center opacity-30" aria-hidden>
+        <Icon icon={icon} className="h-12 w-12" />
+      </div>
+    );
+  }
+  return (
+    <img
+      src={src}
+      alt=""
+      draggable={draggable}
+      loading="lazy"
+      className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105 group-focus-within:scale-105"
+    />
   );
 }
 
@@ -559,9 +717,7 @@ export function FileDrop({
 
   return (
     <label className="block">
-      <span className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">
-        {label}
-      </span>
+      <span className={FIELD_CAPTION}>{label}</span>
       <div
         {...dropProps}
         className={`rounded-lg border border-dashed p-3 transition-colors ${
@@ -580,15 +736,13 @@ export function FileDrop({
             setChosen(file?.name ?? null);
             if (file) onFile?.(file);
           }}
-          className="w-full text-sm text-stone-600 file:mr-3 file:rounded-md file:border-0 file:bg-stone-200 file:px-3 file:py-1.5 file:text-sm dark:text-stone-400 dark:file:bg-stone-800 dark:file:text-stone-200"
+          className={FILE_INPUT}
         />
-        <span className="mt-2 block text-xs text-stone-500 dark:text-stone-400">
+        <span className={`mt-2 block text-xs ${TEXT_MUTED}`}>
           {chosen ? `Ready to upload: ${chosen}` : "…or drop a file here."}
         </span>
       </div>
-      {hint ? (
-        <span className="mt-1 block text-xs text-stone-500 dark:text-stone-400">{hint}</span>
-      ) : null}
+      {hint ? <span className={`mt-1 block text-xs ${TEXT_MUTED}`}>{hint}</span> : null}
     </label>
   );
 }

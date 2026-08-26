@@ -493,6 +493,7 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
       // The characteristics, read across in the order HERO prints them.
       "SPD",
       "DEX",
+      "INIT",
       "REC",
       "END",
       "STUN",

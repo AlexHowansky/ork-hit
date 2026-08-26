@@ -26,7 +26,15 @@
 import { useState } from "react";
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import { faBed, faHeartPulse } from "@fortawesome/free-solid-svg-icons";
-import { Button, Field, Icon, Modal } from "./ui.tsx";
+import {
+  Button,
+  Field,
+  HAIRLINE,
+  Icon,
+  Modal,
+  PANEL_CAPTION,
+  TEXT_STRONG,
+} from "./ui.tsx";
 import {
   HERO_STAT_LABELS,
   HERO_VITAL_FIELDS,
@@ -131,25 +139,19 @@ function DeltaPicker({
   return (
     <Modal title={`${label} — ${name}`} onClose={onClose}>
       <p className="mb-4 text-sm text-stone-600 dark:text-stone-400">
-        <span className="font-semibold tabular-nums text-stone-900 dark:text-stone-100">
-          {current}
-        </span>
+        <span className={`font-semibold tabular-nums ${TEXT_STRONG}`}>{current}</span>
         {max > 0 ? <span className="tabular-nums"> of {max}</span> : null}. Choose how much to
         take or recover.
       </p>
 
-      <p className="mb-1 text-xs font-semibold tracking-wide text-stone-500 uppercase dark:text-stone-400">
-        Take
-      </p>
+      <p className={`mb-1 text-xs ${PANEL_CAPTION}`}>Take</p>
       {grid(-1)}
 
-      <p className="mt-4 mb-1 text-xs font-semibold tracking-wide text-stone-500 uppercase dark:text-stone-400">
-        Recover
-      </p>
+      <p className={`mt-4 mb-1 text-xs ${PANEL_CAPTION}`}>Recover</p>
       {grid(1)}
 
       <form
-        className="mt-5 flex items-end gap-2 border-t border-stone-200 pt-4 dark:border-stone-800"
+        className={`mt-5 flex items-end gap-2 border-t pt-4 ${HAIRLINE}`}
         onSubmit={(event) => {
           event.preventDefault();
           const parsed = Number.parseInt(exact, 10);
@@ -206,9 +208,7 @@ function Box({
 
   return (
     <div className="flex items-center gap-0.5 sm:gap-1">
-      <span className="text-[10px] font-semibold tracking-wide text-stone-500 uppercase dark:text-stone-400">
-        {label}
-      </span>
+      <span className={`text-[10px] ${PANEL_CAPTION}`}>{label}</span>
       {onCommit ? (
         <>
           <button

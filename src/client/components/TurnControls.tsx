@@ -12,7 +12,7 @@
 
 import { useEffect } from "react";
 import { faArrowLeft, faArrowRight, faRotateLeft } from "@fortawesome/free-solid-svg-icons";
-import { Button, Icon } from "./ui.tsx";
+import { Button, Icon, PANEL_CAPTION, SURFACE, TEXT_BODY, TEXT_MUTED } from "./ui.tsx";
 
 export function TurnControls({
   round,
@@ -57,20 +57,18 @@ export function TurnControls({
 
   return (
     <div
-      className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border border-stone-200 bg-white px-4 py-3 dark:border-stone-800 dark:bg-stone-900 ${className}`}
+      className={`flex flex-wrap items-center justify-between gap-3 px-4 py-3 ${SURFACE} ${className}`}
     >
       <div>
-        <p className="text-xs font-semibold tracking-wide text-stone-500 uppercase dark:text-stone-400">
-          Round {round}
-        </p>
-        <p className="mt-0.5 text-sm text-stone-800 dark:text-stone-200" aria-live="polite">
+        <p className={`text-xs ${PANEL_CAPTION}`}>Round {round}</p>
+        <p className={`mt-0.5 text-sm ${TEXT_BODY}`} aria-live="polite">
           {activeCharacterName ? (
             <>
-              <span className="text-stone-500 dark:text-stone-400">Up now: </span>
+              <span className={TEXT_MUTED}>Up now: </span>
               <span className="font-semibold">{activeCharacterName}</span>
             </>
           ) : (
-            <span className="text-stone-500 dark:text-stone-400">No turn set yet</span>
+            <span className={TEXT_MUTED}>No turn set yet</span>
           )}
         </p>
       </div>

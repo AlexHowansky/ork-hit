@@ -10,7 +10,14 @@ import { useState } from "react";
 import { faDiceD20 } from "@fortawesome/free-solid-svg-icons";
 import { useNavigate, useSearchParams } from "react-router";
 import { api } from "../api.ts";
-import { Button, Field, Icon } from "../components/ui.tsx";
+import {
+  Button,
+  Field,
+  HAIRLINE,
+  Icon,
+  SURFACE,
+  TEXT_STRONG,
+} from "../components/ui.tsx";
 import { ThemeToggle } from "../components/ThemeToggle.tsx";
 import { useToast } from "../components/Toast.tsx";
 import type { Identity, Snapshot } from "../types.ts";
@@ -81,17 +88,14 @@ export function Login({ onIdentity }: { onIdentity: (identity: Identity) => void
     <div className="flex min-h-screen items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-xl font-semibold text-stone-900 dark:text-stone-100">
+          <h1 className={`text-xl font-semibold ${TEXT_STRONG}`}>
             <Icon icon={faDiceD20} className="h-5 w-5" /> TTRPG Synchronizer
           </h1>
           <ThemeToggle />
         </div>
 
-        <div className="rounded-xl border border-stone-200 bg-white shadow-sm dark:border-stone-800 dark:bg-stone-900">
-          <div
-            className="grid grid-cols-2 border-b border-stone-200 dark:border-stone-800"
-            role="tablist"
-          >
+        <div className={`${SURFACE} shadow-sm`}>
+          <div className={`grid grid-cols-2 border-b ${HAIRLINE}`} role="tablist">
             {(["player", "gm"] as const).map((value) => (
               <button
                 key={value}
@@ -101,7 +105,7 @@ export function Login({ onIdentity }: { onIdentity: (identity: Identity) => void
                 onClick={() => setTab(value)}
                 className={`px-4 py-3 text-sm font-medium transition-colors ${
                   tab === value
-                    ? "border-b-2 border-amber-500 text-stone-900 dark:text-stone-100"
+                    ? `border-b-2 border-amber-500 ${TEXT_STRONG}`
                     : "text-stone-500 hover:text-stone-800 dark:text-stone-400 dark:hover:text-stone-200"
                 }`}
               >

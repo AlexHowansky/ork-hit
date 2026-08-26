@@ -219,6 +219,26 @@ on. Every hover rule is paired with a `focus-within` one,
 because a card is a box of buttons and a keyboard user would otherwise get no
 feedback at all.
 
+**And so are the colours and shapes the screens repeat.** `ui.tsx` names them
+once — `TEXT_MUTED`, `TEXT_STRONG`, `SURFACE`, `HAIRLINE`, `FIELD_CAPTION` and
+their neighbours — and the pieces of markup that repeat are small components
+beside them: `CardWell` and `CardPicture` for a card's square picture,
+`CountBadge` for "how many of this one", `LoadingNote` for a screen with nothing
+to show yet. Before that, `text-stone-500 dark:text-stone-400` alone was written
+out in eighteen places, and a change to the muted colour meant finding all
+eighteen.
+
+These are exported class *strings* interpolated into `className`, not CSS classes
+built with `@apply`. That is what Tailwind itself recommends for a React codebase,
+and it keeps every class in the app inside one mental model: when two of them set
+the same property, which wins is decided by the order Tailwind emits them in, and
+that rule holds for a constant exactly as it does for a literal. **So a constant
+deliberately leaves out any property its callers disagree about** — `SURFACE`
+carries no shadow because the turn bar wants none, `PANEL_CAPTION` carries no font
+size because its five users pick five different ones. A call site that has to
+override what it just applied is the bug this shape exists to prevent; write the
+classes out longhand instead, as the small select in the GM's player list does.
+
 **So is the grid the cards sit in.** `CARD_GRID`, alongside it, lays them out on
 a fixed-width track rather than a fraction of the panel. The two libraries sit in
 panels of different widths, and anything proportional makes a campaign card and a

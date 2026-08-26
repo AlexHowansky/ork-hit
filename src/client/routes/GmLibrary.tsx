@@ -29,21 +29,31 @@ import { ThemeToggle } from "../components/ThemeToggle.tsx";
 import {
   AppPage,
   Button,
+  CardActions,
+  CardPicture,
+  CardWell,
   CARD_BASE,
   CARD_CAPTION,
   CARD_GRID,
+  CARD_NAME,
   CHARACTER_DRAG,
-  CardActions,
   DeleteIcon,
   EditIcon,
   EmptyState,
   Field,
+  FIELD_CAPTION,
   FileDrop,
+  FILE_INPUT,
+  FORM_CONTROL,
+  HAIRLINE,
   Icon,
   IconButton,
+  LoadingNote,
   Modal,
   Panel,
   SheetIcon,
+  TEXT_MUTED,
+  TEXT_STRONG,
   useDropTarget,
   useFileDropTarget,
 } from "../components/ui.tsx";
@@ -96,18 +106,16 @@ function CampaignForm({
         hint="Campaign names are unique."
       />
       <label className="block">
-        <span className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">
-          Background image (optional)
-        </span>
+        <span className={FIELD_CAPTION}>Background image (optional)</span>
         <input
           type="file"
           name="background"
           accept="image/png,image/jpeg,image/gif,image/webp"
-          className="w-full text-sm text-stone-600 file:mr-3 file:rounded-md file:border-0 file:bg-stone-200 file:px-3 file:py-1.5 file:text-sm dark:text-stone-400 dark:file:bg-stone-800 dark:file:text-stone-200"
+          className={FILE_INPUT}
         />
       </label>
       {campaign?.backgroundUrl ? (
-        <label className="flex items-center gap-2 text-sm text-stone-600 dark:text-stone-400">
+        <label className={`flex items-center gap-2 text-sm ${TEXT_MUTED}`}>
           <input type="checkbox" name="removeBackground" value="true" />
           Remove the current background
         </label>
@@ -191,9 +199,6 @@ function CharacterForm({
     }
   };
 
-  const selectClass =
-    "w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100";
-
   // The sheet leads: uploading it is the point of the dialog, and the fields
   // below it are the filing — what this character is, where it belongs, what it
   // looks like — in the order someone answers them.
@@ -219,24 +224,20 @@ function CharacterForm({
       />
 
       <label className="block">
-        <span className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">
-          Type
-        </span>
-        <select name="kind" defaultValue={character?.kind ?? "pc"} className={selectClass}>
+        <span className={FIELD_CAPTION}>Type</span>
+        <select name="kind" defaultValue={character?.kind ?? "pc"} className={FORM_CONTROL}>
           <option value="pc">Player character</option>
           <option value="npc">Non-player character</option>
         </select>
       </label>
 
       <label className="block">
-        <span className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">
-          Campaign
-        </span>
+        <span className={FIELD_CAPTION}>Campaign</span>
         <select
           name="campaignId"
           defaultValue={character?.campaignId ?? defaultCampaignId}
           required
-          className={selectClass}
+          className={FORM_CONTROL}
         >
           {campaigns.map((campaign) => (
             <option key={campaign.id} value={campaign.id}>
@@ -254,9 +255,7 @@ function CharacterForm({
         yet is all zeros, which is a legitimate thing to save.
       */}
       <fieldset>
-        <legend className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">
-          Characteristics
-        </legend>
+        <legend className={FIELD_CAPTION}>Characteristics</legend>
         <div className="grid grid-cols-4 gap-3">
           {HERO_STAT_FIELDS.map((field) => (
             <Field
@@ -315,7 +314,7 @@ function SessionRow({
     <div className="flex items-center justify-between gap-3">
       <span className="text-sm text-stone-700 dark:text-stone-300">
         {session.campaignName}
-        <span className="ml-2 text-xs text-stone-500 dark:text-stone-400">
+        <span className={`ml-2 text-xs ${TEXT_MUTED}`}>
           round {round} ·{" "}
           {playerCount === 0
             ? "nobody has joined"
@@ -376,10 +375,10 @@ function CampaignCard({
           ? "border-amber-500 ring-2 ring-amber-500 ring-offset-2 ring-offset-stone-100 dark:ring-offset-stone-950"
           : selected
             ? "border-amber-500 ring-2 ring-amber-500/30"
-            : "border-stone-200 dark:border-stone-800"
+            : HAIRLINE
       } bg-white dark:bg-stone-900`}
     >
-      <div className="relative aspect-square w-full shrink-0 overflow-hidden bg-stone-200 dark:bg-stone-800">
+      <CardWell>
         <button
           type="button"
           onClick={onSelect}
@@ -387,19 +386,7 @@ function CampaignCard({
           aria-pressed={selected}
           aria-label={`Select ${campaign.name}`}
         >
-          {campaign.backgroundUrl ? (
-            <img
-              src={campaign.backgroundUrl}
-              alt=""
-              draggable={false}
-              className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105 group-focus-within:scale-105"
-              loading="lazy"
-            />
-          ) : (
-            <div className="flex h-full items-center justify-center opacity-30" aria-hidden>
-              <Icon icon={faScroll} className="h-12 w-12" />
-            </div>
-          )}
+          <CardPicture src={campaign.backgroundUrl} icon={faScroll} draggable={false} />
         </button>
         <CardActions>
           <IconButton label={`Edit ${campaign.name}`} icon={<EditIcon />} onClick={onEdit} />
@@ -410,10 +397,10 @@ function CampaignCard({
             onClick={onDelete}
           />
         </CardActions>
-      </div>
+      </CardWell>
 
       <div className={CARD_CAPTION}>
-        <h3 className="truncate font-medium text-stone-900 dark:text-stone-100">{campaign.name}</h3>
+        <h3 className={CARD_NAME}>{campaign.name}</h3>
       </div>
     </article>
   );
@@ -614,15 +601,15 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
   };
 
   if (loading) {
-    return <p className="p-8 text-center text-stone-500 dark:text-stone-400">Loading your library…</p>;
+    return <LoadingNote>Loading your library…</LoadingNote>;
   }
 
   return (
     <AppPage>
       <header className="flex shrink-0 flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-stone-900 dark:text-stone-100">Your library</h1>
-          <p className="text-sm text-stone-500 dark:text-stone-400">Signed in as {email}</p>
+          <h1 className={`text-xl font-semibold ${TEXT_STRONG}`}>Your library</h1>
+          <p className={`text-sm ${TEXT_MUTED}`}>Signed in as {email}</p>
         </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />

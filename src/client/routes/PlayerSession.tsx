@@ -23,10 +23,16 @@ import {
   CARD_BASE,
   CARD_CAPTION,
   CARD_GRID,
+  CARD_NAME,
+  CardPicture,
+  CardWell,
   CharacterThumb,
   EmptyState,
-  Icon,
+  LoadingNote,
   Panel,
+  SURFACE,
+  TEXT_MUTED,
+  TEXT_STRONG,
 } from "../components/ui.tsx";
 import { InitiativeList, stageLabel } from "../components/InitiativeList.tsx";
 import { Vitals, type VitalsPatch } from "../components/Vitals.tsx";
@@ -41,8 +47,8 @@ import type { Snapshot } from "../types.ts";
 function Notice({ title, body, onLeave }: { title: string; body: string; onLeave: () => void }) {
   return (
     <div className="flex min-h-screen items-center justify-center p-4">
-      <div className="max-w-md rounded-xl border border-stone-200 bg-white p-6 text-center shadow-sm dark:border-stone-800 dark:bg-stone-900">
-        <h1 className="text-lg font-semibold text-stone-900 dark:text-stone-100">{title}</h1>
+      <div className={`max-w-md p-6 text-center shadow-sm ${SURFACE}`}>
+        <h1 className={`text-lg font-semibold ${TEXT_STRONG}`}>{title}</h1>
         <p className="mt-2 text-sm text-stone-600 dark:text-stone-400">{body}</p>
         <Button variant="primary" onClick={onLeave} className="mt-5">
           Back to the start
@@ -154,9 +160,7 @@ export function PlayerSession({
   }
 
   if (!snapshot) {
-    return (
-      <p className="p-8 text-center text-stone-500 dark:text-stone-400">Connecting to the table…</p>
-    );
+    return <LoadingNote>Connecting to the table…</LoadingNote>;
   }
 
   const me = snapshot.players.find((player) => player.id === playerId) ?? null;
@@ -230,9 +234,7 @@ export function PlayerSession({
     return (
       <div className="w-full p-2 sm:p-3">
         <header className="mb-6 flex items-center justify-between">
-          <h1 className="text-xl font-semibold text-stone-900 dark:text-stone-100">
-            Welcome, {playerName}
-          </h1>
+          <h1 className={`text-xl font-semibold ${TEXT_STRONG}`}>Welcome, {playerName}</h1>
           <ThemeToggle />
         </header>
 
@@ -255,24 +257,11 @@ export function PlayerSession({
                   onClick={() => void claim(character.characterId)}
                   className={`${CARD_BASE} border-stone-200 bg-white text-left disabled:opacity-50 dark:border-stone-800 dark:bg-stone-900`}
                 >
-                  <div className="aspect-square w-full shrink-0 overflow-hidden bg-stone-200 dark:bg-stone-800">
-                    {character.backgroundUrl ? (
-                      <img
-                        src={character.backgroundUrl}
-                        alt=""
-                        className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105 group-focus-within:scale-105"
-                      />
-                    ) : (
-                      <div
-                        className="flex h-full items-center justify-center opacity-30"
-                        aria-hidden
-                      >
-                        <Icon icon={faShieldHalved} className="h-12 w-12" />
-                      </div>
-                    )}
-                  </div>
+                  <CardWell>
+                    <CardPicture src={character.backgroundUrl} icon={faShieldHalved} />
+                  </CardWell>
                   <div className={CARD_CAPTION}>
-                    <p className="truncate font-medium text-stone-900 dark:text-stone-100">
+                    <p className={CARD_NAME}>
                       {character.name}
                     </p>
                   </div>
@@ -300,7 +289,7 @@ export function PlayerSession({
       <header className="grid shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-3">
         <div />
 
-        <h1 className="truncate text-center text-xl font-semibold text-stone-900 dark:text-stone-100">
+        <h1 className={`truncate text-center text-xl font-semibold ${TEXT_STRONG}`}>
           {snapshot.session.campaignName}
         </h1>
 
@@ -364,10 +353,8 @@ export function PlayerSession({
                     backgroundUrl={myCharacter.backgroundUrl}
                   />
                   <div className="min-w-0">
-                    <p className="truncate font-medium text-stone-900 dark:text-stone-100">
-                      {myCharacter.name}
-                    </p>
-                    <p className="truncate text-xs tabular-nums text-stone-500 dark:text-stone-400">
+                    <p className={`truncate font-medium ${TEXT_STRONG}`}>{myCharacter.name}</p>
+                    <p className={`truncate text-xs tabular-nums ${TEXT_MUTED}`}>
                       {HERO_STAT_LABELS.speed} {myCharacter.speed} ·{" "}
                       {HERO_STAT_LABELS.dexterity} {myCharacter.dexterity} ·{" "}
                       {HERO_STAT_LABELS.recovery} {myCharacter.recovery}
@@ -403,15 +390,13 @@ export function PlayerSession({
                 );
                 return (
                   <li key={player.id} className="py-2.5">
-                    <p className="font-medium text-stone-900 dark:text-stone-100">
+                    <p className={`font-medium ${TEXT_STRONG}`}>
                       {player.name}
                       {player.id === playerId ? (
-                        <span className="ml-1.5 text-xs font-normal text-stone-500 dark:text-stone-400">
-                          (you)
-                        </span>
+                        <span className={`ml-1.5 text-xs font-normal ${TEXT_MUTED}`}>(you)</span>
                       ) : null}
                     </p>
-                    <p className="text-xs text-stone-500 dark:text-stone-400">
+                    <p className={`text-xs ${TEXT_MUTED}`}>
                       {character ? `Playing ${character.name}` : "Choosing a character…"}
                     </p>
                   </li>

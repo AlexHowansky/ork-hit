@@ -10,6 +10,7 @@ import { useCallback, useEffect, useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useNavigate } from "react-router";
 import { api } from "./api.ts";
 import { ConfirmProvider } from "./components/Confirm.tsx";
+import { LoadingNote } from "./components/ui.tsx";
 import { ToastProvider, useToast } from "./components/Toast.tsx";
 import { Login } from "./routes/Login.tsx";
 import { GmLibrary } from "./routes/GmLibrary.tsx";
@@ -54,7 +55,7 @@ function Shell() {
   }, [navigate]);
 
   if (!identity) {
-    return <p className="p-8 text-center text-stone-500 dark:text-stone-400">Loading…</p>;
+    return <LoadingNote>Loading…</LoadingNote>;
   }
 
   const login = <Login onIdentity={setIdentity} />;

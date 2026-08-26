@@ -35,7 +35,14 @@ import {
   faPlay,
   faUserMinus,
 } from "@fortawesome/free-solid-svg-icons";
-import { CharacterThumb, Icon, KindBadge } from "./ui.tsx";
+import {
+  CharacterThumb,
+  CountBadge,
+  Icon,
+  KindBadge,
+  TEXT_BODY,
+  TEXT_MUTED,
+} from "./ui.tsx";
 import { Vitals, type VitalsPatch } from "./Vitals.tsx";
 
 /**
@@ -161,19 +168,14 @@ function Row({
             className={`max-w-full truncate ${
               isActive
                 ? "font-semibold text-stone-900 dark:text-stone-50"
-                : "text-stone-800 dark:text-stone-200"
+                : TEXT_BODY
             }`}
           >
             {character.name}
           </span>
           {copies > 1 ? (
-            <span
-              className="rounded bg-stone-200 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-stone-700 dark:bg-stone-700 dark:text-stone-200"
-              // Read as part of the name above rather than as a badge of its own.
-              aria-hidden="true"
-            >
-              {character.copyNumber}
-            </span>
+            // Read as part of the name above rather than as a badge of its own.
+            <CountBadge hidden>{character.copyNumber}</CountBadge>
           ) : null}
           <KindBadge kind={character.kind} />
           {isActive ? (
@@ -194,7 +196,7 @@ function Row({
             className={`mt-0.5 truncate text-xs ${
               isUnclaimed
                 ? "font-medium text-rose-700 dark:text-rose-300"
-                : "text-stone-500 dark:text-stone-400"
+                : TEXT_MUTED
             }`}
           >
             {character.claimedByPlayerName

@@ -16,10 +16,15 @@ import {
   Button,
   CharacterThumb,
   CopyButton,
+  CountBadge,
   EmptyState,
   Icon,
   KindBadge,
+  LoadingNote,
   Panel,
+  TEXT_BODY,
+  TEXT_MUTED,
+  TEXT_STRONG,
 } from "../components/ui.tsx";
 import {
   faBook,
@@ -229,7 +234,7 @@ export function GmSessionConsole() {
   };
 
   if (!session) {
-    return <p className="p-8 text-center text-stone-500 dark:text-stone-400">Loading session…</p>;
+    return <LoadingNote>Loading session…</LoadingNote>;
   }
 
   // How many of each character are on the stage: the count beside a library card,
@@ -287,7 +292,7 @@ export function GmSessionConsole() {
           </Button>
         </div>
 
-        <h1 className="truncate text-center text-xl font-semibold text-stone-900 dark:text-stone-100">
+        <h1 className={`truncate text-center text-xl font-semibold ${TEXT_STRONG}`}>
           {session.campaignName}
         </h1>
 
@@ -334,7 +339,7 @@ export function GmSessionConsole() {
           <Panel title={`Initiative order (${snapshot?.characters.length ?? 0})`} scroll>
           {snapshot && snapshot.characters.length > 0 ? (
             <>
-              <p className="mb-2 text-xs text-stone-500 dark:text-stone-400">
+              <p className={`mb-2 text-xs ${TEXT_MUTED}`}>
                 Drag to reorder. Use the arrow keys to move the turn marker.
               </p>
               <InitiativeList
@@ -377,10 +382,8 @@ export function GmSessionConsole() {
                   return (
                     <li key={player.id} className="flex items-center gap-3 py-2.5">
                       <div className="min-w-0 flex-1">
-                        <p className="truncate font-medium text-stone-900 dark:text-stone-100">
-                          {player.name}
-                        </p>
-                        <p className="truncate text-xs text-stone-500 dark:text-stone-400">
+                        <p className={`truncate font-medium ${TEXT_STRONG}`}>{player.name}</p>
+                        <p className={`truncate text-xs ${TEXT_MUTED}`}>
                           {claimed ? `Playing ${claimed.name}` : "No character chosen yet"}
                         </p>
                       </div>
@@ -432,18 +435,13 @@ export function GmSessionConsole() {
                       kind={character.kind}
                       backgroundUrl={character.backgroundUrl}
                     />
-                    <span className="flex-1 truncate text-sm text-stone-800 dark:text-stone-200">
-                      {character.name}
-                    </span>
+                    <span className={`flex-1 truncate text-sm ${TEXT_BODY}`}>{character.name}</span>
                     {/* How many of this one are out there already. Absent rather
                         than zero when there are none, so the row stays quiet. */}
                     {staged.has(character.id) ? (
-                      <span
-                        className="rounded bg-stone-200 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-stone-700 dark:bg-stone-700 dark:text-stone-200"
-                        title={`${staged.get(character.id)} in the session`}
-                      >
+                      <CountBadge title={`${staged.get(character.id)} in the session`}>
                         {staged.get(character.id)}
-                      </span>
+                      </CountBadge>
                     ) : null}
                     <KindBadge kind={character.kind} />
                     <Button onClick={() => void addCharacter(character.id)} disabled={busy}>
