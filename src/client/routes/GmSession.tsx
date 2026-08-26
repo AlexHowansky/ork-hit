@@ -219,19 +219,28 @@ export function GmSessionConsole() {
     return <LoadingNote>Loading session…</LoadingNote>;
   }
 
-  // How many of each character are on the stage: the count beside a library card,
-  // and what decides whether a PC still belongs in that list at all.
+  // How many of each character are on the stage: the count beside a library row,
+  // and what decides whether a PC's Add button is still live.
   const staged = new Map<string, number>();
   for (const character of snapshot?.characters ?? []) {
     staged.set(character.characterId, (staged.get(character.characterId) ?? 0) + 1);
   }
 
-  // An NPC never leaves the library — a fight can always want another goblin. A
-  // PC does, once it is on the stage: there is only ever one of a given hero, so
-  // a card that could not be used again would just be in the way.
-  const availableCharacters = library.filter(
-    (character) => character.kind === "npc" || !staged.has(character.id),
-  );
+  // Nobody leaves the library, on stage or not. A row that vanishes when its
+  // character walks on reads the same as a character that was never in the
+  // campaign, and it reshuffles the list under the game master's cursor
+  // mid-fight; a row that stays, with its Add ghosted and its count beside it,
+  // says the hero is already in.
+  //
+  // Heroes first and monsters after, each alphabetically: the two are reached
+  // for at different moments, and one flat run of both is neither list. The
+  // comparison matches the `COLLATE NOCASE` the characters endpoint already
+  // orders by — sorted here as well so the grouping is this panel's own rather
+  // than something inherited from a query.
+  const libraryOrder = [...library].sort((a, b) => {
+    if (a.kind !== b.kind) return a.kind === "pc" ? -1 : 1;
+    return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+  });
   const activeCharacter =
     snapshot?.characters.find((character) => character.id === snapshot.session.activeSlotId) ??
     null;
@@ -414,29 +423,42 @@ export function GmSessionConsole() {
 
           <div className="contents wide:order-2 wide:flex wide:min-h-0 wide:min-w-0 wide:flex-col">
           <Panel title="Add from library" scroll>
-            {availableCharacters.length === 0 ? (
+            {libraryOrder.length === 0 ? (
               <EmptyState>
-                This campaign has no NPCs, and every player character is already in the
-                session.
+                This campaign has no characters yet. They are made on the library page.
               </EmptyState>
             ) : (
               <ul className="divide-y divide-stone-100 dark:divide-stone-800">
-                {availableCharacters.map((character) => (
+                {libraryOrder.map((character) => (
                   <li key={character.id} className="flex items-center gap-3 py-2">
                     <CharacterThumb
                       kind={character.kind}
                       backgroundUrl={character.backgroundUrl}
                     />
                     <span className={`flex-1 truncate text-sm ${TEXT_BODY}`}>{character.name}</span>
-                    {/* How many of this one are out there already. Absent rather
-                        than zero when there are none, so the row stays quiet. */}
-                    {staged.has(character.id) ? (
+                    {/* How many of this one are out there already. Only monsters
+                        carry it: there is one of a given hero and never a second,
+                        so a badge reading `1` beside them would be answering a
+                        question nobody at the table can ask. Absent rather than
+                        zero when there are none out, so the row stays quiet. */}
+                    {character.kind === "npc" && staged.has(character.id) ? (
                       <CountBadge title={`${staged.get(character.id)} in the session`}>
                         {staged.get(character.id)}
                       </CountBadge>
                     ) : null}
                     <KindBadge kind={character.kind} />
-                    <Button onClick={() => void addCharacter(character.id)} disabled={busy}>
+                    {/* A hero is on the stage once and no more, so their Add goes
+                        quiet rather than away — the ghosting is `Button`'s own
+                        `disabled:` styling. A monster's never does. */}
+                    <Button
+                      onClick={() => void addCharacter(character.id)}
+                      disabled={busy || (character.kind === "pc" && staged.has(character.id))}
+                      title={
+                        character.kind === "pc" && staged.has(character.id)
+                          ? `${character.name} is already in the session.`
+                          : undefined
+                      }
+                    >
                       <Icon icon={faUserPlus} /> Add
                     </Button>
                   </li>

@@ -475,6 +475,48 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     await player.getByText("Choose your character").waitFor({ timeout: 5000 });
   }, 60_000);
 
+  test("the library keeps every character, and ghosts the ones already on", async () => {
+    if (!browser) return;
+    const { page: gm } = await gmWithSession();
+
+    const library = gm.locator("section", { hasText: "Add from library" });
+    const rowFor = (name: string) =>
+      library.getByRole("listitem").filter({ hasText: name });
+
+    // Heroes first and alphabetically, then the monsters. Elara and Thorin came
+    // on with the session and Strahd was added by hand, so all three are on the
+    // stage — and all three are still listed here.
+    expect(
+      await library.locator("li").evaluateAll((rows) =>
+        // The name span, not the placeholder icon's — a character with no
+        // picture draws one of those first.
+        rows.map((row) => row.querySelector("span.truncate")?.textContent ?? ""),
+      ),
+    ).toEqual(["Elara", "Thorin", "Strahd"]);
+
+    // A hero already in the session cannot come on twice, so their Add is quiet.
+    // A monster's never is — a fight can always want another goblin.
+    const add = (name: string) => rowFor(name).getByRole("button", { name: "Add" });
+    expect(await add("Elara").isDisabled()).toBe(true);
+    expect(await add("Thorin").isDisabled()).toBe(true);
+    expect(await add("Strahd").isDisabled()).toBe(false);
+
+    // The count of how many are out is a monster's badge alone — a hero is on the
+    // stage once, so a `1` beside them would be answering nothing.
+    expect(await rowFor("Thorin").innerText()).not.toContain("1");
+    expect(await rowFor("Strahd").innerText()).toContain("1");
+
+    // Taking a hero off the stage gives their Add back, and it works.
+    await stagePanel(gm).getByRole("listitem").filter({ hasText: "Elara" })
+      .getByRole("button", { name: /Remove Elara/ }).click();
+    await stageCount(gm, 2);
+    expect(await add("Elara").isDisabled()).toBe(false);
+
+    await add("Elara").click();
+    await stageCount(gm, 3);
+    expect(await add("Elara").isDisabled()).toBe(true);
+  }, 60_000);
+
   test("the clock button narrows each screen to whoever is acting", async () => {
     if (!browser) return;
     const { page: gm, code } = await gmWithSession();

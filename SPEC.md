@@ -332,10 +332,19 @@ The app should have the following features:
   copy with its own place on the stage and its own phase in a segment, and its
   card stays in the library panel so it can be added again. Where a character has more
   than one copy on the stage, each is numbered beside its name, and the library
-  card shows how many of it are out. A copy keeps its number for the whole fight:
+  row shows how many of it are out. Only NPCs carry that count: there is one of a
+  given hero and never a second, so a `1` beside them would answer a question
+  nobody can ask. A copy keeps its number for the whole fight:
   removing one never renumbers the rest, and the next copy added takes the next
-  number up rather than filling a gap. Player characters
-  are unchanged — one each, and their card leaves the library once they are on.
+  number up rather than filling a gap. A player character is on the stage once and
+  no more, but their row stays in the library panel like an NPC's, with its `Add`
+  ghosted: a row that vanished when its character walked on would read the same as
+  a character that was never in the campaign, and it would reshuffle the list
+  under the GM mid-fight.
+
+* The library panel is ordered PCs first and NPCs after, alphabetically within
+  each. The two are reached for at different moments of a fight, and one flat run
+  of both is neither list.
 
 * The GM should be able to restart the turn order, taking the session back to
   Turn 1, Segment 12 with no turn set, as though the fight had not begun. The
