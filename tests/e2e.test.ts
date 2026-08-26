@@ -507,6 +507,20 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     expect(await rowFor("Thorin").innerText()).not.toContain("1");
     expect(await rowFor("Strahd").innerText()).toContain("1");
 
+    // How bright an element actually renders: opacity composites down the tree,
+    // so a dimmed row means every ancestor's opacity multiplied together.
+    const brightness = (target: Locator) =>
+      target.evaluate((element) => {
+        let value = 1;
+        for (let node: Element | null = element; node; node = node.parentElement) {
+          value *= Number(window.getComputedStyle(node).opacity);
+        }
+        return value;
+      });
+
+    // Everyone is in the scene, so nothing is dimmed yet.
+    expect(await brightness(rowFor("Strahd").locator("span.truncate"))).toBe(1);
+
     // Sheets are opened from here, not from the segment panel, and a character
     // who is not in the scene still has one to read.
     await rowFor("Strahd").getByRole("button", { name: "Sheet" }).click();
@@ -525,11 +539,18 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     expect(await add("Elara").isDisabled()).toBe(false);
     expect(await namesInLibrary()).toEqual(["Thorin", "Strahd", "Elara"]);
 
+    // Out of the scene, so the row is dimmed — but not the control that would
+    // bring them back, which is the whole point of a row in this state.
+    expect(await brightness(rowFor("Elara").locator("span.truncate"))).toBeLessThan(1);
+    expect(await brightness(add("Elara"))).toBe(1);
+    expect(await brightness(rowFor("Thorin").locator("span.truncate"))).toBe(1);
+
     // And bringing them back puts them at the top again.
     await add("Elara").click();
     await stageCount(gm, 3);
     expect(await add("Elara").isDisabled()).toBe(true);
     expect(await namesInLibrary()).toEqual(["Elara", "Thorin", "Strahd"]);
+    expect(await brightness(rowFor("Elara").locator("span.truncate"))).toBe(1);
   }, 60_000);
 
   test("the clock button narrows each screen to whoever is acting", async () => {
@@ -800,6 +821,12 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     await other.getByRole("button", { name: "Start", exact: true }).click();
     await other.waitForURL("**/gm/sessions/**");
     await listed.waitFor({ timeout: 5000 });
+
+    // Wait for the console's own furniture, not just the URL: the address
+    // changes before React swaps the markup, and until it does this tab is still
+    // showing the library — where "End" is one button per session in progress
+    // rather than the console's single one, and the click below is ambiguous.
+    await stagePanel(other).waitFor({ timeout: 5000 });
 
     await other.getByRole("button", { name: "End", exact: true }).click();
     // The dialog spells the action out where the button on the console is a

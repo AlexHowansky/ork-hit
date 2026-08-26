@@ -353,7 +353,10 @@ The app should have the following features:
   panel up against, so it groups before kind does; one flat run of everybody is
   none of those four lists. A row therefore moves between blocks as its character
   comes on or goes off, which is the point: where a row sits is what says whether
-  it is in the fight.
+  it is in the fight. A row whose character is not in the scene is also dimmed,
+  the same way the segment panel dims whoever has no phase this segment — except
+  its `Add`, which stays at full strength, since bringing them on is exactly what
+  the GM is reaching for on such a row.
 
 * The GM should be able to restart the turn order, taking the session back to
   Turn 1, Segment 12 with no turn set, as though the fight had not begun. The

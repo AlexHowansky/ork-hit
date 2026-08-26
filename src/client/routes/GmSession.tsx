@@ -439,30 +439,51 @@ export function GmSessionConsole() {
               <ul className="divide-y divide-stone-100 dark:divide-stone-800">
                 {libraryOrder.map((character) => (
                   <li key={character.id} className="flex items-center gap-3 py-2">
-                    <CharacterThumb
-                      kind={character.kind}
-                      backgroundUrl={character.backgroundUrl}
-                    />
-                    <span className={`flex-1 truncate text-sm ${TEXT_BODY}`}>{character.name}</span>
-                    {/* How many of this one are out there already. Only monsters
-                        carry it: there is one of a given hero and never a second,
-                        so a badge reading `1` beside them would be answering a
-                        question nobody at the table can ask. Absent rather than
-                        zero when there are none out, so the row stays quiet. */}
-                    {character.kind === "npc" && staged.has(character.id) ? (
-                      <CountBadge title={`${staged.get(character.id)} in the session`}>
-                        {staged.get(character.id)}
-                      </CountBadge>
-                    ) : null}
-                    <KindBadge kind={character.kind} />
-                    {/* Sheets are opened from here rather than from the segment
-                        panel: this list has every character in the campaign, so
-                        one that has not walked on yet can still be read, and a
-                        sheet is the character's rather than the copy's — two
-                        goblins have one between them. */}
-                    <Button variant="ghost" onClick={() => setViewingSheet(character)}>
-                      <Icon icon={faEye} /> Sheet
-                    </Button>
+                    {/*
+                      A character who is not in the scene is dimmed, the same way
+                      the segment panel dims whoever has no phase this segment:
+                      brightness is this panel's answer to "are they in the
+                      fight", which is the question the four blocks are sorted by.
+
+                      Everything but the Add button is inside it, because opacity
+                      composites the whole subtree — a child cannot be brighter
+                      than its parent, so the one control that should stay at full
+                      strength has to sit outside the dimming rather than undo it.
+                      And it is the one that should: adding them is exactly what a
+                      game master is reaching for on a row that is not in yet.
+                    */}
+                    <div
+                      className={`flex min-w-0 flex-1 items-center gap-3 ${
+                        staged.has(character.id) ? "" : "opacity-60"
+                      }`}
+                    >
+                      <CharacterThumb
+                        kind={character.kind}
+                        backgroundUrl={character.backgroundUrl}
+                      />
+                      <span className={`flex-1 truncate text-sm ${TEXT_BODY}`}>
+                        {character.name}
+                      </span>
+                      {/* How many of this one are out there already. Only monsters
+                          carry it: there is one of a given hero and never a second,
+                          so a badge reading `1` beside them would be answering a
+                          question nobody at the table can ask. Absent rather than
+                          zero when there are none out, so the row stays quiet. */}
+                      {character.kind === "npc" && staged.has(character.id) ? (
+                        <CountBadge title={`${staged.get(character.id)} in the session`}>
+                          {staged.get(character.id)}
+                        </CountBadge>
+                      ) : null}
+                      <KindBadge kind={character.kind} />
+                      {/* Sheets are opened from here rather than from the segment
+                          panel: this list has every character in the campaign, so
+                          one that has not walked on yet can still be read, and a
+                          sheet is the character's rather than the copy's — two
+                          goblins have one between them. */}
+                      <Button variant="ghost" onClick={() => setViewingSheet(character)}>
+                        <Icon icon={faEye} /> Sheet
+                      </Button>
+                    </div>
                     {/* A hero is on the stage once and no more, so their Add goes
                         quiet rather than away — the ghosting is `Button`'s own
                         `disabled:` styling. A monster's never does. */}
