@@ -105,7 +105,7 @@ function Row({
       //
       // A character with no phase this segment is dimmed rather than removed, so
       // the game master can still see and reach them — their STUN is still theirs
-      // to change on a segment they are not acting in. The clock button above
+      // to change on a segment they are not acting in. The filter button above
       // takes them out of the list entirely for a reader who would rather that.
       className={`flex flex-col gap-1 border-l-4 px-3 py-2.5 ${
         isActive
@@ -294,7 +294,7 @@ export function InitiativeList({
   }
 
   // Numbered against the whole stage rather than against what survives the
-  // filter, so a character keeps the same number whichever way the clock button
+  // filter, so a character keeps the same number whichever way the filter button
   // is set and the two views can be read against each other.
   const rows = characters
     .map((character, index) => ({

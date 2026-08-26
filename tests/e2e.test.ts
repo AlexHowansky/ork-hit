@@ -1,6 +1,6 @@
 /**
  * Browser tests for the behaviour that only exists in a real page: the segment
- * panel and its clock filter, and player screens updating live without a
+ * panel and its segment filter, and player screens updating live without a
  * refresh.
  *
  * These start their own server and drive a real Chromium, so they are slower than
@@ -75,7 +75,7 @@ async function gmWithSession(): Promise<{ page: Page; code: string; campaignName
   // SPD and DEX are what the segment panel is built out of. The two heroes are
   // SPD 12 and so act in every segment, which keeps the turn walk in these tests
   // one press per character; Strahd is SPD 2 and acts only in segments 6 and 12,
-  // which is what the clock filter has to have something to hide.
+  // which is what the segment filter has to have something to hide.
   //
   // Thorin carries an INIT bonus as well, so the character panel has a number
   // there that is not the zero every unfilled character reads as. It is small on
@@ -166,8 +166,8 @@ const stagePanel = (page: Page) => page.locator("section", { hasText: /Segment \
  *
  * Counted off the rows themselves, since the heading says only which segment the
  * fight is on. That makes this "how many rows are drawn" rather than "how many
- * are on the stage" — the two are the same only while the clock filter is off,
- * which every caller here is; the clock test does its own counting with
+ * are on the stage" — the two are the same only while the segment filter is
+ * off, which every caller here is; the filter test does its own counting with
  * `namesIn`.
  *
  * Written as a retry loop because the number may still be crossing a socket and
@@ -574,7 +574,7 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     expect(await brightness(rowFor("Elara").locator("span.truncate"))).toBe(1);
   }, 60_000);
 
-  test("the clock button narrows each screen to whoever is acting", async () => {
+  test("the filter button narrows each screen to whoever is acting", async () => {
     if (!browser) return;
     const { page: gm, code } = await gmWithSession();
     const player = await playerIn(code, "Bob");
@@ -592,13 +592,13 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     await gm.getByText("Segment 1", { exact: true }).waitFor({ timeout: 5000 });
     await player.getByText("Segment 1", { exact: true }).waitFor({ timeout: 5000 });
 
-    // Everyone is still listed until the clock button is pressed.
+    // Everyone is still listed until the filter button is pressed.
     expect(await namesIn(gm)).toEqual(["Elara", "Thorin", "Strahd"]);
 
-    const clock = (page: Page) =>
+    const filterButton = (page: Page) =>
       stagePanel(page).getByRole("button", { name: /Show All|Show Acting/ });
 
-    await clock(gm).click();
+    await filterButton(gm).click();
     await gm.waitForTimeout(200);
     expect(await namesIn(gm)).toEqual(["Elara", "Thorin"]);
 
@@ -606,7 +606,7 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     expect(await namesIn(player)).toEqual(["Elara", "Thorin", "Strahd"]);
 
     // And the player has the same button, working the same way.
-    await clock(player).click();
+    await filterButton(player).click();
     await player.waitForTimeout(200);
     expect(await namesIn(player)).toEqual(["Elara", "Thorin"]);
 
@@ -633,7 +633,7 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     expect(await namesIn(gm)).toEqual(["Elara", "Thorin"]);
 
     // Pressed again, the whole stage comes back.
-    await clock(gm).click();
+    await filterButton(gm).click();
     await gm.waitForTimeout(200);
     expect(await namesIn(gm)).toEqual(["Elara", "Thorin", "Strahd"]);
   }, 60_000);

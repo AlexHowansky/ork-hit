@@ -232,7 +232,7 @@ right the moment a DEX is edited mid-session — a stored order has somewhere to
 drift to, and this has nowhere. `position` is still dense `0..n-1`, since adds
 append and removes close the gap, so the tiebreak stays a real sequence.
 
-**The clock filter is one reader's own.** The button on the segment panel narrows
+**The segment filter is one reader's own.** The button on the segment panel narrows
 it to the characters acting in the current segment, and both audiences get one:
 which rows a game master would rather not scroll past is not a fact about the
 session, so it is never broadcast and never reaches anyone else's screen. It lives
@@ -697,7 +697,7 @@ bun run typecheck
 ```
 
 The browser tests cover what only exists in a live page — the segment panel's
-clock filter narrowing one reader's list without touching anyone else's, dragging
+segment filter narrowing one reader's list without touching anyone else's, dragging
 a character card onto another campaign, player screens updating without a refresh,
 a sheet opening in the window's own shape, and the sheet sandbox holding. They need Playwright's
 Chromium (`bunx playwright install chromium`) and are skipped without it.

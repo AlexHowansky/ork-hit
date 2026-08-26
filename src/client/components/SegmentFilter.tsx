@@ -1,5 +1,6 @@
 /**
- * The clock button on the segment panel, and the setting behind it.
+ * The button on the segment panel that narrows it to whoever is acting, and the
+ * setting behind it.
  *
  * A segment is often two characters out of nine, and the seven who are not
  * acting are the ones a game master keeps scrolling past. This narrows the panel
@@ -18,7 +19,7 @@
  */
 
 import { useCallback, useState } from "react";
-import { faClock } from "@fortawesome/free-solid-svg-icons";
+import { faUserGroup, faUsers } from "@fortawesome/free-solid-svg-icons";
 import { Button, Icon } from "./ui.tsx";
 
 function storageKey(sessionId: string): string {
@@ -86,7 +87,10 @@ export function SegmentFilterToggle({
           : "Show only the characters acting this segment"
       }
     >
-      <Icon icon={faClock} /> {showActingOnly ? "Show All" : "Show Acting"}
+      {/* The icon says the same thing as the words beside it: a crowd for the
+          whole stage, a handful for the few with a phase this segment. */}
+      <Icon icon={showActingOnly ? faUsers : faUserGroup} />{" "}
+      {showActingOnly ? "Show All" : "Show Acting"}
     </Button>
   );
 }
