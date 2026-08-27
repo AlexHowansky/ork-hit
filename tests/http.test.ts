@@ -16,14 +16,14 @@ import { config, limits } from "../src/lib/config.ts";
 import { unique } from "./helpers.ts";
 import {
   SESSION_STARTED,
-  gmGave,
-  gmMoved,
-  gmRemoved,
-  gmTook,
-  playerChose,
+  gmAssigned,
+  gmKicked,
+  gmReassigned,
+  gmUnassigned,
   playerDisconnected,
   playerJoined,
   playerLeft,
+  playerSelected,
 } from "../src/server/events.ts";
 
 let base: string;
@@ -919,7 +919,7 @@ describe("the log", () => {
     expect(await messages(cookie, session.id)).toEqual([
       SESSION_STARTED,
       playerJoined("Ada"),
-      playerChose("Ada", pc.name),
+      playerSelected("Ada", pc.name),
     ]);
   });
 
@@ -936,7 +936,7 @@ describe("the log", () => {
     expect(await messages(cookie, session.id)).toEqual([
       SESSION_STARTED,
       playerJoined("Ada"),
-      gmGave(pc.name, "Ada"),
+      gmAssigned(pc.name, "Ada"),
     ]);
   });
 
@@ -952,8 +952,8 @@ describe("the log", () => {
     expect(await messages(cookie, session.id)).toEqual([
       SESSION_STARTED,
       playerJoined("Ada"),
-      gmGave(pc.name, "Ada"),
-      gmTook(pc.name, "Ada"),
+      gmAssigned(pc.name, "Ada"),
+      gmUnassigned(pc.name, "Ada"),
     ]);
   });
 
@@ -974,8 +974,8 @@ describe("the log", () => {
       SESSION_STARTED,
       playerJoined("Ada"),
       playerJoined("Bram"),
-      gmGave(pc.name, "Ada"),
-      gmMoved(pc.name, "Ada", "Bram"),
+      gmAssigned(pc.name, "Ada"),
+      gmReassigned(pc.name, "Ada", "Bram"),
     ]);
   });
 
@@ -997,10 +997,10 @@ describe("the log", () => {
       SESSION_STARTED,
       playerJoined("Ada"),
       playerJoined("Bram"),
-      gmGave(second.name, "Ada"),
-      gmGave(pc.name, "Bram"),
-      gmTook(second.name, "Ada"),
-      gmMoved(pc.name, "Bram", "Ada"),
+      gmAssigned(second.name, "Ada"),
+      gmAssigned(pc.name, "Bram"),
+      gmUnassigned(second.name, "Ada"),
+      gmReassigned(pc.name, "Bram", "Ada"),
     ]);
   });
 
@@ -1036,7 +1036,7 @@ describe("the log", () => {
       playerJoined("Ada"),
       playerJoined("Bram"),
       playerLeft("Ada"),
-      gmRemoved("Bram"),
+      gmKicked("Bram"),
     ]);
   });
 });

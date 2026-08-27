@@ -32,8 +32,8 @@ export const SESSION_STARTED = "Session started";
 
 export const playerJoined = (name: string): string => `${name} joined`;
 
-export const playerChose = (name: string, character: string): string =>
-  `${name} chose ${character}`;
+export const playerSelected = (name: string, character: string): string =>
+  `${name} selected ${character}`;
 
 export const playerLeft = (name: string): string => `${name} left`;
 
@@ -42,22 +42,22 @@ export const playerLeft = (name: string): string => `${name} left`;
  * ran out — which is exactly why it is worth writing down. It is the only way of
  * leaving the table that no one at the table saw happen.
  */
-export const playerDisconnected = (name: string): string => `${name} disconnected`;
+export const playerDisconnected = (name: string): string => `${name} was disconnected`;
 
 /* ------------------------------------------------------ the game master's */
 
-export const gmGave = (character: string, name: string): string =>
-  `The game master gave ${character} to ${name}`;
+export const gmAssigned = (character: string, name: string): string =>
+  `The game master assigned ${character} to ${name}`;
 
-export const gmTook = (character: string, name: string): string =>
-  `The game master took ${character} from ${name}`;
+export const gmUnassigned = (character: string, name: string): string =>
+  `The game master unassigned ${character} from ${name}`;
 
 /**
- * One line rather than a take and a give, because it was one action by one
- * person. Two would also read as a moment when the character was held by
- * nobody, which never happened.
+ * One line rather than an unassignment and an assignment, because it was one
+ * action by one person. Two would also read as a moment when the character was
+ * held by nobody, which never happened.
  */
-export const gmMoved = (character: string, from: string, to: string): string =>
-  `The game master moved ${character} from ${from} to ${to}`;
+export const gmReassigned = (character: string, from: string, to: string): string =>
+  `The game master reassigned ${character} from ${from} to ${to}`;
 
-export const gmRemoved = (name: string): string => `The game master removed ${name}`;
+export const gmKicked = (name: string): string => `The game master kicked ${name}`;

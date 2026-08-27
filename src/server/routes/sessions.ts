@@ -39,12 +39,12 @@ import {
 } from "../../lib/hero.ts";
 import {
   SESSION_STARTED,
-  gmGave,
-  gmMoved,
-  gmRemoved,
-  gmTook,
-  playerChose,
+  gmAssigned,
+  gmKicked,
+  gmReassigned,
+  gmUnassigned,
   playerJoined,
+  playerSelected,
 } from "../events.ts";
 import { presentSessionForGm } from "../presenters.ts";
 import { buildGmSessionList, buildSnapshot } from "../session-state.ts";
@@ -659,7 +659,7 @@ export const sessionRoutes = {
           throw errors.conflict("Another player just took that character. Please choose another.");
         }
 
-        sessionEvents.record(session.id, playerChose(player.name, character.name));
+        sessionEvents.record(session.id, playerSelected(player.name, character.name));
         logger.info("character claimed", {
           sessionId: session.id,
           playerId: player.id,
@@ -715,21 +715,21 @@ export const sessionRoutes = {
          *
          * Otherwise it is two lines at most, and only when this player was
          * already holding somebody: what they put down, then what they picked
-         * up. The pickup is a `move` rather than a `give` when it came off
-         * another player, because that was one action and there was never a
-         * moment when the character was held by nobody.
+         * up. The pickup is a reassignment rather than an assignment when it
+         * came off another player, because that was one action and there was
+         * never a moment when the character was held by nobody.
          */
         if (claimedCharacterId !== held) {
           if (held !== null) {
             const before = characters.byId(held);
-            if (before) sessionEvents.record(session.id, gmTook(before.name, player.name));
+            if (before) sessionEvents.record(session.id, gmUnassigned(before.name, player.name));
           }
           if (wanted) {
             sessionEvents.record(
               session.id,
               previousHolder && previousHolder.id !== player.id
-                ? gmMoved(wanted.name, previousHolder.name, player.name)
-                : gmGave(wanted.name, player.name),
+                ? gmReassigned(wanted.name, previousHolder.name, player.name)
+                : gmAssigned(wanted.name, player.name),
             );
           }
         }
@@ -757,7 +757,7 @@ export const sessionRoutes = {
         // for others, and the row itself is what held it) and invalidates the
         // player's cookie, since it resolves through this row.
         players.remove(player.id);
-        sessionEvents.record(session.id, gmRemoved(player.name));
+        sessionEvents.record(session.id, gmKicked(player.name));
         logger.info("player kicked", { sessionId: session.id, playerId: player.id });
 
         disconnectPlayer(player.id);
