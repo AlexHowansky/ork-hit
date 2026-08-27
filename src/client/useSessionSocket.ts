@@ -30,8 +30,11 @@ export function useSessionSocket(
     (message) => {
       switch (message.type) {
         case "snapshot": {
-          const { session, players, characters } = message as unknown as Partial<Snapshot>;
-          if (session && players && characters) setSnapshot({ session, players, characters });
+          const { session, players, characters, events } =
+            message as unknown as Partial<Snapshot>;
+          if (session && players && characters && events) {
+            setSnapshot({ session, players, characters, events });
+          }
           break;
         }
         case "notice": {

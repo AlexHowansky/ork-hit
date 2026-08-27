@@ -27,6 +27,7 @@ import {
   gameSessions,
   players,
   sessionCharacters,
+  sessionEvents,
 } from "../../db/queries.ts";
 import { db } from "../../db/index.ts";
 import type { GameSessionRow, SessionCharacterRow } from "../../db/types.ts";
@@ -45,6 +46,16 @@ import {
   closeSessionSockets,
   disconnectPlayer,
 } from "../ws.ts";
+
+/**
+ * The lines the log can carry.
+ *
+ * Written out here rather than at the call site so that the wording of the log
+ * is one list somebody can read, and so a test can assert on the same string the
+ * server writes rather than a copy of it. There is one so far; the stunned and
+ * unstunned events are next.
+ */
+export const SESSION_STARTED = "Session started";
 
 /** The snapshot for a session, or a 404 if it vanished under us. */
 function snapshotOr404(sessionId: string) {
@@ -272,8 +283,9 @@ export const sessionRoutes = {
         );
       }
 
-      // The party comes along with the session: one transaction, so a session can
-      // never exist with the roster half built.
+      // The party and the first line of the log come along with the session: one
+      // transaction, so a session can never exist with the roster half built or
+      // with a log that does not say when it began.
       const session = db.transaction(() => {
         const created = gameSessions.create({
           campaignId: campaign.id,
@@ -281,6 +293,12 @@ export const sessionRoutes = {
           code: generateSessionCode(),
         });
         sessionCharacters.addCampaignPcs(created.id, campaign.id);
+        // Written here rather than broadcast as a notice because there is nobody
+        // to broadcast to yet: the console that started the session has not
+        // opened its socket, and the players have not been given the code. The
+        // only way this line is ever read is out of the database, in the
+        // snapshot every screen gets when it connects.
+        sessionEvents.record(created.id, SESSION_STARTED);
         return created;
       })();
       logger.info("session started", {

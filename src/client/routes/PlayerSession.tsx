@@ -28,6 +28,7 @@ import {
   CardWell,
   CharacterThumb,
   EmptyState,
+  Icon,
   LoadingNote,
   Panel,
   SURFACE,
@@ -35,10 +36,11 @@ import {
   TEXT_STRONG,
 } from "../components/ui.tsx";
 import { InitiativeList, stageLabel } from "../components/InitiativeList.tsx";
+import { LogDrawer, LogToggle, useLogDrawer } from "../components/EventLog.tsx";
 import { SegmentFilterToggle, useSegmentFilter } from "../components/SegmentFilter.tsx";
 import { StatLine } from "../components/StatLine.tsx";
 import { Vitals, type VitalsPatch } from "../components/Vitals.tsx";
-import { faShieldHalved } from "@fortawesome/free-solid-svg-icons";
+import { faRightFromBracket, faShieldHalved } from "@fortawesome/free-solid-svg-icons";
 import { TurnControls } from "../components/TurnControls.tsx";
 import { SheetOverlay } from "../components/SheetFrame.tsx";
 import { ThemeToggle } from "../components/ThemeToggle.tsx";
@@ -89,6 +91,7 @@ export function PlayerSession({
   const [taggingOpen, setTaggingOpen] = useState(false);
   const [dropped, setDropped] = useState(false);
   const [showActingOnly, toggleSegmentFilter] = useSegmentFilter(sessionId);
+  const [logOpen, toggleLog] = useLogDrawer(sessionId);
 
   /**
    * A player who is away long enough is removed from the session, and a removed
@@ -320,7 +323,11 @@ export function PlayerSession({
         reconnecting note comes and goes.
       */}
       <header className="grid shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-3">
-        <div />
+        {/* The left track was empty; the log control fills it, which keeps the
+            campaign's name centred on the page rather than on what is left. */}
+        <div className="justify-self-start">
+          <LogToggle open={logOpen} onToggle={toggleLog} />
+        </div>
 
         <h1 className={`truncate text-center text-xl font-semibold ${TEXT_STRONG}`}>
           {snapshot.session.campaignName}
@@ -331,7 +338,11 @@ export function PlayerSession({
             <span className="text-xs text-amber-700 dark:text-amber-400">Reconnecting…</span>
           ) : null}
           <ThemeToggle />
-          <Button onClick={onLeave}>Leave</Button>
+          {/* The same picture the game master's `Sign out` carries: for a player,
+              leaving the table is the same gesture as signing out of one. */}
+          <Button onClick={onLeave}>
+            <Icon icon={faRightFromBracket} /> Leave
+          </Button>
         </div>
       </header>
 
@@ -349,7 +360,15 @@ export function PlayerSession({
         list taller than the fixed wide frame shrinks back and scrolls its own body
         instead of spilling out of the page, which the wide layout clips.
       */}
-      <div className="flex flex-col gap-2.5 lg:flex-row lg:items-start lg:gap-2.5 wide:min-h-0 wide:flex-1 wide:items-stretch">
+      {/*
+        The log is a drawer beside the page rather than a panel inside it, and it
+        pushes rather than covers: this row is the push. Closed it has no width,
+        so the two columns below are exactly what they were without it.
+      */}
+      <div className="flex flex-col lg:flex-row lg:items-start wide:min-h-0 wide:flex-1 wide:items-stretch">
+        <LogDrawer events={snapshot.events} open={logOpen} onClose={toggleLog} />
+
+      <div className="flex min-w-0 flex-1 flex-col gap-2.5 lg:flex-row lg:items-start lg:gap-2.5 wide:min-h-0 wide:items-stretch">
         <div className="contents lg:flex lg:min-w-0 lg:flex-1 lg:flex-col lg:gap-2.5 wide:min-h-0">
           <TurnControls
             className="lg:shrink-0"
@@ -480,6 +499,7 @@ export function PlayerSession({
             )}
           </Panel>
         </div>
+      </div>
       </div>
 
       {sheetOpen && myCharacter ? (

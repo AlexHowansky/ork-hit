@@ -76,6 +76,19 @@ export interface GameSession {
   endedAt: string | null;
 }
 
+/**
+ * One line of the session's log.
+ *
+ * `at` is the ISO instant the server wrote it. What o'clock that is is worked
+ * out here, because the reader's machine is the only thing that knows which time
+ * zone they are sitting in.
+ */
+export interface SessionEvent {
+  id: string;
+  message: string;
+  at: string;
+}
+
 export interface Snapshot {
   session: {
     id: string;
@@ -90,6 +103,8 @@ export interface Snapshot {
   };
   players: SessionPlayer[];
   characters: SessionCharacter[];
+  /** The log, oldest first. Only the tail of it; the server bounds how much. */
+  events: SessionEvent[];
 }
 
 export type Identity =

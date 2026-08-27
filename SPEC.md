@@ -206,9 +206,16 @@ The app should have the following features:
   session share a panel of their own, at the top of the column the players are
   in. They belong together — ending the session is what stops the code working —
   and the panel carries no heading, since a code with copy buttons beside it says
-  what it is. The page header is left with only where you are and how the page
-  looks: the way back to the library, the campaign's name, and the light/dark
-  control.
+  what it is.
+
+* That leaves the page header holding what this page can open, where you are, and
+  how you look at it: the log and the way back to the library on one side, the
+  campaign's name in the middle, and the light/dark control and `Sign out` on the
+  other. Signing out is in the header rather than beside the code because it is
+  about this browser and nobody else's — the session goes on running, the code
+  goes on working, and the game master can come back to it. Ending the session
+  is the opposite of all three, which is why it sits down in the panel with the
+  code it revokes.
 
 * No panel on the session console is stretched to fill the screen either, and
   the turn sits above the segment panel and shares its width — it is the same
@@ -225,6 +232,23 @@ The app should have the following features:
   column — so the turn is the width of the player list rather than of the page —
   and the scene sits in the second. Stacked, the order is the turn, their
   character, the scene, then the players.
+
+* Both session screens carry a **log**: what has happened at this table, one
+  line per event, each with the time it happened, oldest at the top and newest at
+  the bottom. `Session started` is the first line of every session's log.
+
+* The log is not a panel in a column. It is a drawer, hidden until a `Log`
+  control in the upper left of the page header is pressed, and it pushes the
+  columns aside rather than covering them — a game master may want it open while
+  the fight runs, so nothing of the fight may go behind it. Where the screen is
+  too narrow to give up a column, it is a block above the page instead. Whether
+  it is open is each reader's own business and is remembered for as long as they
+  have the session open.
+
+* The log is the session's rather than the browser's. A screen that reloads gets
+  it back, and a player who joins an hour in can read the hour they missed. That
+  is what tells it apart from a toast, which says something once to whoever
+  happened to be watching and is then gone.
 
 * Every character, PC and NPC alike, is a HERO System 5th Edition Revised
   character. Each one in the library carries seven characteristics — SPEED,

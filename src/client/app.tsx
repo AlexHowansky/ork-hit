@@ -88,7 +88,13 @@ function Shell() {
       />
       <Route
         path="/gm/sessions/:id"
-        element={identity.kind === "gm" ? <GmSessionConsole /> : <Navigate to="/" replace />}
+        element={
+          identity.kind === "gm" ? (
+            <GmSessionConsole onSignOut={() => void signOut()} />
+          ) : (
+            <Navigate to="/" replace />
+          )
+        }
       />
 
       <Route

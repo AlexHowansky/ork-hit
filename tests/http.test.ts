@@ -14,6 +14,7 @@ import sharp from "sharp";
 import { gms } from "../src/db/queries.ts";
 import { config, limits } from "../src/lib/config.ts";
 import { unique } from "./helpers.ts";
+import { SESSION_STARTED } from "../src/server/routes/sessions.ts";
 
 let base: string;
 let server: ReturnType<typeof Bun.serve>;
@@ -788,6 +789,38 @@ describe("the session list counts the players in each", () => {
     );
     expect(byId.get(first.session.id)).toBe(1);
     expect(byId.get(second.session.id)).toBe(0);
+  });
+});
+
+describe("the log", () => {
+  test("a new session already says when it began", async () => {
+    const { cookie } = await signIn();
+    const { session } = await makeTable(cookie);
+
+    const snapshot = (
+      await (await fetch(`${base}/api/sessions/${session.id}`, authed(cookie))).json()
+    ).snapshot;
+
+    // Written in the same transaction that made the session, so it is there
+    // before anybody is watching — which is the only reason it can be seen at
+    // all. A notice would have gone out to an empty room.
+    expect(snapshot.events).toHaveLength(1);
+    expect(snapshot.events[0].message).toBe(SESSION_STARTED);
+    expect(Number.isNaN(Date.parse(snapshot.events[0].at))).toBe(false);
+  });
+
+  test("a player who joins late still reads it", async () => {
+    const { cookie } = await signIn();
+    const { session } = await makeTable(cookie);
+    const playerCookie = await joinAs(session.code, "Latecomer");
+
+    const snapshot = (
+      await (await fetch(`${base}/api/sessions/${session.id}`, authed(playerCookie))).json()
+    ).snapshot;
+
+    expect(snapshot.events.map((event: { message: string }) => event.message)).toEqual([
+      SESSION_STARTED,
+    ]);
   });
 });
 

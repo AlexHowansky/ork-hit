@@ -45,7 +45,7 @@ describe("one active session per campaign", () => {
     addActiveSession(target, "mid", "2026-01-01T11:00:00.000Z");
     addActiveSession(target, "new", "2026-01-01T12:00:00.000Z");
 
-    expect(migrate(target)).toBe(6);
+    expect(migrate(target)).toBe(7);
 
     const statuses = Object.fromEntries(
       target.query<{ id: string; status: string }, []>(

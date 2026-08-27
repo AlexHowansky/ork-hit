@@ -605,6 +605,39 @@ hiding the boxes. Both end in the same `publish`, so an edit from either screen
 reaches every screen the usual way. `src/lib/hero.ts` names the seven
 characteristics once, for the form fields, the labels and the API alike.
 
+## The log is state, not a notice
+
+Everything the table does is broadcast as a *snapshot*: the whole of what is true
+now, rebuilt and republished on every change. There is one exception —
+`broadcastSessionNotice`, which says something out loud once and keeps nothing.
+That is right for a toast: a client reconnecting five minutes later should not be
+told about the Post-Segment 12 Recovery it missed.
+
+The log is deliberately on the other side of that line. It rides the snapshot,
+because a history that only lived in the browsers watching at the time would not
+be a history: a reload would empty it, and a player who joins an hour in would
+see nothing of the hour. The first line makes the case on its own — a session is
+started before any screen is watching it, so `Session started` can only ever be
+read out of the database.
+
+So `session_events` is a table, `sessionEvents.record` is how anything writes to
+it, and `buildSnapshot` carries the tail of it to every screen. Nothing else was
+needed: every mutating route already ends in `publish`, and `websocket.open`
+already replays the current snapshot to a reconnecting client, so the log follows
+both without a route or a socket message of its own.
+
+The table is unbounded and the wire is not. `LOG_LIMIT` in `queries.ts` trims
+each snapshot to the most recent two hundred lines — far more than the drawer can
+show, and small enough that a fight running for hours is not sending hours of
+history down the wire every time somebody presses a button.
+
+On screen it is a drawer rather than a panel, opened from the `Log` control in
+the upper left. It pushes the columns aside rather than covering them, because it
+is the one overlay in the app you might want open *while* you work; every other
+one — the sheet, the modals — is something you deal with and dismiss. Below
+`lg:` there is no width to give up, so there it is a block above the page
+instead.
+
 ## The turn chime
 
 When the turn reaches a player's character, that player — and only that player —

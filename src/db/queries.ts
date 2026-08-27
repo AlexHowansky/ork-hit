@@ -19,6 +19,7 @@ import type {
   GmRow,
   PlayerRow,
   SessionCharacterRow,
+  SessionEventRow,
   UploadKind,
   UploadRow,
 } from "./types.ts";
@@ -821,6 +822,52 @@ export const sessionCharacters = {
       "UPDATE game_sessions SET active_slot_id = NULL WHERE id = $sessionId AND active_slot_id = $slotId",
     ).run({ sessionId, slotId });
   }),
+};
+
+/* ------------------------------------------------------------- session log */
+
+/**
+ * How much of a session's log a snapshot carries.
+ *
+ * The log is unbounded in the database and bounded on the way out, because the
+ * two want different things: a table may want to scroll back over a long night,
+ * but every snapshot is republished on every mutation, and a fight that has run
+ * for hours should not be sending hours of history down the wire each time
+ * somebody presses a button. Two hundred lines is far more than the drawer can
+ * show and small enough not to notice.
+ */
+const LOG_LIMIT = 200;
+
+export const sessionEvents = {
+  /**
+   * Writes one line of the log.
+   *
+   * Takes the sentence rather than building it: what an event says is the
+   * business of whoever caused it, and this file only knows how to store it.
+   */
+  record(sessionId: string, message: string): void {
+    db.query(`
+      INSERT INTO session_events (id, game_session_id, message, created_at)
+      VALUES ($id, $sessionId, $message, $ts)
+    `).run({ id: newId(), sessionId, message, ts: now() });
+  },
+
+  /**
+   * The tail of a session's log, oldest first.
+   *
+   * Read newest-first so the LIMIT keeps the *recent* end, then reversed, because
+   * that is the order it is drawn in — new events at the bottom. `id` breaks a
+   * same-second tie: ids are time-ordered, so two events recorded inside one
+   * second still come back in the order they happened.
+   */
+  list(sessionId: string, limit: number = LOG_LIMIT): SessionEventRow[] {
+    return db.query<SessionEventRow, { sessionId: string; limit: number }>(`
+      SELECT * FROM session_events
+      WHERE game_session_id = $sessionId
+      ORDER BY created_at DESC, id DESC
+      LIMIT $limit
+    `).all({ sessionId, limit }).reverse();
+  },
 };
 
 /* ------------------------------------------------------------------- players */

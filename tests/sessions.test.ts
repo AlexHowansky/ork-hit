@@ -4,7 +4,14 @@
 
 import { describe, expect, test } from "bun:test";
 import { db } from "../src/db/index.ts";
-import { campaigns, characters, gameSessions, players, sessionCharacters } from "../src/db/queries.ts";
+import {
+  campaigns,
+  characters,
+  gameSessions,
+  players,
+  sessionCharacters,
+  sessionEvents,
+} from "../src/db/queries.ts";
 import { generateSessionCode } from "../src/lib/ids.ts";
 import { normalizeTag } from "../src/lib/hero.ts";
 import {
@@ -246,6 +253,65 @@ describe("the starting roster", () => {
 
     expect(roster.map((character) => character.name)).toEqual(["Aaron", "Beatrix"]);
     expect(roster.map((character) => character.position)).toEqual([0, 1]);
+  });
+});
+
+describe("the log", () => {
+  test("comes back oldest first", () => {
+    const session = makeSession(0).session;
+    for (const message of ["first", "second", "third"]) {
+      sessionEvents.record(session.id, message);
+    }
+
+    expect(sessionEvents.list(session.id).map((event) => event.message)).toEqual([
+      "first",
+      "second",
+      "third",
+    ]);
+  });
+
+  test("keeps the recent end when it is bounded, still oldest first", () => {
+    const session = makeSession(0).session;
+    for (const message of ["first", "second", "third"]) {
+      sessionEvents.record(session.id, message);
+    }
+
+    // The limit trims the *old* end — the tail is what a table wants to read.
+    expect(sessionEvents.list(session.id, 2).map((event) => event.message)).toEqual([
+      "second",
+      "third",
+    ]);
+  });
+
+  test("is one session's own", () => {
+    const mine = makeSession(0).session;
+    const theirs = makeSession(0).session;
+    sessionEvents.record(mine.id, "mine");
+
+    expect(sessionEvents.list(theirs.id)).toEqual([]);
+  });
+
+  test("survives the session ending, and dies with the campaign", () => {
+    const campaign = makeCampaign();
+    const session = gameSessions.create({
+      campaignId: campaign.id,
+      gmId: campaign.gm_id,
+      code: generateSessionCode(),
+    });
+    sessionEvents.record(session.id, "something happened");
+
+    // Ending only flips the status, and a game master looking back at a finished
+    // session should still find its log.
+    gameSessions.end(session.id);
+    expect(sessionEvents.list(session.id)).toHaveLength(1);
+
+    // Deleting the campaign is what cascades, and it leaves nothing behind.
+    campaigns.remove(campaign.id);
+    expect(
+      db.query<{ n: number }, { sessionId: string }>(
+        "SELECT COUNT(*) AS n FROM session_events WHERE game_session_id = $sessionId",
+      ).get({ sessionId: session.id })!.n,
+    ).toBe(0);
   });
 });
 

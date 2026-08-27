@@ -104,3 +104,18 @@ export interface SessionCharacterRow extends CharacterRow {
   cur_stun: number;
   cur_body: number;
 }
+
+/**
+ * One line of a session's log.
+ *
+ * The message is stored as the sentence it will be read as, rather than as a
+ * code to be composed at read time: the log is a record of what was true then,
+ * and a character renamed afterwards must not rewrite the line about what they
+ * did.
+ */
+export interface SessionEventRow {
+  id: string;
+  game_session_id: string;
+  message: string;
+  created_at: string;
+}

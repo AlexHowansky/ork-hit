@@ -31,12 +31,14 @@ import {
   faCopy,
   faEye,
   faLink,
+  faRightFromBracket,
   faStop,
   faUserPlus,
   faUserSlash,
 } from "@fortawesome/free-solid-svg-icons";
 import type { VitalsPatch } from "../components/Vitals.tsx";
 import { InitiativeList, stageLabel } from "../components/InitiativeList.tsx";
+import { LogDrawer, LogToggle, useLogDrawer } from "../components/EventLog.tsx";
 import { SegmentFilterToggle, useSegmentFilter } from "../components/SegmentFilter.tsx";
 import { TurnControls } from "../components/TurnControls.tsx";
 import { SheetOverlay } from "../components/SheetFrame.tsx";
@@ -45,7 +47,7 @@ import { useConfirm } from "../components/Confirm.tsx";
 import { useToast } from "../components/Toast.tsx";
 import type { Character, GameSession, Snapshot } from "../types.ts";
 
-export function GmSessionConsole() {
+export function GmSessionConsole({ onSignOut }: { onSignOut: () => void }) {
   const { id: sessionId = "" } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
@@ -67,6 +69,7 @@ export function GmSessionConsole() {
   const [viewingSheet, setViewingSheet] = useState<Character | null>(null);
   const [busy, setBusy] = useState(false);
   const [showActingOnly, toggleSegmentFilter] = useSegmentFilter(sessionId);
+  const [logOpen, toggleLog] = useLogDrawer(sessionId);
 
   // Loaded once: the code and the campaign don't change while a session runs.
   useEffect(() => {
@@ -312,7 +315,10 @@ export function GmSessionConsole() {
         stays put as the reconnecting note comes and goes.
       */}
       <header className="grid shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-3">
-        <div className="justify-self-start">
+        {/* The log first, because it is what opens directly below it: the drawer
+            comes out of this corner, so its control is the thing in the corner. */}
+        <div className="flex flex-wrap items-center gap-2 justify-self-start">
+          <LogToggle open={logOpen} onToggle={toggleLog} />
           <Button variant="ghost" onClick={() => navigate("/gm")}>
             <Icon icon={faBook} /> Library
           </Button>
@@ -327,6 +333,12 @@ export function GmSessionConsole() {
             <span className="text-xs text-amber-700 dark:text-amber-400">Reconnecting…</span>
           ) : null}
           <ThemeToggle />
+          {/* Signing out is about this browser, not about the table: the session
+              keeps running and the code keeps working. Ending it is the `End`
+              button down in the panel with the code, where it belongs. */}
+          <Button onClick={onSignOut}>
+            <Icon icon={faRightFromBracket} /> Sign out
+          </Button>
         </div>
       </header>
 
@@ -348,7 +360,16 @@ export function GmSessionConsole() {
         guard for the other direction — a list taller than the fixed wide frame
         shrinks back and scrolls its own body instead of being clipped by it.
       */}
-      <div className="flex flex-col gap-2.5 sm:grid sm:grid-cols-2 sm:items-start sm:gap-2.5 wide:min-h-0 wide:flex-1 wide:grid-cols-3 wide:items-stretch">
+      {/*
+        The log is a drawer beside the console rather than a panel inside it, and
+        it pushes rather than covers: this row is the push. Closed it has no
+        width, so the console is the whole of the row and the layout below is
+        exactly what it was before the drawer existed.
+      */}
+      <div className="flex flex-col lg:flex-row lg:items-start wide:min-h-0 wide:flex-1 wide:items-stretch">
+        <LogDrawer events={snapshot?.events ?? []} open={logOpen} onClose={toggleLog} />
+
+      <div className="flex min-w-0 flex-1 flex-col gap-2.5 sm:grid sm:grid-cols-2 sm:items-start sm:gap-2.5 wide:min-h-0 wide:grid-cols-3 wide:items-stretch">
         <div className="contents sm:flex sm:min-w-0 sm:flex-col sm:gap-2.5 wide:order-1 wide:min-h-0">
           <TurnControls
             className="sm:shrink-0"
@@ -549,6 +570,7 @@ export function GmSessionConsole() {
           </Panel>
           </div>
         </div>
+      </div>
       </div>
 
       {viewingSheet ? (

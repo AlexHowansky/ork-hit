@@ -8,7 +8,7 @@
  */
 
 import { db } from "../db/index.ts";
-import { campaigns, gameSessions, players, sessionCharacters } from "../db/queries.ts";
+import { campaigns, gameSessions, players, sessionCharacters, sessionEvents } from "../db/queries.ts";
 import { presentCharacter, presentPlayer, presentSessionForGm } from "./presenters.ts";
 
 export interface SessionSnapshot {
@@ -65,6 +65,20 @@ export interface SessionSnapshot {
     claimedByPlayerId: string | null;
     claimedByPlayerName: string | null;
   })[];
+  /**
+   * The log: what has happened at this table, oldest first.
+   *
+   * State rather than a notice, and that is the whole distinction. A notice is a
+   * toast about something the table has already moved on from, so a client that
+   * reconnects is deliberately not told about it again. The log is a history, and
+   * a reconnecting screen must get all of it back — which is also the only way
+   * anybody ever sees the first line, since a session is started before there is
+   * a screen watching it.
+   *
+   * Only the tail; see `LOG_LIMIT` in queries.ts for why the wire is bounded
+   * where the table is not.
+   */
+  events: { id: string; message: string; at: string }[];
 }
 
 export function buildSnapshot(sessionId: string): SessionSnapshot | null {
@@ -89,6 +103,14 @@ export function buildSnapshot(sessionId: string): SessionSnapshot | null {
       activeSlotId: session.active_slot_id,
     },
     players: roster.map(presentPlayer),
+    events: sessionEvents.list(sessionId).map((row) => ({
+      id: row.id,
+      message: row.message,
+      // Sent as the ISO instant it was written. What o'clock that is belongs to
+      // the reader's own machine, which is the only thing that knows what time
+      // zone they are sitting in.
+      at: row.created_at,
+    })),
     characters: sessionCharacters.list(sessionId).map((row) => {
       // `presented.id` and `presented.sheetUrl` are both the character's; only
       // the outer `id` moves to the slot.

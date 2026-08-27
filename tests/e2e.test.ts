@@ -440,6 +440,63 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     await player.getByText("It's your turn!").waitFor({ timeout: 5000 });
   }, 60_000);
 
+  test("the log is hidden until asked for, and says when the session began", async () => {
+    if (!browser) return;
+    const { page: gm, code, campaignName } = await gmWithSession();
+    const player = await playerIn(code, "Dana", campaignName);
+
+    /*
+     * How much room the drawer is taking. Measured rather than asked, because a
+     * collapsed drawer is still in the document — it is clipped to nothing by
+     * `overflow-hidden`, which is what makes it slide rather than blink, and
+     * Playwright's own visibility check does not look through that. The number
+     * on screen is the honest question anyway: the whole promise of this drawer
+     * is that closed, it costs the console nothing.
+     */
+    const drawerWidth = async (page: Page) =>
+      (await page.locator("aside").boundingBox())?.width ?? 0;
+
+    for (const page of [gm, player]) {
+      // A 16:9 default viewport, so the drawer is a column and collapses
+      // sideways.
+      expect(await drawerWidth(page)).toBe(0);
+      // Closed it is `inert` as well as clipped, so nothing in it can be
+      // clicked or read out.
+      expect(await page.locator("aside").getAttribute("inert")).not.toBeNull();
+
+      // `exact`, because the drawer's own close button is also named for the log.
+      const toggle = page.getByRole("button", { name: "Log", exact: true });
+
+      await toggle.click();
+      // Opening is a transition, so give it room to finish before measuring.
+      await page.waitForTimeout(500);
+      expect(await drawerWidth(page)).toBeGreaterThan(200);
+      // The line was written before either of these screens existed: the console
+      // had not opened its socket and the player had not been given the code. It
+      // can only have come out of the database, on the snapshot.
+      await page.locator("aside").getByText("Session started").waitFor({ timeout: 5000 });
+
+      // All three ways out close it: the × in the drawer...
+      await page.getByRole("button", { name: "Close the log" }).click();
+      await page.waitForTimeout(500);
+      expect(await drawerWidth(page)).toBe(0);
+
+      // ...Escape, while it is open...
+      await toggle.click();
+      await page.waitForTimeout(500);
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(500);
+      expect(await drawerWidth(page)).toBe(0);
+
+      // ...and the button that opened it.
+      await toggle.click();
+      await page.waitForTimeout(500);
+      await toggle.click();
+      await page.waitForTimeout(500);
+      expect(await drawerWidth(page)).toBe(0);
+    }
+  }, 60_000);
+
   test("crossing segment 12 tells the whole table about the Recovery", async () => {
     if (!browser) return;
     const { page: gm, code, campaignName } = await gmWithSession();
@@ -930,6 +987,34 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     await ending.getByRole("button", { name: "End session" }).click();
     await other.waitForURL("**/gm");
     await listed.waitFor({ state: "detached", timeout: 5000 });
+  }, 60_000);
+
+  test("signing out of the console leaves the session running", async () => {
+    if (!browser) return;
+    const { page: gm, code, campaignName } = await gmWithSession();
+    const player = await playerIn(code, "Hana");
+
+    // Signing out is not ending: it is about this browser and nobody else's,
+    // which is why the console asks nothing before doing it.
+    await gm.getByRole("button", { name: "Sign out" }).click();
+    await gm.getByRole("tab", { name: "Game master" }).waitFor({ timeout: 5000 });
+
+    // The player is still at the table, on a session that is still running.
+    await player.getByRole("heading", { name: campaignName, exact: true }).waitFor();
+
+    // And signing back in finds it where it was left, still in progress and
+    // still waiting to be opened.
+    await gm.getByRole("tab", { name: "Game master" }).click();
+    await gm.getByLabel("Email").fill(email);
+    await gm.getByLabel("Password").fill(PASSWORD);
+    await gm.getByRole("button", { name: "Sign in" }).click();
+    await gm.waitForURL("**/gm");
+
+    const row = gm.locator("li").filter({ hasText: campaignName });
+    await row.getByRole("button", { name: "Open", exact: true }).click();
+    await gm.waitForURL("**/gm/sessions/**");
+    // The same code, so it is the same session and not a new one.
+    await gm.getByText(code).waitFor({ timeout: 5000 });
   }, 60_000);
 
   test("a session can be ended from the library, without opening its console", async () => {
