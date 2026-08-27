@@ -497,6 +497,24 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     }
   }, 60_000);
 
+  test("a player arriving writes itself onto the log, with no refresh", async () => {
+    if (!browser) return;
+    const { page: gm, code, campaignName } = await gmWithSession();
+
+    // The drawer is open *before* anybody joins, so what appears in it appears
+    // because a snapshot arrived — not because the page was built again.
+    await gm.getByRole("button", { name: "Log", exact: true }).click();
+    const log = gm.locator("aside");
+    await log.getByText("Session started").waitFor({ timeout: 5000 });
+    expect(await log.getByText("Dana joined").count()).toBe(0);
+
+    // `playerIn` joins and then claims Thorin, which is two events.
+    await playerIn(code, "Dana", campaignName);
+
+    await log.getByText("Dana joined").waitFor({ timeout: 5000 });
+    await log.getByText("Dana chose Thorin").waitFor({ timeout: 5000 });
+  }, 60_000);
+
   test("crossing segment 12 tells the whole table about the Recovery", async () => {
     if (!browser) return;
     const { page: gm, code, campaignName } = await gmWithSession();
@@ -1062,7 +1080,10 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     const { page: gm, code } = await gmWithSession();
     const player = await playerIn(code, "Erin");
 
-    await gm.getByText("Erin").first().waitFor({ timeout: 5000 });
+    // Scoped to the players panel, because the log now names Erin too — and it
+    // goes on naming her after she has gone, which is the point of it.
+    const seat = gm.locator("section", { hasText: /Players \(/ }).getByText("Erin");
+    await seat.first().waitFor({ timeout: 5000 });
 
     // No goodbye of any kind: the window simply goes, as it does when someone
     // shuts their laptop at the end of the evening.
@@ -1070,7 +1091,7 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
 
     // The game master's console empties the seat on its own, and Thorin — the
     // character Erin was holding — is free for someone else to take.
-    await gm.getByText("Erin").first().waitFor({ state: "detached", timeout: 10_000 });
+    await seat.first().waitFor({ state: "detached", timeout: 10_000 });
     await gm
       .getByRole("listitem")
       .filter({ hasText: "Thorin" })

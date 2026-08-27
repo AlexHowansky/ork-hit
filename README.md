@@ -621,7 +621,12 @@ started before any screen is watching it, so `Session started` can only ever be
 read out of the database.
 
 So `session_events` is a table, `sessionEvents.record` is how anything writes to
-it, and `buildSnapshot` carries the tail of it to every screen. Nothing else was
+it, and `buildSnapshot` carries the tail of it to every screen. What the lines
+actually *say* is `src/server/events.ts`, and it is a module of its own for two
+reasons: the log has a voice, and a voice stays consistent only when it is in one
+place to be read; and the events are written from three modules — the session
+routes, the auth routes, and the socket's own grace-period removal — of which
+`ws.ts` cannot import from `routes/sessions.ts` without closing a cycle. Nothing else was
 needed: every mutating route already ends in `publish`, and `websocket.open`
 already replays the current snapshot to a reconnecting client, so the log follows
 both without a route or a socket message of its own.

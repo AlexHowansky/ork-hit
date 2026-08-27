@@ -98,9 +98,13 @@ const PINNED_SLACK_PX = 24;
 function timeOf(at: string): string {
   const when = new Date(at);
   if (Number.isNaN(when.getTime())) return "";
+  // `hour12` is set rather than left to the reader's locale, so the log reads the
+  // same at every seat at the table. `numeric` on the hour alone, because a
+  // twelve-hour clock does not write `01:27 PM` — the ragged left edge that
+  // leaves is a smaller price than a leading zero nobody writes by hand.
   return when.toLocaleTimeString(undefined, {
-    hour12: false,
-    hour: "2-digit",
+    hour12: true,
+    hour: "numeric",
     minute: "2-digit",
     second: "2-digit",
   });

@@ -37,6 +37,15 @@ import {
   POST_SEGMENT_12_NOTICE,
   SEGMENTS_PER_TURN,
 } from "../../lib/hero.ts";
+import {
+  SESSION_STARTED,
+  gmGave,
+  gmMoved,
+  gmRemoved,
+  gmTook,
+  playerChose,
+  playerJoined,
+} from "../events.ts";
 import { presentSessionForGm } from "../presenters.ts";
 import { buildGmSessionList, buildSnapshot } from "../session-state.ts";
 import {
@@ -46,16 +55,6 @@ import {
   closeSessionSockets,
   disconnectPlayer,
 } from "../ws.ts";
-
-/**
- * The lines the log can carry.
- *
- * Written out here rather than at the call site so that the wording of the log
- * is one list somebody can read, and so a test can assert on the same string the
- * server writes rather than a copy of it. There is one so far; the stunned and
- * unstunned events are next.
- */
-export const SESSION_STARTED = "Session started";
 
 /** The snapshot for a session, or a 404 if it vanished under us. */
 function snapshotOr404(sessionId: string) {
@@ -608,6 +607,7 @@ export const sessionRoutes = {
 
       joinLimiter.reset(ip);
       const player = startPlayerSession(request, session.id, body.name);
+      sessionEvents.record(session.id, playerJoined(player.name));
       logger.info("player joined", { sessionId: session.id, playerId: player.id });
 
       broadcastSession(session.id);
@@ -659,6 +659,7 @@ export const sessionRoutes = {
           throw errors.conflict("Another player just took that character. Please choose another.");
         }
 
+        sessionEvents.record(session.id, playerChose(player.name, character.name));
         logger.info("character claimed", {
           sessionId: session.id,
           playerId: player.id,
@@ -686,20 +687,53 @@ export const sessionRoutes = {
 
         const { claimedCharacterId } = await parseJsonBody(request, schemas.playerUpdate);
 
+        // Both read before any write: once `setClaim` lands there is nothing left
+        // to say what was put down or who it was taken from.
+        const held = player.claimed_character_id;
+        const wanted = claimedCharacterId !== null ? characters.byId(claimedCharacterId) : null;
+        const previousHolder =
+          claimedCharacterId !== null ? players.holderOf(session.id, claimedCharacterId) : null;
+
         if (claimedCharacterId !== null) {
-          const character = characters.byId(claimedCharacterId);
-          if (!character || !sessionCharacters.isMember(session.id, claimedCharacterId)) {
+          if (!wanted || !sessionCharacters.isMember(session.id, claimedCharacterId)) {
             throw errors.notFound("We couldn't find that character in this session.");
           }
-          if (character.kind !== "pc") {
+          if (wanted.kind !== "pc") {
             throw errors.badRequest("Only player characters can be assigned to a player.");
           }
           // Reassigning takes the character off whoever holds it now.
-          const holder = players.holderOf(session.id, claimedCharacterId);
-          if (holder && holder.id !== player.id) players.setClaim(holder.id, null);
+          if (previousHolder && previousHolder.id !== player.id) {
+            players.setClaim(previousHolder.id, null);
+          }
         }
 
         players.setClaim(player.id, claimedCharacterId);
+
+        /*
+         * A game master re-picking the name already in the box has changed
+         * nothing, and a log that says so twice is a log somebody stops reading.
+         *
+         * Otherwise it is two lines at most, and only when this player was
+         * already holding somebody: what they put down, then what they picked
+         * up. The pickup is a `move` rather than a `give` when it came off
+         * another player, because that was one action and there was never a
+         * moment when the character was held by nobody.
+         */
+        if (claimedCharacterId !== held) {
+          if (held !== null) {
+            const before = characters.byId(held);
+            if (before) sessionEvents.record(session.id, gmTook(before.name, player.name));
+          }
+          if (wanted) {
+            sessionEvents.record(
+              session.id,
+              previousHolder && previousHolder.id !== player.id
+                ? gmMoved(wanted.name, previousHolder.name, player.name)
+                : gmGave(wanted.name, player.name),
+            );
+          }
+        }
+
         logger.info("player claim changed by gm", {
           sessionId: session.id,
           playerId: player.id,
@@ -723,6 +757,7 @@ export const sessionRoutes = {
         // for others, and the row itself is what held it) and invalidates the
         // player's cookie, since it resolves through this row.
         players.remove(player.id);
+        sessionEvents.record(session.id, gmRemoved(player.name));
         logger.info("player kicked", { sessionId: session.id, playerId: player.id });
 
         disconnectPlayer(player.id);

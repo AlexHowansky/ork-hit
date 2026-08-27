@@ -234,8 +234,25 @@ The app should have the following features:
   character, the scene, then the players.
 
 * Both session screens carry a **log**: what has happened at this table, one
-  line per event, each with the time it happened, oldest at the top and newest at
-  the bottom. `Session started` is the first line of every session's log.
+  line per event, each with the time it happened on a twelve-hour clock, oldest
+  at the top and newest at the bottom. `Session started` is the first line of
+  every session's log.
+
+* What the log records, besides the session starting, is the table's membership:
+  a player joining, a player taking or losing a character, and a player leaving.
+
+* Every line names whoever acted, and reads with them as its subject: the
+  players' own doings in their names, the game master's in theirs. So a character
+  a player chose and the same character handed over by the game master read
+  differently, even though the table ends up the same either way — a log is a
+  record of what was done and by whom, not only of what came to be. For the same
+  reason a player who left, one the game master removed, and one whose browser
+  simply closed are three different lines. The last of those matters most: nobody
+  at the table saw it happen, so the log is the only record there is.
+
+* A character moved from one player to another is one line rather than a losing
+  and a taking, because it was one act — and because two would describe a moment,
+  which never existed, when nobody held the character at all.
 
 * The log is not a panel in a column. It is a drawer, hidden until a `Log`
   control in the upper left of the page header is pressed, and it pushes the

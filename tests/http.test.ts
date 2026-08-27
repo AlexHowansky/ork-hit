@@ -14,7 +14,17 @@ import sharp from "sharp";
 import { gms } from "../src/db/queries.ts";
 import { config, limits } from "../src/lib/config.ts";
 import { unique } from "./helpers.ts";
-import { SESSION_STARTED } from "../src/server/routes/sessions.ts";
+import {
+  SESSION_STARTED,
+  gmGave,
+  gmMoved,
+  gmRemoved,
+  gmTook,
+  playerChose,
+  playerDisconnected,
+  playerJoined,
+  playerLeft,
+} from "../src/server/events.ts";
 
 let base: string;
 let server: ReturnType<typeof Bun.serve>;
@@ -792,6 +802,75 @@ describe("the session list counts the players in each", () => {
   });
 });
 
+/** The log of a session, as one of its readers sees it. */
+async function messages(cookie: string, sessionId: string): Promise<string[]> {
+  const body = await (await fetch(`${base}/api/sessions/${sessionId}`, authed(cookie))).json();
+  return body.snapshot.events.map((event: { message: string }) => event.message);
+}
+
+/** The roster row for a player, which is what the game master's routes name. */
+async function playerNamed(cookie: string, sessionId: string, name: string) {
+  const body = await (await fetch(`${base}/api/sessions/${sessionId}`, authed(cookie))).json();
+  const player = body.snapshot.players.find((entry: { name: string }) => entry.name === name);
+  expect(player).toBeTruthy();
+  return player as { id: string; name: string };
+}
+
+/** A second player character in the campaign, put on the stage. */
+async function addPc(cookie: string, campaignId: string, sessionId: string) {
+  const form = new FormData();
+  form.set("campaignId", campaignId);
+  form.set("kind", "pc");
+  form.set("name", unique("pc"));
+  form.set("speed", "12");
+  form.set("dexterity", "15");
+  form.set("sheet", new File(["<h1>sheet</h1>"], "sheet.html"));
+  const character = (
+    await (
+      await fetch(`${base}/api/characters`, authed(cookie, { method: "POST", body: form }))
+    ).json()
+  ).character;
+
+  await fetch(
+    `${base}/api/sessions/${sessionId}/stage`,
+    authed(cookie, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ characterId: character.id }),
+    }),
+  );
+  return character as { id: string; name: string };
+}
+
+/** A player taking a character for themselves. */
+function claimAs(cookie: string, sessionId: string, characterId: string) {
+  return fetch(
+    `${base}/api/sessions/${sessionId}/claim`,
+    authed(cookie, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ characterId }),
+    }),
+  );
+}
+
+/** A game master assigning one, or taking it back with `null`. */
+function setClaim(
+  cookie: string,
+  sessionId: string,
+  playerId: string,
+  claimedCharacterId: string | null,
+) {
+  return fetch(
+    `${base}/api/sessions/${sessionId}/players/${playerId}`,
+    authed(cookie, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ claimedCharacterId }),
+    }),
+  );
+}
+
 describe("the log", () => {
   test("a new session already says when it began", async () => {
     const { cookie } = await signIn();
@@ -809,17 +888,155 @@ describe("the log", () => {
     expect(Number.isNaN(Date.parse(snapshot.events[0].at))).toBe(false);
   });
 
-  test("a player who joins late still reads it", async () => {
+  test("a player who joins late still reads what came before them", async () => {
     const { cookie } = await signIn();
     const { session } = await makeTable(cookie);
     const playerCookie = await joinAs(session.code, "Latecomer");
 
-    const snapshot = (
-      await (await fetch(`${base}/api/sessions/${session.id}`, authed(playerCookie))).json()
-    ).snapshot;
-
-    expect(snapshot.events.map((event: { message: string }) => event.message)).toEqual([
+    // Their own arrival is on it too, which is the proof that the line was
+    // written to the table's log rather than pushed at whoever was watching.
+    expect(await messages(playerCookie, session.id)).toEqual([
       SESSION_STARTED,
+      playerJoined("Latecomer"),
+    ]);
+  });
+
+  test("the game master and the players read the same log", async () => {
+    const { cookie } = await signIn();
+    const { session } = await makeTable(cookie);
+    const playerCookie = await joinAs(session.code, "Ada");
+
+    expect(await messages(cookie, session.id)).toEqual(await messages(playerCookie, session.id));
+  });
+
+  test("a player choosing their own character is written down", async () => {
+    const { cookie } = await signIn();
+    const { session, pc } = await makeTable(cookie);
+    const playerCookie = await joinAs(session.code, "Ada");
+
+    await claimAs(playerCookie, session.id, pc.id);
+
+    expect(await messages(cookie, session.id)).toEqual([
+      SESSION_STARTED,
+      playerJoined("Ada"),
+      playerChose("Ada", pc.name),
+    ]);
+  });
+
+  test("a game master handing one out reads as the game master's doing", async () => {
+    const { cookie } = await signIn();
+    const { session, pc } = await makeTable(cookie);
+    await joinAs(session.code, "Ada");
+    const ada = await playerNamed(cookie, session.id, "Ada");
+
+    await setClaim(cookie, session.id, ada.id, pc.id);
+
+    // The same character ends up in the same hands as the test above, and the
+    // log says so differently — because a different person decided it.
+    expect(await messages(cookie, session.id)).toEqual([
+      SESSION_STARTED,
+      playerJoined("Ada"),
+      gmGave(pc.name, "Ada"),
+    ]);
+  });
+
+  test("taking a character back is written down too", async () => {
+    const { cookie } = await signIn();
+    const { session, pc } = await makeTable(cookie);
+    await joinAs(session.code, "Ada");
+    const ada = await playerNamed(cookie, session.id, "Ada");
+
+    await setClaim(cookie, session.id, ada.id, pc.id);
+    await setClaim(cookie, session.id, ada.id, null);
+
+    expect(await messages(cookie, session.id)).toEqual([
+      SESSION_STARTED,
+      playerJoined("Ada"),
+      gmGave(pc.name, "Ada"),
+      gmTook(pc.name, "Ada"),
+    ]);
+  });
+
+  test("moving one between two players is a single line", async () => {
+    const { cookie } = await signIn();
+    const { session, pc } = await makeTable(cookie);
+    await joinAs(session.code, "Ada");
+    await joinAs(session.code, "Bram");
+    const ada = await playerNamed(cookie, session.id, "Ada");
+    const bram = await playerNamed(cookie, session.id, "Bram");
+
+    await setClaim(cookie, session.id, ada.id, pc.id);
+    await setClaim(cookie, session.id, bram.id, pc.id);
+
+    // One action by one person, so one line — and no moment in the log where the
+    // character was held by nobody, because there never was one.
+    expect(await messages(cookie, session.id)).toEqual([
+      SESSION_STARTED,
+      playerJoined("Ada"),
+      playerJoined("Bram"),
+      gmGave(pc.name, "Ada"),
+      gmMoved(pc.name, "Ada", "Bram"),
+    ]);
+  });
+
+  test("swapping a character onto someone who already held one writes both halves", async () => {
+    const { cookie } = await signIn();
+    const { session, pc, campaign } = await makeTable(cookie);
+    const second = await addPc(cookie, campaign.id, session.id);
+    await joinAs(session.code, "Ada");
+    await joinAs(session.code, "Bram");
+    const ada = await playerNamed(cookie, session.id, "Ada");
+    const bram = await playerNamed(cookie, session.id, "Bram");
+
+    await setClaim(cookie, session.id, ada.id, second.id);
+    await setClaim(cookie, session.id, bram.id, pc.id);
+    // Ada puts down the one she has and picks up the one Bram was holding.
+    await setClaim(cookie, session.id, ada.id, pc.id);
+
+    expect(await messages(cookie, session.id)).toEqual([
+      SESSION_STARTED,
+      playerJoined("Ada"),
+      playerJoined("Bram"),
+      gmGave(second.name, "Ada"),
+      gmGave(pc.name, "Bram"),
+      gmTook(second.name, "Ada"),
+      gmMoved(pc.name, "Bram", "Ada"),
+    ]);
+  });
+
+  test("re-picking the character already chosen writes nothing", async () => {
+    const { cookie } = await signIn();
+    const { session, pc } = await makeTable(cookie);
+    await joinAs(session.code, "Ada");
+    const ada = await playerNamed(cookie, session.id, "Ada");
+
+    await setClaim(cookie, session.id, ada.id, pc.id);
+    const before = await messages(cookie, session.id);
+    await setClaim(cookie, session.id, ada.id, pc.id);
+
+    // Nothing about the table changed, so the log has nothing to say.
+    expect(await messages(cookie, session.id)).toEqual(before);
+  });
+
+  test("leaving, and being made to leave, read differently", async () => {
+    const { cookie } = await signIn();
+    const { session } = await makeTable(cookie);
+    const adaCookie = await joinAs(session.code, "Ada");
+    await joinAs(session.code, "Bram");
+    const bram = await playerNamed(cookie, session.id, "Bram");
+
+    await fetch(`${base}/api/auth/player/leave`, authed(adaCookie, { method: "POST" }));
+    await fetch(
+      `${base}/api/sessions/${session.id}/players/${bram.id}`,
+      authed(cookie, { method: "DELETE" }),
+    );
+
+    expect(await messages(cookie, session.id)).toEqual([
+      SESSION_STARTED,
+      playerJoined("Ada"),
+      playerJoined("Bram"),
+      playerLeft("Ada"),
+      gmRemoved("Bram"),
     ]);
   });
 });
@@ -1204,6 +1421,24 @@ describe("a player who disconnects gives up their seat", () => {
 
     await Bun.sleep(GRACE_MS * 3);
     expect(await roster(cookie, session.id)).toEqual(["Bob"]);
+  });
+
+  test("the log says so, since nobody at the table saw it happen", async () => {
+    const { cookie } = await signIn();
+    const { session } = await makeTable(cookie);
+    const alice = await joinAs(session.code, "Alice");
+
+    const socket = await watch(alice, session.id);
+    socket.close();
+    await Bun.sleep(GRACE_MS * 3);
+
+    // Worded apart from `left`: they did not press anything, and a game master
+    // reading the log later should be able to tell the two apart.
+    expect(await messages(cookie, session.id)).toEqual([
+      SESSION_STARTED,
+      playerJoined("Alice"),
+      playerDisconnected("Alice"),
+    ]);
   });
 
   test("coming straight back keeps the seat", async () => {

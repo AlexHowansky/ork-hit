@@ -21,8 +21,9 @@ import type { BunRequest, Server, ServerWebSocket } from "bun";
 import { config } from "../lib/config.ts";
 import { log } from "../lib/log.ts";
 import { currentGm, currentPlayer } from "./middleware/auth.ts";
+import { playerDisconnected } from "./events.ts";
 import { buildGmSessionList, buildSnapshot } from "./session-state.ts";
-import { gameSessions, players } from "../db/queries.ts";
+import { gameSessions, players, sessionEvents } from "../db/queries.ts";
 
 /** What a socket is allowed to see, decided once at upgrade and never re-read. */
 interface SocketData {
@@ -158,7 +159,10 @@ function schedulePlayerRemoval(playerId: string, sessionId: string): void {
     // They reconnected on another socket, or were already removed — by their own
     // hand, by a kick, or with the session they were in.
     if (stillConnected(playerId)) return;
-    if (!players.byId(playerId)) return;
+    // Kept rather than discarded: the log line is about a person, and this is the
+    // last moment their name is still in the database.
+    const player = players.byId(playerId);
+    if (!player) return;
 
     // An ended session keeps its roster: nobody is coming back to it, and the
     // game master may still be looking at who was there.
@@ -166,6 +170,7 @@ function schedulePlayerRemoval(playerId: string, sessionId: string): void {
     if (!session || session.status !== "active") return;
 
     players.remove(playerId);
+    sessionEvents.record(sessionId, playerDisconnected(player.name));
     log.info("player dropped after disconnect", { sessionId, playerId });
     broadcastSession(sessionId);
   }, config.playerGraceMs);

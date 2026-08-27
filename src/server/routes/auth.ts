@@ -8,7 +8,8 @@ import { parseJsonBody, schemas } from "../../lib/validate.ts";
 import { errors } from "../../lib/errors.ts";
 import { loginLimiter } from "../middleware/ratelimit.ts";
 import { currentGm, currentPlayer, endGmSession, endPlayerSession, startGmSession } from "../middleware/auth.ts";
-import { gms, players } from "../../db/queries.ts";
+import { gms, players, sessionEvents } from "../../db/queries.ts";
+import { playerLeft } from "../events.ts";
 import { broadcastSession } from "../ws.ts";
 import { limits } from "../../lib/config.ts";
 
@@ -75,6 +76,7 @@ export const authRoutes = {
 
       if (identity) {
         players.remove(identity.player.id);
+        sessionEvents.record(identity.session.id, playerLeft(identity.player.name));
         logger.info("player left", {
           sessionId: identity.session.id,
           playerId: identity.player.id,
