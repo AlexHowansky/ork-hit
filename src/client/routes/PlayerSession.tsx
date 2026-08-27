@@ -71,7 +71,14 @@ export function PlayerSession({
   onLeave: () => void;
 }) {
   const toast = useToast();
-  const { snapshot, connection, applySnapshot } = useSessionSocket(sessionId);
+  // Anything the server wants said at the table — the Post-Segment 12 Recovery —
+  // reaches every screen in the session as a toast. Green, like the turn passing
+  // to your character: both are the fight going well rather than something
+  // wanting attention.
+  const { snapshot, connection, applySnapshot } = useSessionSocket(
+    sessionId,
+    (message) => toast.show(message, "success"),
+  );
   const [claiming, setClaiming] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [dropped, setDropped] = useState(false);

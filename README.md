@@ -134,6 +134,20 @@ nobody has filled in never comes up on turn — and a stage where *nobody* has a
 SPEED is refused outright with something the game master can act on, since the
 segment walk would otherwise have all twelve to search and nothing to find.
 
+**Crossing segment 12 hands everybody a Recovery.** HERO gives every character in
+a fight a free Recovery once the twelfth segment is done, so the step that takes
+the clock from 12 round to 1 takes it for the whole stage — NPCs included, since
+the rule is about characters rather than about who is playing them — before the
+snapshot goes out. It is one `UPDATE` over the stage (`takeRecoveryAll`) sharing
+its arithmetic with the single-slot Recovery button, so the two cannot come to
+disagree about what a Recovery is, and the stage recovers all at once or not at
+all. `advanceTurn` answers whether it happened, and the route then publishes a
+`notice` on the session socket — an event rather than state, kept out of the
+snapshot so a client reconnecting an hour later is not toasted about it — which
+every screen in the session, the game master's included, shows as
+`Post-Segment 12 Recovery`. `Previous` never takes one: it retraces the path so
+the game master can correct a click, and a Recovery already taken is not untaken.
+
 The Speed Chart is written out longhand rather than derived. It is a published
 table, not a formula: the segments SPD 7 gets are not the segments an even spread
 of seven phases would give, and a clever reconstruction that came close would be

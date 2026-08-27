@@ -348,6 +348,87 @@ describe("advancing the turn", () => {
     expect(gameSessions.byId(session.id)!.turn).toBe(2);
   });
 
+  test("crossing segment 12 recovers everyone on the stage, once", () => {
+    const { session, campaign } = makeSession(0);
+    const cast = [
+      makeCharacter(campaign.id, "npc", "Bruiser", {
+        speed: 2,
+        dexterity: 10,
+        recovery: 5,
+        endurance: 40,
+        stun: 30,
+      }),
+      makeCharacter(campaign.id, "npc", "Scrapper", {
+        speed: 4,
+        dexterity: 20,
+        recovery: 8,
+        endurance: 20,
+        stun: 20,
+      }),
+    ];
+    for (const character of cast) sessionCharacters.add(session.id, character.id, "npc");
+
+    // Both of them battered, and Scrapper's END within a Recovery of full. The
+    // stage is in DEX order, so Scrapper leads it.
+    const slots = slotsOf(session.id);
+    sessionCharacters.setVitals(session.id, slots[0]!, { endurance: 15, stun: 2 });
+    sessionCharacters.setVitals(session.id, slots[1]!, { endurance: 10, stun: 4 });
+
+    const vitals = () =>
+      sessionCharacters
+        .list(session.id)
+        .map((row) => [row.name, row.cur_endurance, row.cur_stun]);
+
+    // Segment 12 itself is not the moment: both of them act in it first.
+    expect(advanceTurn(session.id, "next")).toBe(false);
+    expect(advanceTurn(session.id, "next")).toBe(false);
+    expect(vitals()).toEqual([
+      ["Scrapper", 15, 2],
+      ["Bruiser", 10, 4],
+    ]);
+
+    // And the step that leaves segment 12 behind is. Scrapper's END stops at its
+    // total rather than going five over it.
+    expect(advanceTurn(session.id, "next")).toBe(true);
+    expect(gameSessions.byId(session.id)!.turn).toBe(2);
+    expect(vitals()).toEqual([
+      ["Scrapper", 20, 10],
+      ["Bruiser", 15, 9],
+    ]);
+
+    // The segments in between are just segments.
+    expect(advanceTurn(session.id, "next")).toBe(false);
+    expect(vitals()).toEqual([
+      ["Scrapper", 20, 10],
+      ["Bruiser", 15, 9],
+    ]);
+  });
+
+  test("stepping back over segment 12 does not undo the Recovery", () => {
+    const { session, campaign } = makeSession(0);
+    const character = makeCharacter(campaign.id, "npc", "Plodder", {
+      speed: 2,
+      dexterity: 10,
+      recovery: 5,
+      endurance: 40,
+      stun: 30,
+    });
+    sessionCharacters.add(session.id, character.id, "npc");
+
+    const slot = slotsOf(session.id)[0]!;
+    sessionCharacters.setVitals(session.id, slot, { endurance: 10, stun: 4 });
+
+    advanceTurn(session.id, "next");
+    expect(advanceTurn(session.id, "next")).toBe(true);
+
+    // Back where it was on the clock, with the Recovery it has already taken:
+    // `Previous` is the game master correcting a click, not time running backwards.
+    expect(advanceTurn(session.id, "prev")).toBe(false);
+    expect(gameSessions.byId(session.id)!.segment).toBe(12);
+    const row = sessionCharacters.list(session.id)[0]!;
+    expect([row.cur_endurance, row.cur_stun]).toEqual([15, 9]);
+  });
+
   test("an empty session cannot track turns", () => {
     const { session } = makeSession(0);
     expect(() => advanceTurn(session.id, "next")).toThrow(

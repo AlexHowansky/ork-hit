@@ -461,6 +461,37 @@ export const gameSessions = {
 
 /* --------------------------------------------------------- session membership */
 
+/**
+ * A Recovery, as SQL: RECOVERY back into both ENDURANCE and STUN.
+ *
+ * Written once because it is taken two ways — by one slot catching its breath,
+ * and by the whole stage after Segment 12 — and the two must agree about what a
+ * Recovery is. Neither total is exceeded and neither number goes down, so a slot
+ * already above its total by some temporary boost keeps what it has. The
+ * arithmetic is done in the statement rather than read out and written back, so
+ * two Recoveries arriving at once cannot lose one of them.
+ *
+ * Bound with `$sessionId`; a caller wanting one slot appends `AND id = $slotId`.
+ */
+const RECOVERY_UPDATE = `
+  UPDATE session_characters SET
+    cur_endurance = MAX(
+      cur_endurance,
+      MIN(
+        (SELECT endurance FROM characters WHERE id = character_id),
+        cur_endurance + (SELECT recovery FROM characters WHERE id = character_id)
+      )
+    ),
+    cur_stun = MAX(
+      cur_stun,
+      MIN(
+        (SELECT stun FROM characters WHERE id = character_id),
+        cur_stun + (SELECT recovery FROM characters WHERE id = character_id)
+      )
+    )
+  WHERE game_session_id = $sessionId
+`;
+
 export const sessionCharacters = {
   /**
    * The stage in initiative order, each slot joined with the character in it.
@@ -523,33 +554,22 @@ export const sessionCharacters = {
 
   /**
    * A Recovery: the character catches their breath, and gets their RECOVERY back
-   * in both ENDURANCE and STUN.
-   *
-   * Neither goes over the character's total, and neither goes down — a slot
-   * already above its total (a temporary boost, say) keeps what it has rather
-   * than being trimmed to the maximum by a breather. The arithmetic is done in
-   * the statement rather than read out and written back, so two people pressing
-   * it at once cannot lose one of the two Recoveries.
+   * in both ENDURANCE and STUN. What that means exactly is `RECOVERY_UPDATE`.
    */
   takeRecovery(sessionId: string, slotId: string): void {
-    db.query(`
-      UPDATE session_characters SET
-        cur_endurance = MAX(
-          cur_endurance,
-          MIN(
-            (SELECT endurance FROM characters WHERE id = character_id),
-            cur_endurance + (SELECT recovery FROM characters WHERE id = character_id)
-          )
-        ),
-        cur_stun = MAX(
-          cur_stun,
-          MIN(
-            (SELECT stun FROM characters WHERE id = character_id),
-            cur_stun + (SELECT recovery FROM characters WHERE id = character_id)
-          )
-        )
-      WHERE game_session_id = $sessionId AND id = $slotId
-    `).run({ sessionId, slotId });
+    db.query(`${RECOVERY_UPDATE} AND id = $slotId`).run({ sessionId, slotId });
+  },
+
+  /**
+   * The same Recovery, taken by everyone on the stage at once.
+   *
+   * This is the Post-Segment 12 Recovery, which HERO gives to every character in
+   * the fight rather than to one of them, so it is one statement over the stage
+   * rather than a loop of the statement above: the whole stage recovers or none
+   * of it does, and the snapshot that follows cannot catch it half applied.
+   */
+  takeRecoveryAll(sessionId: string): void {
+    db.query(RECOVERY_UPDATE).run({ sessionId });
   },
 
   /**

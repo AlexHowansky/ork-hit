@@ -30,12 +30,18 @@ import {
 } from "../../db/queries.ts";
 import { db } from "../../db/index.ts";
 import type { GameSessionRow, SessionCharacterRow } from "../../db/types.ts";
-import { actsIn, OPENING_SEGMENT, SEGMENTS_PER_TURN } from "../../lib/hero.ts";
+import {
+  actsIn,
+  OPENING_SEGMENT,
+  POST_SEGMENT_12_NOTICE,
+  SEGMENTS_PER_TURN,
+} from "../../lib/hero.ts";
 import { presentSessionForGm } from "../presenters.ts";
 import { buildGmSessionList, buildSnapshot } from "../session-state.ts";
 import {
   broadcastGmSessions,
   broadcastSession,
+  broadcastSessionNotice,
   closeSessionSockets,
   disconnectPlayer,
 } from "../ws.ts";
@@ -131,8 +137,14 @@ function prevSegment(segment: number): number {
  *
  * All of it is computed here from the stored state rather than in the browser, so
  * two game master tabs cannot disagree about where in the turn the fight is.
+ *
+ * Answers whether the step finished Segment 12 — whether, in other words, the
+ * stage has just taken its Post-Segment 12 Recovery — so the caller can say so
+ * on the screens. Stepping back never gives it: `Previous` retraces the path,
+ * and a Recovery already taken is not untaken by the game master correcting a
+ * click. Where the fight is left is the same either way.
  */
-function advanceTurn(sessionId: string, direction: "next" | "prev") {
+function advanceTurn(sessionId: string, direction: "next" | "prev"): boolean {
   const session = gameSessions.byId(sessionId)!;
   const stage = sessionCharacters.list(sessionId);
 
@@ -158,7 +170,7 @@ function advanceTurn(sessionId: string, direction: "next" | "prev") {
     session.turn === 1 &&
     session.segment === OPENING_SEGMENT
   ) {
-    return;
+    return false;
   }
 
   const step = direction === "next" ? 1 : -1;
@@ -176,7 +188,7 @@ function advanceTurn(sessionId: string, direction: "next" | "prev") {
     const withinSegment = index + step;
     if (withinSegment >= 0 && withinSegment < here.length) {
       gameSessions.setTurn(sessionId, here[withinSegment]!.slot_id, session.turn, session.segment);
-      return;
+      return false;
     }
 
     // Stepping back off the very first phase of the fight. There is nothing
@@ -185,14 +197,14 @@ function advanceTurn(sessionId: string, direction: "next" | "prev") {
     // not happened.
     if (direction === "prev" && session.turn === 1 && session.segment === OPENING_SEGMENT) {
       gameSessions.setTurn(sessionId, null, 1, OPENING_SEGMENT);
-      return;
+      return false;
     }
   } else if (here.length > 0) {
     // No marker, but this segment has phases in it: take the end the direction
     // came from. Stepping forward opens the segment; stepping back closes it.
     const entry = direction === "next" ? here[0]! : here[here.length - 1]!;
     gameSessions.setTurn(sessionId, entry.slot_id, session.turn, session.segment);
-    return;
+    return false;
   }
 
   // Off the end of the segment, so walk the clock to the next one anybody acts
@@ -200,12 +212,21 @@ function advanceTurn(sessionId: string, direction: "next" | "prev") {
   // a SPD at all, one of them is theirs.
   let segment = session.segment;
   let turn = session.turn;
+  let recovered = false;
 
   for (let hops = 0; hops < SEGMENTS_PER_TURN; hops += 1) {
     if (direction === "next") {
       segment = nextSegment(segment);
-      // Arriving at segment 1 is what starts a new turn.
-      if (segment === 1) turn += 1;
+      // Arriving at segment 1 is what starts a new turn — and leaving segment 12
+      // behind is what everybody on the stage takes a Recovery for. Taken here,
+      // as the clock passes, rather than on landing: the phases of the new turn
+      // are fought with the ENDURANCE and STUN it hands back, and a stage that
+      // walks on through several empty segments still only crossed 12 once.
+      if (segment === 1) {
+        turn += 1;
+        sessionCharacters.takeRecoveryAll(sessionId);
+        recovered = true;
+      }
     } else {
       // And leaving it is what ends one. Never below turn 1: the start of the
       // fight is a floor, not a wrap.
@@ -218,8 +239,10 @@ function advanceTurn(sessionId: string, direction: "next" | "prev") {
 
     const entry = direction === "next" ? actors[0]! : actors[actors.length - 1]!;
     gameSessions.setTurn(sessionId, entry.slot_id, turn, segment);
-    return;
+    return recovered;
   }
+
+  return recovered;
 }
 
 /* ------------------------------------------------------------------- routes */
@@ -464,10 +487,16 @@ export const sessionRoutes = {
         const { session } = requireOwnedActiveSession(request, request.params.id);
         const { direction } = await parseJsonBody(request, schemas.advanceTurn);
 
-        advanceTurn(session.id, direction);
-        logger.info("turn advanced", { sessionId: session.id, direction });
+        const recovered = advanceTurn(session.id, direction);
+        logger.info("turn advanced", { sessionId: session.id, direction, recovered });
 
-        return publish(session.id);
+        const response = publish(session.id);
+
+        // After the snapshot, so a screen has the recovered numbers in hand
+        // before it is told why they moved.
+        if (recovered) broadcastSessionNotice(session.id, POST_SEGMENT_12_NOTICE);
+
+        return response;
       },
     ),
   },

@@ -81,6 +81,19 @@ export function broadcastGmSessions(gmId: string): void {
 }
 
 /**
+ * Says something to every screen watching a session — the game master's and the
+ * players' alike.
+ *
+ * Kept apart from the snapshot because it is an event rather than a state: it
+ * happened once, at a moment, and a client that reconnects afterwards should not
+ * be told about it again. A snapshot arriving late is still true; a notice
+ * arriving late is a toast about something the table has moved on from.
+ */
+export function broadcastSessionNotice(sessionId: string, message: string): void {
+  serverRef?.publish(topicFor(sessionId), JSON.stringify({ type: "notice", message }));
+}
+
+/**
  * Tells everyone the session is over, then closes their sockets. The message goes
  * first so a player screen can explain what happened instead of just going quiet.
  */

@@ -51,7 +51,14 @@ export function GmSessionConsole() {
   const toast = useToast();
   const confirm = useConfirm();
 
-  const { snapshot, connection, applySnapshot } = useSessionSocket(sessionId);
+  // Anything the server wants said at the table — the Post-Segment 12 Recovery —
+  // reaches every screen in the session as a toast. Green, like the turn passing
+  // to your character: both are the fight going well rather than something
+  // wanting attention.
+  const { snapshot, connection, applySnapshot } = useSessionSocket(
+    sessionId,
+    (message) => toast.show(message, "success"),
+  );
   const [session, setSession] = useState<GameSession | null>(null);
   const [library, setLibrary] = useState<Character[]>([]);
   // A library character rather than a stage slot: sheets are opened from the

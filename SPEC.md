@@ -314,6 +314,16 @@ The app should have the following features:
   over rather than shown empty. `Previous` retraces the same path exactly, and
   there is nothing before the first phase of the fight.
 
+* Once segment 12 is done every character on the stage takes a Recovery — their
+  REC back into both ENDURANCE and STUN, neither going past the character's
+  total. It happens as the clock crosses from segment 12 to segment 1, so the new
+  turn is fought with the numbers it hands back, and every screen in the session —
+  the game master's and the players' alike — is told `Post-Segment 12 Recovery`.
+  NPCs recover with the PCs: HERO gives the Recovery to everyone in the fight
+  rather than to the characters someone is playing. Stepping back over segment 12
+  does not undo it, since `Previous` is there to correct a misplaced click rather
+  than to rewind the fight.
+
 * Taking a character off the stage asks first only when a player is actually
   playing it: that player is dropped back to choosing a character, which is not
   something a misplaced click should do mid-game. An unclaimed character or an

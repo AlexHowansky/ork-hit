@@ -106,6 +106,16 @@ export const SEGMENTS_PER_TURN = 12;
 export const OPENING_SEGMENT = 12;
 
 /**
+ * What the table is told when the clock crosses Segment 12 and everybody on the
+ * stage takes their free Recovery.
+ *
+ * The rule's own name, because that is what a player will look up: HERO calls it
+ * the Post-Segment 12 Recovery, and a toast reading "Everyone recovers" would
+ * leave them hunting for it.
+ */
+export const POST_SEGMENT_12_NOTICE = "Post-Segment 12 Recovery";
+
+/**
  * The Speed Chart: which of the twelve segments a character acts in, by SPD.
  *
  * Indexed by SPD, so `SPEED_CHART[5]` is what a SPD 5 character gets. SPD 0 is
