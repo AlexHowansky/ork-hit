@@ -476,6 +476,94 @@ describe("what a character has left", () => {
     expect(response.status).toBeGreaterThanOrEqual(401);
     expect(response.status).toBeLessThan(500);
   });
+
+  describe("and what condition they are in", () => {
+    const patchTag = (
+      cookie: string,
+      sessionId: string,
+      slotId: string,
+      tag: string,
+      active: boolean,
+    ) =>
+      fetch(
+        `${base}/api/sessions/${sessionId}/stage/${slotId}/tags`,
+        authed(cookie, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tag, active }),
+        }),
+      );
+
+    test("the game master may tag any slot, and the snapshot carries it", async () => {
+      const { cookie } = await signIn();
+      const { session } = await makeTable(cookie);
+      const [first] = await slotsOf(cookie, session.id);
+
+      const response = await patchTag(cookie, session.id, first!.id, "prone", true);
+      expect(response.status).toBe(200);
+      expect((await response.json()).snapshot.characters[0].statusTags).toEqual(["prone"]);
+
+      // Idempotent: the same request again is still one prone character.
+      expect((await patchTag(cookie, session.id, first!.id, "prone", true)).status).toBe(200);
+      const again = await slotsOf(cookie, session.id);
+      expect((again[0] as unknown as { statusTags: string[] }).statusTags).toEqual(["prone"]);
+
+      // And clearing it takes it off.
+      await patchTag(cookie, session.id, first!.id, "prone", false);
+      const cleared = await slotsOf(cookie, session.id);
+      expect((cleared[0] as unknown as { statusTags: string[] }).statusTags).toEqual([]);
+    });
+
+    test("a player may tag their own character, and only theirs", async () => {
+      const { cookie } = await signIn();
+      const { pc, npc, session } = await makeTable(cookie);
+      const player = await joinAs(session.code, "Fen");
+
+      await fetch(
+        `${base}/api/sessions/${session.id}/claim`,
+        authed(player, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ characterId: pc.id }),
+        }),
+      );
+
+      const slots = await slotsOf(cookie, session.id);
+      const mine = slots.find((slot) => slot.characterId === pc.id)!;
+      const theirs = slots.find((slot) => slot.characterId === npc.id)!;
+
+      expect((await patchTag(player, session.id, mine.id, "stunned", true)).status).toBe(200);
+      expect((await patchTag(player, session.id, theirs.id, "dead", true)).status).toBe(403);
+
+      // The refusal changed nothing: the NPC is not quietly dead.
+      const after = await slotsOf(cookie, session.id);
+      const npcRow = after.find((row) => row.id === theirs.id) as unknown as {
+        statusTags: string[];
+      };
+      expect(npcRow.statusTags).toEqual([]);
+    });
+
+    test("a tag too long to draw is refused", async () => {
+      const { cookie } = await signIn();
+      const { session } = await makeTable(cookie);
+      const [first] = await slotsOf(cookie, session.id);
+
+      const response = await patchTag(cookie, session.id, first!.id, "x".repeat(40), true);
+      expect(response.status).toBe(400);
+    });
+
+    test("a typed tag that spells a known one becomes that one", async () => {
+      const { cookie } = await signIn();
+      const { session } = await makeTable(cookie);
+      const [first] = await slotsOf(cookie, session.id);
+
+      await patchTag(cookie, session.id, first!.id, "  Prone  ", true);
+      const response = await patchTag(cookie, session.id, first!.id, "On Fire", true);
+
+      expect((await response.json()).snapshot.characters[0].statusTags)
+        .toEqual(["prone", "On Fire"]);
+    });
+  });
 });
 
 describe("players are read-only", () => {

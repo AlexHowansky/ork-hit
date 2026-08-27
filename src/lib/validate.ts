@@ -9,7 +9,13 @@
 import { z } from "zod";
 import { limits } from "./config.ts";
 import { errors } from "./errors.ts";
-import { HERO_STAT_FIELDS, HERO_STAT_LABELS, HERO_STAT_RANGES } from "./hero.ts";
+import {
+  HERO_STAT_FIELDS,
+  HERO_STAT_LABELS,
+  HERO_STAT_RANGES,
+  normalizeTag,
+  STATUS_TAG_MAX_LENGTH,
+} from "./hero.ts";
 import type { HeroStatField } from "./hero.ts";
 
 /** Collapses runs of whitespace and trims — display names shouldn't carry layout. */
@@ -99,6 +105,23 @@ export const schemas = {
     endurance: z.number().int().min(-999).max(999).optional(),
     stun: z.number().int().min(-999).max(999).optional(),
     body: z.number().int().min(-999).max(999).optional(),
+  }),
+
+  /**
+   * One status tag on a stage slot, and whether it should be on or off.
+   *
+   * The desired state rather than a flip, so the same request twice means the
+   * same thing. `normalizeTag` folds a typed "Prone" onto the button's `prone`
+   * before it is stored, and the length bound is the only thing between the
+   * table — which deliberately carries no `CHECK` — and a tag too wide to draw.
+   */
+  setStatusTag: z.object({
+    tag: z
+      .string()
+      .max(STATUS_TAG_MAX_LENGTH, `A tag can be at most ${STATUS_TAG_MAX_LENGTH} characters.`)
+      .transform(normalizeTag)
+      .pipe(z.string().min(1, "Please enter a tag.")),
+    active: z.boolean(),
   }),
 
   sessionStart: z.object({

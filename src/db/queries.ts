@@ -8,6 +8,7 @@
 
 import { db, fromNow, now } from "./index.ts";
 import { limits } from "../lib/config.ts";
+import { sortTags } from "../lib/hero.ts";
 import { newId } from "../lib/ids.ts";
 import type {
   CampaignRow,
@@ -619,6 +620,82 @@ export const sessionCharacters = {
         WHERE game_session_id = $sessionId AND id = $slotId
       `).run({ sessionId, slotId, value: values.body });
     }
+  },
+
+  /* ------------------------------------------------------------ status tags */
+
+  /**
+   * Every tag on every slot in a session, as slot id to tags.
+   *
+   * Read in one go rather than a query per row: the snapshot wants the whole
+   * stage anyway, and this is the shape `buildSnapshot` can hand each row from
+   * without asking again. `players.countsForGm` is the same idea.
+   *
+   * The lists come back sorted for display (`sortTags`), so nothing downstream
+   * has to know that the known conditions lead and typed ones follow.
+   *
+   * `remove` says nothing about tags on purpose: they hang off the slot with
+   * ON DELETE CASCADE, so a copy leaving the stage takes them with it.
+   */
+  tags(sessionId: string): Map<string, string[]> {
+    const rows = db.query<{ slot_id: string; tag: string }, { sessionId: string }>(`
+      SELECT t.session_character_id AS slot_id, t.tag
+      FROM session_character_tags t
+      JOIN session_characters sc ON sc.id = t.session_character_id
+      WHERE sc.game_session_id = $sessionId
+    `).all({ sessionId });
+
+    const bySlot = new Map<string, string[]>();
+    for (const row of rows) {
+      const existing = bySlot.get(row.slot_id);
+      if (existing) existing.push(row.tag);
+      else bySlot.set(row.slot_id, [row.tag]);
+    }
+    for (const [slotId, list] of bySlot) bySlot.set(slotId, sortTags(list));
+    return bySlot;
+  },
+
+  /**
+   * Puts a tag on a slot or takes it off, according to `active`.
+   *
+   * The desired state rather than a flip, so saying it twice says the same thing
+   * — a retried request, a double-tapped button, or two people reaching for
+   * Prone at once all leave one prone character. `INSERT OR IGNORE` is what
+   * makes the second one quiet rather than a constraint violation.
+   *
+   * Both statements reach the row through `session_characters`, so a slot id
+   * belonging to another session writes nothing at all rather than writing a row
+   * the foreign key happens to accept.
+   */
+  setTag(sessionId: string, slotId: string, tag: string, active: boolean): void {
+    if (active) {
+      db.query(`
+        INSERT OR IGNORE INTO session_character_tags (session_character_id, tag, added_at)
+        SELECT id, $tag, $ts FROM session_characters
+        WHERE game_session_id = $sessionId AND id = $slotId
+      `).run({ sessionId, slotId, tag, ts: now() });
+      return;
+    }
+    db.query(`
+      DELETE FROM session_character_tags
+      WHERE tag = $tag AND session_character_id IN (
+        SELECT id FROM session_characters
+        WHERE game_session_id = $sessionId AND id = $slotId
+      )
+    `).run({ sessionId, slotId, tag });
+  },
+
+  /** Whether a slot currently carries a tag. */
+  hasTag(sessionId: string, slotId: string, tag: string): boolean {
+    const row = db.query<
+      { tag: string },
+      { sessionId: string; slotId: string; tag: string }
+    >(`
+      SELECT t.tag FROM session_character_tags t
+      JOIN session_characters sc ON sc.id = t.session_character_id
+      WHERE sc.game_session_id = $sessionId AND sc.id = $slotId AND t.tag = $tag
+    `).get({ sessionId, slotId, tag });
+    return row !== null;
   },
 
   /**

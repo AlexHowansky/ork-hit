@@ -91,6 +91,93 @@ export function bandFor(current: number, max: number): VitalBand {
   return "full";
 }
 
+/* ------------------------------------------------------------- status tags */
+
+/**
+ * The conditions a character can be in during a fight, as they are stored.
+ *
+ * These are the ones the app knows by name: each has a label and, on the client,
+ * a picture. Anything else a table wants to track is a **custom tag** — the text
+ * somebody typed, kept as they typed it — so this list is the vocabulary the app
+ * draws rather than the whole of what may be written.
+ *
+ * Alphabetical, and drawn in this order wherever more than one is showing, so a
+ * row's badges do not reshuffle when another is added.
+ *
+ * Icons are deliberately not here. This module is read by the server as well as
+ * the browser, and FontAwesome is the browser's business: the picture for each
+ * of these lives in `src/client/components/StatusTags.tsx`.
+ */
+export const STATUS_TAGS = [
+  "dead",
+  "drained",
+  "entangled",
+  "flashed",
+  "prone",
+  "sleeping",
+  "stunned",
+  "suppressed",
+] as const;
+
+export type StatusTag = (typeof STATUS_TAGS)[number];
+
+/** What each one is called on screen. */
+export const STATUS_TAG_LABELS: Record<StatusTag, string> = {
+  dead: "Dead",
+  drained: "Drained",
+  entangled: "Entangled",
+  flashed: "Flashed",
+  prone: "Prone",
+  sleeping: "Sleeping",
+  stunned: "Stunned",
+  suppressed: "Suppressed",
+};
+
+/**
+ * Hover text for the ones whose name does not say the whole of it. A tag missing
+ * from here is drawn with its label alone rather than with an empty tooltip.
+ */
+export const STATUS_TAG_HINTS: Partial<Record<StatusTag, string>> = {
+  drained: "A characteristic has been reduced by a Drain.",
+  flashed: "Blinded to a sense group by a Flash.",
+  suppressed: "A power is being held down by a Suppress.",
+};
+
+/** How long a typed tag may be. A pill wider than this wrecks the row it is on. */
+export const STATUS_TAG_MAX_LENGTH = 24;
+
+/** Whether a stored tag is one the app knows by name, rather than a typed one. */
+export function isKnownTag(tag: string): tag is StatusTag {
+  return (STATUS_TAGS as readonly string[]).includes(tag);
+}
+
+/**
+ * Tidies a tag on its way in: the outer spaces go, a run of inner space becomes
+ * one, and anything that spells one of the eight — in whatever case it was typed
+ * — becomes that one.
+ *
+ * That last part is the point of the function. "Prone" typed into the box is the
+ * same condition as the Prone button, and a table that ended up with both would
+ * have two prone characters that agree about nothing.
+ */
+export function normalizeTag(input: string): string {
+  const trimmed = input.trim().replace(/\s+/g, " ");
+  const lowered = trimmed.toLowerCase();
+  return isKnownTag(lowered) ? lowered : trimmed;
+}
+
+/**
+ * Sorts a slot's tags for display: the ones the app knows by name first, in the
+ * order `STATUS_TAGS` gives them, then whatever was typed, alphabetically. The
+ * order a tag was applied in says nothing, and a list that rearranged itself as
+ * conditions came and went would have to be re-read every time.
+ */
+export function sortTags(tags: string[]): string[] {
+  const rank = (tag: string) =>
+    isKnownTag(tag) ? STATUS_TAGS.indexOf(tag) : STATUS_TAGS.length;
+  return [...tags].sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
+}
+
 /* ------------------------------------------------------------ the speed chart */
 
 /** A HERO Turn is twelve segments long, and always has been. */

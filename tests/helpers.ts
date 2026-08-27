@@ -105,6 +105,12 @@ export function vitalsOf(sessionId: string): { end: number; stun: number; body: 
   }));
 }
 
+/** The tags on each slot, in the order the stage is drawn. */
+export function tagsOf(sessionId: string): string[][] {
+  const tags = sessionCharacters.tags(sessionId);
+  return slotsOf(sessionId).map((slotId) => tags.get(slotId) ?? []);
+}
+
 /** The stored positions — the DEX+INIT tiebreak — to assert they stay dense. */
 export function positionsOf(sessionId: string): number[] {
   return sessionCharacters.list(sessionId).map((character) => character.position);

@@ -43,6 +43,11 @@ import { TurnControls } from "../components/TurnControls.tsx";
 import { SheetOverlay } from "../components/SheetFrame.tsx";
 import { ThemeToggle } from "../components/ThemeToggle.tsx";
 import { useToast } from "../components/Toast.tsx";
+import {
+  StatusTagButton,
+  StatusTagPicker,
+  StatusTagPills,
+} from "../components/StatusTags.tsx";
 import type { Snapshot } from "../types.ts";
 
 function Notice({ title, body, onLeave }: { title: string; body: string; onLeave: () => void }) {
@@ -81,6 +86,7 @@ export function PlayerSession({
   );
   const [claiming, setClaiming] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [taggingOpen, setTaggingOpen] = useState(false);
   const [dropped, setDropped] = useState(false);
   const [showActingOnly, toggleSegmentFilter] = useSegmentFilter(sessionId);
 
@@ -211,6 +217,23 @@ export function PlayerSession({
     try {
       const { snapshot: next } = await api.post<{ snapshot: Snapshot }>(
         `/api/sessions/${sessionId}/stage/${slotId}/rest`,
+      );
+      applySnapshot(next);
+    } catch (error) {
+      toast.showError(error);
+    }
+  };
+
+  /**
+   * What condition their character is in. Theirs to say for the same reason
+   * their numbers are theirs to spend, and refused by the server for anybody
+   * else's character.
+   */
+  const setStatusTag = async (slotId: string, tag: string, active: boolean) => {
+    try {
+      const { snapshot: next } = await api.patchJson<{ snapshot: Snapshot }>(
+        `/api/sessions/${sessionId}/stage/${slotId}/tags`,
+        { tag, active },
       );
       applySnapshot(next);
     } catch (error) {
@@ -375,6 +398,30 @@ export function PlayerSession({
                   onRecover={() => void recover(myCharacter.id)}
                   onRest={() => void rest(myCharacter.id)}
                 />
+                {/*
+                  And what condition they are in, set here rather than in the
+                  scene below for the same reason the numbers are: a player's own
+                  character is theirs to change on their own panel, and the scene
+                  is where everybody is read rather than written.
+                */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <StatusTagButton
+                    character={myCharacter}
+                    onOpen={() => setTaggingOpen(true)}
+                  />
+                  {myCharacter.statusTags.length > 0 ? (
+                    <StatusTagPills tags={myCharacter.statusTags} />
+                  ) : (
+                    <span className={`text-xs ${TEXT_MUTED}`}>Nothing on them</span>
+                  )}
+                </div>
+                {taggingOpen ? (
+                  <StatusTagPicker
+                    character={myCharacter}
+                    onToggle={(tag, active) => void setStatusTag(myCharacter.id, tag, active)}
+                    onClose={() => setTaggingOpen(false)}
+                  />
+                ) : null}
               </div>
             ) : (
               <EmptyState>

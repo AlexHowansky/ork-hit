@@ -6,12 +6,14 @@ import { describe, expect, test } from "bun:test";
 import { db } from "../src/db/index.ts";
 import { campaigns, characters, gameSessions, players, sessionCharacters } from "../src/db/queries.ts";
 import { generateSessionCode } from "../src/lib/ids.ts";
+import { normalizeTag } from "../src/lib/hero.ts";
 import {
   makeCampaign,
   makeCharacter,
   makeGm,
   makePlayer,
   makeSession,
+  tagsOf,
   unique,
   vitalsOf,
 } from "./helpers.ts";
@@ -449,5 +451,99 @@ describe("what a stage slot has left", () => {
     sessionCharacters.setVitals(session.id, slot, { endurance: 2 });
 
     expect(vitalsOf(session.id).at(-1)).toEqual({ end: 2, stun: 10, body: 5 });
+  });
+});
+
+describe("what condition a stage slot is in", () => {
+  test("a tag is put on one slot and nobody else", () => {
+    const { session, campaign } = makeSession(1);
+    const goblin = makeCharacter(campaign.id, "npc", unique("Goblin"));
+    const first = sessionCharacters.add(session.id, goblin.id, "npc")!;
+    sessionCharacters.add(session.id, goblin.id, "npc");
+
+    sessionCharacters.setTag(session.id, first, "prone", true);
+
+    // Two copies of one character, and only the one that fell over is prone.
+    expect(tagsOf(session.id).slice(-2)).toEqual([["prone"], []]);
+  });
+
+  test("saying it twice says it once", () => {
+    const { session, campaign } = makeSession(0);
+    const npc = makeCharacter(campaign.id, "npc", unique("Wolf"));
+    const slot = sessionCharacters.add(session.id, npc.id, "npc")!;
+
+    sessionCharacters.setTag(session.id, slot, "stunned", true);
+    expect(() => sessionCharacters.setTag(session.id, slot, "stunned", true)).not.toThrow();
+
+    expect(tagsOf(session.id)).toEqual([["stunned"]]);
+  });
+
+  test("and clearing one that was never there is not an error", () => {
+    const { session, campaign } = makeSession(0);
+    const npc = makeCharacter(campaign.id, "npc", unique("Wolf"));
+    const slot = sessionCharacters.add(session.id, npc.id, "npc")!;
+
+    expect(() => sessionCharacters.setTag(session.id, slot, "prone", false)).not.toThrow();
+    expect(tagsOf(session.id)).toEqual([[]]);
+    expect(sessionCharacters.hasTag(session.id, slot, "prone")).toBe(false);
+  });
+
+  test("they are drawn in one order however they arrived", () => {
+    const { session, campaign } = makeSession(0);
+    const npc = makeCharacter(campaign.id, "npc", unique("Wolf"));
+    const slot = sessionCharacters.add(session.id, npc.id, "npc")!;
+
+    for (const tag of ["stunned", "On fire", "dead", "prone", "Bleeding"]) {
+      sessionCharacters.setTag(session.id, slot, tag, true);
+    }
+
+    // The known conditions in the order the app lists them, then the typed ones
+    // alphabetically — not the order the game master pressed the buttons in.
+    expect(tagsOf(session.id)).toEqual([["dead", "prone", "stunned", "Bleeding", "On fire"]]);
+  });
+
+  test("a typed tag that spells a known one is that one", () => {
+    const { session, campaign } = makeSession(0);
+    const npc = makeCharacter(campaign.id, "npc", unique("Wolf"));
+    const slot = sessionCharacters.add(session.id, npc.id, "npc")!;
+
+    sessionCharacters.setTag(session.id, slot, "prone", true);
+    sessionCharacters.setTag(session.id, slot, normalizeTag("  Prone "), true);
+
+    // One prone character, not a prone one standing beside a Prone one.
+    expect(tagsOf(session.id)).toEqual([["prone"]]);
+  });
+
+  test("leaving the stage takes the conditions with it", () => {
+    const { session, campaign } = makeSession(0);
+    const goblin = makeCharacter(campaign.id, "npc", unique("Goblin"));
+    const first = sessionCharacters.add(session.id, goblin.id, "npc")!;
+    const second = sessionCharacters.add(session.id, goblin.id, "npc")!;
+    sessionCharacters.setTag(session.id, first, "prone", true);
+    sessionCharacters.setTag(session.id, second, "dead", true);
+
+    sessionCharacters.remove(session.id, first);
+
+    // The survivor keeps its own; nothing of the other's is left behind for the
+    // next copy to inherit.
+    expect(tagsOf(session.id)).toEqual([["dead"]]);
+    expect(
+      db.query<{ n: number }, { sessionId: string }>(`
+        SELECT COUNT(*) AS n FROM session_character_tags t
+        JOIN session_characters sc ON sc.id = t.session_character_id
+        WHERE sc.game_session_id = $sessionId
+      `).get({ sessionId: session.id })!.n,
+    ).toBe(1);
+  });
+
+  test("a slot belonging to another session cannot be tagged through this one", () => {
+    const { session: mine, campaign } = makeSession(0);
+    const { session: theirs } = makeSession(0);
+    const npc = makeCharacter(campaign.id, "npc", unique("Wolf"));
+    const slot = sessionCharacters.add(mine.id, npc.id, "npc")!;
+
+    sessionCharacters.setTag(theirs.id, slot, "prone", true);
+
+    expect(tagsOf(mine.id)).toEqual([[]]);
   });
 });

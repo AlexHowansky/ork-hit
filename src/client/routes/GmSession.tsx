@@ -191,6 +191,14 @@ export function GmSessionConsole() {
       api.post<{ snapshot: Snapshot }>(`/api/sessions/${sessionId}/stage/${slotId}/rest`),
     );
 
+  const setStatusTag = (slotId: string, tag: string, active: boolean) =>
+    mutate(() =>
+      api.patchJson<{ snapshot: Snapshot }>(`/api/sessions/${sessionId}/stage/${slotId}/tags`, {
+        tag,
+        active,
+      }),
+    );
+
   const setClaim = (playerId: string, claimedCharacterId: string | null) =>
     mutate(() =>
       api.patchJson<{ snapshot: Snapshot }>(`/api/sessions/${sessionId}/players/${playerId}`, {
@@ -375,6 +383,7 @@ export function GmSessionConsole() {
                 onSetVitals={(id, patch) => void setVitals(id, patch)}
                 onRecover={(id) => void recover(id)}
                 onRest={(id) => void rest(id)}
+                onToggleTag={(id, tag, active) => void setStatusTag(id, tag, active)}
                 onSetTurn={(id) => void setTurn(id)}
                 onRemove={(id) => void removeCharacter(id)}
               />

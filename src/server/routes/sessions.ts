@@ -54,19 +54,21 @@ function snapshotOr404(sessionId: string) {
 }
 
 /**
- * Who may change what a stage slot has left.
+ * Who may write a stage slot.
  *
  * The game master runs the fight and may write any slot; a player may write
  * exactly the slot holding the character they claimed, because spending your own
- * END and taking your own STUN is the part of the bookkeeping that belongs to
- * the person playing. Shared by the two routes that write those numbers, so
- * there is one answer to the question rather than two that could drift apart.
+ * END, taking your own STUN and saying you have been knocked prone are the parts
+ * of the bookkeeping that belong to the person playing. Shared by every route
+ * that writes a slot, so there is one answer to the question rather than four
+ * that could drift apart.
  */
-function requireVitalsAccess(
+function requireSlotAccess(
   request: BunRequest<
     | "/api/sessions/:id/stage/:slotId/vitals"
     | "/api/sessions/:id/stage/:slotId/recover"
     | "/api/sessions/:id/stage/:slotId/rest"
+    | "/api/sessions/:id/stage/:slotId/tags"
   >,
 ): { session: GameSessionRow; asPlayer: boolean } {
   const sessionId = request.params.id;
@@ -83,7 +85,7 @@ function requireVitalsAccess(
   if (!characterId) throw errors.badRequest("That character isn't active in this session.");
 
   if (asPlayer && characterId !== identity.player.claimed_character_id) {
-    throw errors.forbidden("You can only change your own character's numbers.");
+    throw errors.forbidden("You can only change your own character.");
   }
 
   return { session, asPlayer };
@@ -399,7 +401,7 @@ export const sessionRoutes = {
         request: BunRequest<"/api/sessions/:id/stage/:slotId/vitals">,
         { logger }: RequestContext,
       ) => {
-        const { session, asPlayer } = requireVitalsAccess(request);
+        const { session, asPlayer } = requireSlotAccess(request);
         const values = await parseJsonBody(request, schemas.setVitals);
 
         sessionCharacters.setVitals(session.id, request.params.slotId, values);
@@ -426,7 +428,7 @@ export const sessionRoutes = {
         request: BunRequest<"/api/sessions/:id/stage/:slotId/recover">,
         { logger }: RequestContext,
       ) => {
-        const { session, asPlayer } = requireVitalsAccess(request);
+        const { session, asPlayer } = requireSlotAccess(request);
 
         sessionCharacters.takeRecovery(session.id, request.params.slotId);
         logger.info("recovery taken", {
@@ -447,12 +449,45 @@ export const sessionRoutes = {
   "/api/sessions/:id/stage/:slotId/rest": {
     POST: handler(
       (request: BunRequest<"/api/sessions/:id/stage/:slotId/rest">, { logger }: RequestContext) => {
-        const { session, asPlayer } = requireVitalsAccess(request);
+        const { session, asPlayer } = requireSlotAccess(request);
 
         sessionCharacters.takeRest(session.id, request.params.slotId);
         logger.info("rest taken", {
           sessionId: session.id,
           slotId: request.params.slotId,
+          by: asPlayer ? "player" : "gm",
+        });
+
+        return publish(session.id);
+      },
+    ),
+  },
+
+  /**
+   * A status tag on a stage slot: prone, stunned, dead, or whatever else this
+   * table has decided to track.
+   *
+   * The second kind of thing both roles may change, and for the same reason as
+   * the numbers: being knocked down happens to your character, and saying so is
+   * part of playing it. The body carries the state the tag should end in rather
+   * than an instruction to flip it, so a retry — or two people reaching for
+   * Prone at once — leaves one prone character rather than none.
+   */
+  "/api/sessions/:id/stage/:slotId/tags": {
+    PATCH: handler(
+      async (
+        request: BunRequest<"/api/sessions/:id/stage/:slotId/tags">,
+        { logger }: RequestContext,
+      ) => {
+        const { session, asPlayer } = requireSlotAccess(request);
+        const { tag, active } = await parseJsonBody(request, schemas.setStatusTag);
+
+        sessionCharacters.setTag(session.id, request.params.slotId, tag, active);
+        logger.info("status tag set", {
+          sessionId: session.id,
+          slotId: request.params.slotId,
+          tag,
+          active,
           by: asPlayer ? "player" : "gm",
         });
 

@@ -257,6 +257,38 @@ clock. Turned off, a character with no phase this segment is dimmed rather than
 hidden: their STUN is still the game master's to change on a segment they are not
 acting in.
 
+**A status tag hangs off the slot, one row per tag.** Prone, stunned, dead and
+the rest are facts about this copy in this fight — one goblin can be face down
+while its twin is swinging — so `session_character_tags` keys on the stage slot
+and cascades with it: taking a copy off the stage takes its conditions with it
+and needs no cleanup code. The primary key is `(slot, tag)`, which is the rule
+itself, since a character is prone or is not and being told twice is not two
+pronenesses. The write is `PATCH /api/sessions/:id/stage/:slotId/tags` carrying
+`{ tag, active }` — the state the tag should end in, not an instruction to flip
+it — so a retried request or two people reaching for Prone at once leaves one
+prone character. It is the fourth route `requireSlotAccess` guards: the game
+master may tag anybody in the scene, a player only the character they claimed.
+
+The eight the app knows by name live in `src/lib/hero.ts` beside the
+characteristics, which is what feeds both the zod schema and the labels; the
+pictures for them are in `src/client/components/StatusTags.tsx`, because
+`hero.ts` is read by the server and FontAwesome is the browser's business.
+Anything else a table wants to track is typed, kept as typed, and drawn with a
+generic mark and its own word — with the one twist that a typed "Prone" folds
+onto the button's `prone` rather than becoming a second kind of prone. The
+column is `COLLATE NOCASE` for the same reason, and the table deliberately
+carries no `CHECK`: what a tag may be is decided by the schema on the way in,
+where every other such rule lives.
+
+Both audiences read the tags off the segment panel — who is stunned is what the
+table is looking at when it decides what to do next — but only a reader who may
+write a row gets the control that opens the picker. That is the same split as
+the numbers, drawn the same way: the game master's list is passed the callback,
+a player's is not, and a player sets their own character's conditions on their
+`My character` panel instead. The pills are icon-only with the name in the
+tooltip and in an `sr-only` span, since a row already carries a name, a kind, a
+count and four characteristics.
+
 **Card styling is shared.** The campaign and character grids are different
 components, so their shape and hover treatment live in one place — `CARD_BASE`
 in `src/client/components/ui.tsx` — and the player's character picker is built
@@ -565,9 +597,9 @@ shape and the blunter instrument: END and STUN set straight to the totals, BODY
 untouched.
 
 Those two and `PATCH /api/sessions/:id/stage/:slotId/vitals` are the routes both
-roles may call, and all three share one authorization helper —
-`requireVitalsAccess` — so there is one answer to who may change a slot's numbers
-rather than three that could drift apart. The game master runs the fight and may write any slot; a player may write exactly
+roles may call, and all of them share one authorization helper —
+`requireSlotAccess` — so there is one answer to who may change a slot
+rather than four that could drift apart. The game master runs the fight and may write any slot; a player may write exactly
 the slot holding the character they claimed, checked on the server rather than by
 hiding the boxes. Both end in the same `publish`, so an edit from either screen
 reaches every screen the usual way. `src/lib/hero.ts` names the seven

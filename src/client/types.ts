@@ -48,6 +48,11 @@ export interface SessionCharacter extends Character {
   currentEndurance: number;
   currentStun: number;
   currentBody: number;
+  /**
+   * What condition this copy is in: the conditions the app knows by name first,
+   * then any the table typed. Per slot, like the numbers above.
+   */
+  statusTags: string[];
   claimedByPlayerId: string | null;
   claimedByPlayerName: string | null;
 }

@@ -271,6 +271,26 @@ The app should have the following features:
   boost comes back to what they are. BODY is not a rest's business: it heals over
   days, which is longer than a session.
 
+* A character on the stage may also carry **status tags**: what condition they
+  are in. Eight are known by name — Dead, Drained, Entangled, Flashed, Prone,
+  Sleeping, Stunned and Suppressed — and a table may type its own for anything
+  else. Like the three numbers, they belong to the copy rather than to the
+  character: one goblin can be prone while its twin is standing, and none of it
+  outlives the session.
+
+* The game master may set them for anybody in the scene, and a player for the
+  character they are playing and nobody else — the same division as the numbers,
+  for the same reason. A player sets theirs on their `My character` panel, where
+  their numbers already are. Both audiences see everyone's in the segment panel:
+  who is stunned is not a secret, it is what the table is reading the list for.
+
+* A known condition is drawn as its icon alone, with its name on hover and for a
+  screen reader; a typed one keeps its word, since no picture would say it. A row
+  already carries a name, a kind, a count and four characteristics, and eight
+  spelled-out conditions would be wider than all of them. Setting a condition
+  twice sets it once, and a tag typed as one of the eight is that one rather than
+  a second condition spelled the same way.
+
 * Each PC and NPC on a session page should be shown with a small picture of
   itself — in the scene, and in the list the game master adds them from —
   falling back to a placeholder for a character that has no background image.

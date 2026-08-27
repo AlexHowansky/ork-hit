@@ -17,10 +17,12 @@
  * the fight is on, or hiding them outright when the reader asks for that.
  */
 
+import { useState } from "react";
 import type { SessionCharacter } from "../types.ts";
 import { faPlay, faUserMinus } from "@fortawesome/free-solid-svg-icons";
 import { actsIn } from "../../lib/hero.ts";
 import { StatLine } from "./StatLine.tsx";
+import { StatusTagButton, StatusTagPicker, StatusTagPills } from "./StatusTags.tsx";
 import {
   CharacterThumb,
   CountBadge,
@@ -64,6 +66,12 @@ interface RowProps {
   onSetVitals?: (patch: VitalsPatch) => void;
   onRecover?: () => void;
   onRest?: () => void;
+  /**
+   * Lets this reader change what condition the character is in. Absent on a row
+   * they may only read — the pills themselves are drawn either way, since who is
+   * prone is what the table is looking at when it decides what to do next.
+   */
+  onToggleTag?: (tag: string, active: boolean) => void;
   onSetTurn?: () => void;
   onRemove?: () => void;
 }
@@ -79,9 +87,14 @@ function Row({
   onSetVitals,
   onRecover,
   onRest,
+  onToggleTag,
   onSetTurn,
   onRemove,
 }: RowProps) {
+  // The picker belongs to the row that opened it, the way the numbers' own
+  // picker belongs to the box that opened it.
+  const [taggingOpen, setTaggingOpen] = useState(false);
+
   // A player character nobody has taken yet: an open seat at the table, and the
   // one thing both audiences want to spot without reading.
   const isUnclaimed = character.kind === "pc" && character.claimedByPlayerId === null;
@@ -164,6 +177,9 @@ function Row({
               Unclaimed
             </span>
           ) : null}
+          {/* Both audiences, whoever may change them: what condition a character
+              is in is what the table reads the row for. */}
+          <StatusTagPills tags={character.statusTags} />
         </div>
 
         {/*
@@ -196,6 +212,9 @@ function Row({
       </div>
 
       <div className="flex shrink-0 items-center gap-1">
+        {onToggleTag ? (
+          <StatusTagButton character={character} onOpen={() => setTaggingOpen(true)} />
+        ) : null}
         {editable && onSetTurn ? (
           <button
             type="button"
@@ -246,6 +265,14 @@ function Row({
           className="pl-2"
         />
       ) : null}
+
+      {taggingOpen && onToggleTag ? (
+        <StatusTagPicker
+          character={character}
+          onToggle={onToggleTag}
+          onClose={() => setTaggingOpen(false)}
+        />
+      ) : null}
     </li>
   );
 }
@@ -260,6 +287,7 @@ export function InitiativeList({
   onSetVitals,
   onRecover,
   onRest,
+  onToggleTag,
   onSetTurn,
   onRemove,
 }: {
@@ -283,6 +311,12 @@ export function InitiativeList({
   onRecover?: (slotId: string) => void;
   /** And a rest, which puts both back to full. */
   onRest?: (slotId: string) => void;
+  /**
+   * Lets this reader set a row's conditions. The game master passes it for every
+   * row; a player passes nothing, and sets their own character's on their own
+   * panel, exactly as with the numbers.
+   */
+  onToggleTag?: (slotId: string, tag: string, active: boolean) => void;
   onSetTurn?: (slotId: string) => void;
   onRemove?: (slotId: string) => void;
 }) {
@@ -317,6 +351,9 @@ export function InitiativeList({
         onSetVitals={onSetVitals ? (patch) => onSetVitals(character.id, patch) : undefined}
         onRecover={onRecover ? () => onRecover(character.id) : undefined}
         onRest={onRest ? () => onRest(character.id) : undefined}
+        onToggleTag={
+          onToggleTag ? (tag, active) => onToggleTag(character.id, tag, active) : undefined
+        }
         onSetTurn={onSetTurn ? () => onSetTurn(character.id) : undefined}
         onRemove={onRemove ? () => onRemove(character.id) : undefined}
       />

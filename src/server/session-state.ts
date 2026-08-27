@@ -55,6 +55,13 @@ export interface SessionSnapshot {
     currentEndurance: number;
     currentStun: number;
     currentBody: number;
+    /**
+     * What condition this copy is in: the tags the app knows by name, then any
+     * the table typed for itself. Per slot, like the numbers above — one goblin
+     * can be prone while its twin is standing — and always a list, empty rather
+     * than absent when there is nothing on them.
+     */
+    statusTags: string[];
     claimedByPlayerId: string | null;
     claimedByPlayerName: string | null;
   })[];
@@ -65,6 +72,7 @@ export function buildSnapshot(sessionId: string): SessionSnapshot | null {
   if (!session) return null;
 
   const roster = players.list(sessionId);
+  const tags = sessionCharacters.tags(sessionId);
   const claims = new Map(
     roster
       .filter((player) => player.claimed_character_id !== null)
@@ -95,6 +103,7 @@ export function buildSnapshot(sessionId: string): SessionSnapshot | null {
         currentEndurance: row.cur_endurance,
         currentStun: row.cur_stun,
         currentBody: row.cur_body,
+        statusTags: tags.get(row.slot_id) ?? [],
         claimedByPlayerId: holder?.id ?? null,
         claimedByPlayerName: holder?.name ?? null,
       };

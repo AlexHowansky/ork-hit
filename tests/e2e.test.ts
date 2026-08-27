@@ -459,6 +459,61 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     await player.getByText("Post-Segment 12 Recovery").waitFor({ timeout: 5000 });
   }, 60_000);
 
+  test("a condition set by the game master reaches the players", async () => {
+    if (!browser) return;
+    const { page: gm, code, campaignName } = await gmWithSession();
+    const player = await playerIn(code, "Nia", campaignName);
+
+    // Nothing on anybody yet.
+    expect(await player.getByTitle("Prone").count()).toBe(0);
+
+    const strahd = gm.getByRole("listitem").filter({ hasText: "Strahd" });
+    await strahd.getByRole("button", { name: "Set Strahd's status" }).click();
+
+    // The dialog stays open between presses: one hit commonly leaves a character
+    // both prone and stunned.
+    await gm.getByRole("button", { name: "Prone", exact: true }).click();
+    await gm.getByRole("button", { name: "Stunned", exact: true }).click();
+    await gm.getByRole("button", { name: "Close" }).click();
+
+    await strahd.getByTitle("Prone").waitFor({ timeout: 5000 });
+    await strahd.getByTitle(/Stunned/).waitFor({ timeout: 5000 });
+
+    // And the player's scene follows without a reload.
+    const theirStrahd = player.getByRole("listitem").filter({ hasText: "Strahd" });
+    await theirStrahd.getByTitle("Prone").waitFor({ timeout: 5000 });
+
+    // Taking it off again takes it off both screens.
+    await strahd.getByRole("button", { name: "Set Strahd's status" }).click();
+    await gm.getByRole("button", { name: "Prone", exact: true }).click();
+    await gm.getByRole("button", { name: "Close" }).click();
+    await theirStrahd.getByTitle("Prone").waitFor({ state: "detached", timeout: 5000 });
+  }, 60_000);
+
+  test("a player sets their own character's condition, and only theirs", async () => {
+    if (!browser) return;
+    const { page: gm, code, campaignName } = await gmWithSession();
+    const player = await playerIn(code, "Omar", campaignName);
+
+    // A player's scene is read-only: no control on anybody's row, their own
+    // character included — theirs lives on their own panel.
+    expect(await player.getByRole("button", { name: /Set .*'s status/ }).count()).toBe(1);
+
+    await player.getByRole("button", { name: "Set Thorin's status" }).click();
+    await player.getByRole("textbox", { name: "Add a tag" }).fill("On fire");
+    await player.getByRole("button", { name: "Add", exact: true }).click();
+    await player.getByRole("button", { name: "Close" }).click();
+
+    // A typed tag keeps its word — on their own panel, on their row in the scene
+    // beside it, and on the game master's row.
+    await player.locator("section", { hasText: /My character/ })
+      .getByTitle("On fire").waitFor({ timeout: 5000 });
+    await player.getByRole("listitem").filter({ hasText: "Thorin" })
+      .getByTitle("On fire").waitFor({ timeout: 5000 });
+    await gm.getByRole("listitem").filter({ hasText: "Thorin" })
+      .getByTitle("On fire").waitFor({ timeout: 5000 });
+  }, 60_000);
+
   test("taking a played character out of the scene asks first", async () => {
     if (!browser) return;
     const { page: gm, code } = await gmWithSession();
