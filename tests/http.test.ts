@@ -16,14 +16,17 @@ import { config, limits } from "../src/lib/config.ts";
 import { unique } from "./helpers.ts";
 import {
   SESSION_STARTED,
+  gmAddedToScene,
   gmAssigned,
   gmKicked,
   gmReassigned,
+  gmRemovedFromScene,
   gmUnassigned,
   playerDisconnected,
   playerJoined,
   playerLeft,
   playerSelected,
+  segmentBegan,
 } from "../src/server/events.ts";
 
 let base: string;
@@ -808,6 +811,16 @@ async function messages(cookie: string, sessionId: string): Promise<string[]> {
   return body.snapshot.events.map((event: { message: string }) => event.message);
 }
 
+/**
+ * The three lines every fixture table opens with: the session beginning, the
+ * segment the fight opens in, and the NPC `makeTable` walks on afterwards. The
+ * campaign's PC is on the stage from the moment the session is created, so
+ * staging it again is the no-op that writes nothing.
+ */
+function opening(npc: { name: string }): string[] {
+  return [SESSION_STARTED, segmentBegan(1, 12), gmAddedToScene(npc.name)];
+}
+
 /** The roster row for a player, which is what the game master's routes name. */
 async function playerNamed(cookie: string, sessionId: string, name: string) {
   const body = await (await fetch(`${base}/api/sessions/${sessionId}`, authed(cookie))).json();
@@ -874,29 +887,32 @@ function setClaim(
 describe("the log", () => {
   test("a new session already says when it began", async () => {
     const { cookie } = await signIn();
-    const { session } = await makeTable(cookie);
+    const { session, npc } = await makeTable(cookie);
 
     const snapshot = (
       await (await fetch(`${base}/api/sessions/${session.id}`, authed(cookie))).json()
     ).snapshot;
 
-    // Written in the same transaction that made the session, so it is there
-    // before anybody is watching — which is the only reason it can be seen at
-    // all. A notice would have gone out to an empty room.
-    expect(snapshot.events).toHaveLength(1);
+    // Written in the same transaction that made the session, so they are there
+    // before anybody is watching — which is the only reason they can be seen at
+    // all. A notice would have gone out to an empty room. The third line is the
+    // fixture putting the NPC on the stage.
+    expect(snapshot.events.map((event: { message: string }) => event.message)).toEqual(
+      opening(npc),
+    );
     expect(snapshot.events[0].message).toBe(SESSION_STARTED);
     expect(Number.isNaN(Date.parse(snapshot.events[0].at))).toBe(false);
   });
 
   test("a player who joins late still reads what came before them", async () => {
     const { cookie } = await signIn();
-    const { session } = await makeTable(cookie);
+    const { session, npc } = await makeTable(cookie);
     const playerCookie = await joinAs(session.code, "Latecomer");
 
     // Their own arrival is on it too, which is the proof that the line was
     // written to the table's log rather than pushed at whoever was watching.
     expect(await messages(playerCookie, session.id)).toEqual([
-      SESSION_STARTED,
+      ...opening(npc),
       playerJoined("Latecomer"),
     ]);
   });
@@ -911,13 +927,13 @@ describe("the log", () => {
 
   test("a player choosing their own character is written down", async () => {
     const { cookie } = await signIn();
-    const { session, pc } = await makeTable(cookie);
+    const { session, pc, npc } = await makeTable(cookie);
     const playerCookie = await joinAs(session.code, "Ada");
 
     await claimAs(playerCookie, session.id, pc.id);
 
     expect(await messages(cookie, session.id)).toEqual([
-      SESSION_STARTED,
+      ...opening(npc),
       playerJoined("Ada"),
       playerSelected("Ada", pc.name),
     ]);
@@ -925,7 +941,7 @@ describe("the log", () => {
 
   test("a game master handing one out reads as the game master's doing", async () => {
     const { cookie } = await signIn();
-    const { session, pc } = await makeTable(cookie);
+    const { session, pc, npc } = await makeTable(cookie);
     await joinAs(session.code, "Ada");
     const ada = await playerNamed(cookie, session.id, "Ada");
 
@@ -934,7 +950,7 @@ describe("the log", () => {
     // The same character ends up in the same hands as the test above, and the
     // log says so differently — because a different person decided it.
     expect(await messages(cookie, session.id)).toEqual([
-      SESSION_STARTED,
+      ...opening(npc),
       playerJoined("Ada"),
       gmAssigned(pc.name, "Ada"),
     ]);
@@ -942,7 +958,7 @@ describe("the log", () => {
 
   test("taking a character back is written down too", async () => {
     const { cookie } = await signIn();
-    const { session, pc } = await makeTable(cookie);
+    const { session, pc, npc } = await makeTable(cookie);
     await joinAs(session.code, "Ada");
     const ada = await playerNamed(cookie, session.id, "Ada");
 
@@ -950,7 +966,7 @@ describe("the log", () => {
     await setClaim(cookie, session.id, ada.id, null);
 
     expect(await messages(cookie, session.id)).toEqual([
-      SESSION_STARTED,
+      ...opening(npc),
       playerJoined("Ada"),
       gmAssigned(pc.name, "Ada"),
       gmUnassigned(pc.name, "Ada"),
@@ -959,7 +975,7 @@ describe("the log", () => {
 
   test("moving one between two players is a single line", async () => {
     const { cookie } = await signIn();
-    const { session, pc } = await makeTable(cookie);
+    const { session, pc, npc } = await makeTable(cookie);
     await joinAs(session.code, "Ada");
     await joinAs(session.code, "Bram");
     const ada = await playerNamed(cookie, session.id, "Ada");
@@ -971,7 +987,7 @@ describe("the log", () => {
     // One action by one person, so one line — and no moment in the log where the
     // character was held by nobody, because there never was one.
     expect(await messages(cookie, session.id)).toEqual([
-      SESSION_STARTED,
+      ...opening(npc),
       playerJoined("Ada"),
       playerJoined("Bram"),
       gmAssigned(pc.name, "Ada"),
@@ -981,7 +997,7 @@ describe("the log", () => {
 
   test("swapping a character onto someone who already held one writes both halves", async () => {
     const { cookie } = await signIn();
-    const { session, pc, campaign } = await makeTable(cookie);
+    const { session, pc, npc, campaign } = await makeTable(cookie);
     const second = await addPc(cookie, campaign.id, session.id);
     await joinAs(session.code, "Ada");
     await joinAs(session.code, "Bram");
@@ -994,7 +1010,10 @@ describe("the log", () => {
     await setClaim(cookie, session.id, ada.id, pc.id);
 
     expect(await messages(cookie, session.id)).toEqual([
-      SESSION_STARTED,
+      ...opening(npc),
+      // The second player character, walked on by `addPc` after the session had
+      // already begun, so unlike the campaign's own PC it is a line.
+      gmAddedToScene(second.name),
       playerJoined("Ada"),
       playerJoined("Bram"),
       gmAssigned(second.name, "Ada"),
@@ -1018,9 +1037,58 @@ describe("the log", () => {
     expect(await messages(cookie, session.id)).toEqual(before);
   });
 
+  test("walking a character on and off the stage is written down", async () => {
+    const { cookie } = await signIn();
+    const { session, pc, npc } = await makeTable(cookie);
+
+    // A second goblin, and then the same goblin off again.
+    const staged = (
+      await (
+        await fetch(
+          `${base}/api/sessions/${session.id}/stage`,
+          authed(cookie, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ characterId: npc.id }),
+          }),
+        )
+      ).json()
+    ).snapshot;
+    const second = staged.characters.find(
+      (character: { characterId: string; copyNumber: number }) =>
+        character.characterId === npc.id && character.copyNumber === 2,
+    );
+
+    await fetch(
+      `${base}/api/sessions/${session.id}/stage/${second.id}`,
+      authed(cookie, { method: "DELETE" }),
+    );
+
+    // The copy number comes along, because "added Goblin" three times over tells
+    // a table which goblin exactly as well as saying nothing would.
+    expect(await messages(cookie, session.id)).toEqual([
+      ...opening(npc),
+      gmAddedToScene(`${npc.name} 2`),
+      gmRemovedFromScene(`${npc.name} 2`),
+    ]);
+
+    // A hero already on the stage cannot be brought on twice, and a stage that
+    // did not change is not something to write down.
+    const before = await messages(cookie, session.id);
+    await fetch(
+      `${base}/api/sessions/${session.id}/stage`,
+      authed(cookie, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ characterId: pc.id }),
+      }),
+    );
+    expect(await messages(cookie, session.id)).toEqual(before);
+  });
+
   test("leaving, and being made to leave, read differently", async () => {
     const { cookie } = await signIn();
-    const { session } = await makeTable(cookie);
+    const { session, npc } = await makeTable(cookie);
     const adaCookie = await joinAs(session.code, "Ada");
     await joinAs(session.code, "Bram");
     const bram = await playerNamed(cookie, session.id, "Bram");
@@ -1032,7 +1100,7 @@ describe("the log", () => {
     );
 
     expect(await messages(cookie, session.id)).toEqual([
-      SESSION_STARTED,
+      ...opening(npc),
       playerJoined("Ada"),
       playerJoined("Bram"),
       playerLeft("Ada"),
@@ -1225,6 +1293,35 @@ describe("restarting the turn order", () => {
       await fetch(`${base}/api/sessions/${session.id}`, authed(gm.cookie))
     ).json();
     expect(after.activeSlotId).toBe(snapshot.characters[0].id);
+  });
+
+  test("says in the log that the fight is back at its opening segment", async () => {
+    const gm = await signIn();
+    const { session, npc } = await makeTable(gm.cookie);
+
+    // Into turn 2, which the clock wrote down on the way.
+    await advance(gm.cookie, session.id, 4);
+    await fetch(
+      `${base}/api/sessions/${session.id}/turn/restart`,
+      authed(gm.cookie, { method: "POST" }),
+    );
+
+    // The same line the session opened with, because this is the same place: a
+    // log that fell silent here would leave everything after it filed under a
+    // segment the fight had already left. The press that follows is only the
+    // marker taking its first character, so it adds nothing.
+    expect(await messages(gm.cookie, session.id)).toEqual([
+      ...opening(npc),
+      segmentBegan(2, 1),
+      segmentBegan(1, 12),
+    ]);
+
+    await advance(gm.cookie, session.id, 1);
+    expect(await messages(gm.cookie, session.id)).toEqual([
+      ...opening(npc),
+      segmentBegan(2, 1),
+      segmentBegan(1, 12),
+    ]);
   });
 });
 
@@ -1425,7 +1522,7 @@ describe("a player who disconnects gives up their seat", () => {
 
   test("the log says so, since nobody at the table saw it happen", async () => {
     const { cookie } = await signIn();
-    const { session } = await makeTable(cookie);
+    const { session, npc } = await makeTable(cookie);
     const alice = await joinAs(session.code, "Alice");
 
     const socket = await watch(alice, session.id);
@@ -1435,7 +1532,7 @@ describe("a player who disconnects gives up their seat", () => {
     // Worded apart from `left`: they did not press anything, and a game master
     // reading the log later should be able to tell the two apart.
     expect(await messages(cookie, session.id)).toEqual([
-      SESSION_STARTED,
+      ...opening(npc),
       playerJoined("Alice"),
       playerDisconnected("Alice"),
     ]);

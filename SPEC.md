@@ -236,10 +236,27 @@ The app should have the following features:
 * Both session screens carry a **log**: what has happened at this table, one
   line per event, each with the time it happened on a twelve-hour clock, oldest
   at the top and newest at the bottom. `Session started` is the first line of
-  every session's log.
+  every session's log, and `Turn 1 Segment 12` — where HERO opens a combat — is
+  the second.
 
-* What the log records, besides the session starting, is the table's membership:
-  a player joining, a player taking or losing a character, and a player leaving.
+* What the log records, besides the session starting, is the table's membership
+  — a player joining, a player taking or losing a character, and a player leaving
+  — the stage, as the game master walks characters on and off it, and the clock,
+  which writes `Turn <turn> Segment <segment>` each time the fight reaches a new
+  segment. That last line is what gives the others their place: read back later,
+  the events between two of them are what happened in that segment.
+
+* Only a segment the fight actually arrives at is written down. Stepping from one
+  character to the next inside a segment moves the marker and not the clock, and
+  stepping backwards is an arrival like any other — a game master correcting a
+  click should see where the fight went, not a log that only counts forwards.
+  The clock also says where it is put, rather than only where it walks: a session
+  writes `Turn 1 Segment 12` as it is created, and a restart writes it again, so
+  every event in the log falls under a segment the log has named.
+
+* A character on stage in more than one copy carries its copy number into the
+  log, exactly as the initiative list draws it, so three goblins arriving are
+  three lines a table can tell apart.
 
 * Every line names whoever acted, and reads with them as its subject: the
   players' own doings in their names, the game master's in theirs. So a character
@@ -253,6 +270,10 @@ The app should have the following features:
 * A character reassigned from one player to another is one line rather than an
   unassignment and an assignment, because it was one act — and because two would
   describe a moment, which never existed, when nobody held the character at all.
+
+  The clock's line is the one exception to naming an actor: a game master pressed
+  Next to get there, but what the line records is where the fight now is rather
+  than who pressed what, so it is written flat and without a verb.
 
 * The log is not a panel in a column. It is a drawer, hidden until a `Log`
   control in the upper left of the page header is pressed, and it pushes the

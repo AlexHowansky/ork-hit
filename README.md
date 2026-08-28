@@ -626,7 +626,18 @@ actually *say* is `src/server/events.ts`, and it is a module of its own for two
 reasons: the log has a voice, and a voice stays consistent only when it is in one
 place to be read; and the events are written from three modules — the session
 routes, the auth routes, and the socket's own grace-period removal — of which
-`ws.ts` cannot import from `routes/sessions.ts` without closing a cycle. Nothing else was
+`ws.ts` cannot import from `routes/sessions.ts` without closing a cycle.
+
+The voice is one rule: past tense, and whoever acted is the subject. The clock is
+the single line that breaks it — `Turn 2 Segment 3` names nobody, because what it
+records is where the fight is rather than who pressed Next. The rule is that
+the clock announces every segment it is *placed at*: `advanceTurn` writes one
+where the walk lands, the session's own creating transaction writes `Turn 1
+Segment 12`, and Restart writes it again on the way back. That is why stepping
+from one character to the next inside a segment writes nothing — the marker moved
+and the clock did not — and why the first press of `Next` in a fresh fight is
+silent: the segment it opens was named when the session was made. What the rule
+buys is that every line in the log sits under a segment the log has named. Nothing else was
 needed: every mutating route already ends in `publish`, and `websocket.open`
 already replays the current snapshot to a reconnecting client, so the log follows
 both without a route or a socket message of its own.

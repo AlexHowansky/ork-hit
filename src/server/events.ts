@@ -24,6 +24,8 @@
  * through a night tells you not only what the table came to be, but who made it
  * so. The routes can always tell: a player's claim and the game master's
  * assignment are separate endpoints behind separate authorisations.
+ *
+ * The clock is the one exception, and it is at the bottom with its reasons.
  */
 
 export const SESSION_STARTED = "Session started";
@@ -61,3 +63,25 @@ export const gmReassigned = (character: string, from: string, to: string): strin
   `The game master reassigned ${character} from ${from} to ${to}`;
 
 export const gmKicked = (name: string): string => `The game master kicked ${name}`;
+
+export const gmAddedToScene = (character: string): string =>
+  `The game master added ${character} to the scene`;
+
+export const gmRemovedFromScene = (character: string): string =>
+  `The game master removed ${character} from the scene`;
+
+/* ------------------------------------------------------------- the clock's */
+
+/**
+ * The one line with nobody in it.
+ *
+ * Every other event here names whoever acted, because somebody did. A segment
+ * beginning is the fight's own clock moving, and while a game master pressed
+ * Next to get there, what the line records is where the fight now is rather than
+ * who pressed what — so it is written the way a marker on a table is written,
+ * flat and without a verb. It is also the line that gives all the others their
+ * place: read back through a night, the events between two of these are what
+ * happened in that segment.
+ */
+export const segmentBegan = (turn: number, segment: number): string =>
+  `Turn ${turn} Segment ${segment}`;

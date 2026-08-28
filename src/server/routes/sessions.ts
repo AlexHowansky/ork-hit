@@ -39,12 +39,15 @@ import {
 } from "../../lib/hero.ts";
 import {
   SESSION_STARTED,
+  gmAddedToScene,
   gmAssigned,
   gmKicked,
   gmReassigned,
+  gmRemovedFromScene,
   gmUnassigned,
   playerJoined,
   playerSelected,
+  segmentBegan,
 } from "../events.ts";
 import { presentSessionForGm } from "../presenters.ts";
 import { buildGmSessionList, buildSnapshot } from "../session-state.ts";
@@ -133,6 +136,24 @@ function prevSegment(segment: number): number {
 }
 
 /**
+ * What a slot is called in the log: the character's name, and its copy number
+ * when it has one.
+ *
+ * The stage may hold three of the same goblin, and three identical lines saying
+ * one was added would tell a table nothing about which. The rule is the
+ * initiative list's — a number only from the second copy on — so the log calls a
+ * monster what the console beside it calls the same monster.
+ *
+ * Answers null for a slot that is not on this stage, which is the same nothing
+ * `sessionCharacters.remove` does with one.
+ */
+function sceneName(sessionId: string, slotId: string): string | null {
+  const slot = sessionCharacters.list(sessionId).find((row) => row.slot_id === slotId);
+  if (!slot) return null;
+  return slot.copy_number > 1 ? `${slot.name} ${slot.copy_number}` : slot.name;
+}
+
+/**
  * Moves the turn marker one phase through the HERO clock.
  *
  * A Turn is twelve segments, and which of them a character acts in is their SPD
@@ -215,6 +236,10 @@ function advanceTurn(sessionId: string, direction: "next" | "prev"): boolean {
     // No marker, but this segment has phases in it: take the end the direction
     // came from. Stepping forward opens the segment; stepping back closes it.
     const entry = direction === "next" ? here[0]! : here[here.length - 1]!;
+    // Nothing to announce: the clock stays where it was, and wherever that is,
+    // it said so on the way in — a session and a Restart both write the opening
+    // segment as they set it, so the first press of Next is only the marker
+    // arriving at the first character of a segment already begun.
     gameSessions.setTurn(sessionId, entry.slot_id, session.turn, session.segment);
     return false;
   }
@@ -250,6 +275,10 @@ function advanceTurn(sessionId: string, direction: "next" | "prev"): boolean {
     if (actors.length === 0) continue;
 
     const entry = direction === "next" ? actors[0]! : actors[actors.length - 1]!;
+    // Only the walk writes a segment line. The step inside a segment above
+    // moves the marker from one character to the next and the clock never
+    // leaves where it was, so there is no new segment for it to announce.
+    sessionEvents.record(sessionId, segmentBegan(turn, segment));
     gameSessions.setTurn(sessionId, entry.slot_id, turn, segment);
     return recovered;
   }
@@ -298,6 +327,11 @@ export const sessionRoutes = {
         // only way this line is ever read is out of the database, in the
         // snapshot every screen gets when it connects.
         sessionEvents.record(created.id, SESSION_STARTED);
+        // And where the fight stands: HERO opens a combat in Segment 12, and a
+        // session is created sitting there. The clock announces every segment it
+        // is put at, this one included, so a log read back later never has a
+        // stretch of events belonging to a segment it never named.
+        sessionEvents.record(created.id, segmentBegan(created.turn, created.segment));
         return created;
       })();
       logger.info("session started", {
@@ -375,8 +409,13 @@ export const sessionRoutes = {
         if (campaign?.gm_id !== gm.id) throw errors.notFound("We couldn't find that character.");
 
         // A repeated PC comes back null and changes nothing, which is the same
-        // no-op the old ON CONFLICT gave and needs no complaint of its own.
+        // no-op the old ON CONFLICT gave and needs no complaint of its own —
+        // and nothing happened, so nothing is written down either.
         const slotId = sessionCharacters.add(session.id, character.id, character.kind);
+        if (slotId !== null) {
+          const staged = sceneName(session.id, slotId) ?? character.name;
+          sessionEvents.record(session.id, gmAddedToScene(staged));
+        }
         logger.info("character added to session", {
           sessionId: session.id,
           characterId: character.id,
@@ -392,9 +431,14 @@ export const sessionRoutes = {
     DELETE: handler(
       (request: BunRequest<"/api/sessions/:id/stage/:slotId">, { logger }: RequestContext) => {
         const { session } = requireOwnedActiveSession(request, request.params.id);
+        // Read before the delete, since afterwards there is no row to ask who
+        // was standing here. A slot that was never on this stage leaves nothing
+        // to say, and `remove` is a no-op for it in the same way.
+        const leaving = sceneName(session.id, request.params.slotId);
         // Also closes the gap in the initiative order, releases any claim on the
         // character that was here, and clears the turn marker if it pointed here.
         sessionCharacters.remove(session.id, request.params.slotId);
+        if (leaving) sessionEvents.record(session.id, gmRemovedFromScene(leaving));
         logger.info("character removed from session", {
           sessionId: session.id,
           slotId: request.params.slotId,
@@ -574,6 +618,11 @@ export const sessionRoutes = {
         const { session } = requireOwnedActiveSession(request, request.params.id);
 
         gameSessions.setTurn(session.id, null, 1, OPENING_SEGMENT);
+        // The same line a new session writes, because this is the same state:
+        // the fight is back at its opening segment with nobody yet up, and the
+        // events after this one belong to that segment rather than to whatever
+        // segment the log last named.
+        sessionEvents.record(session.id, segmentBegan(1, OPENING_SEGMENT));
         logger.info("turn restarted", { sessionId: session.id });
 
         return publish(session.id);

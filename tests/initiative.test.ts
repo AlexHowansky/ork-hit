@@ -8,7 +8,8 @@
  */
 
 import { beforeEach, describe, expect, test } from "bun:test";
-import { gameSessions, players, sessionCharacters } from "../src/db/queries.ts";
+import { gameSessions, players, sessionCharacters, sessionEvents } from "../src/db/queries.ts";
+import { segmentBegan } from "../src/server/events.ts";
 import { advanceTurn } from "../src/server/routes/sessions.ts";
 import {
   copiesOf,
@@ -258,6 +259,58 @@ describe("advancing the turn", () => {
     // Off the end of segment 12 and round to segment 1, which belongs to turn 2.
     next();
     expect(clock()).toEqual({ turn: 2, segment: 1, on: "Swift" });
+  });
+
+  test("a new segment is written to the log, and a step inside one is not", () => {
+    const log = () => sessionEvents.list(sessionId).map((event) => event.message);
+
+    // The first press opens the fight in the segment the clock already sat in,
+    // and the two after it walk Ace, Swift and Slow through that one segment.
+    // The marker moves and the clock does not, so the log says nothing — the
+    // opening segment was announced where the fight was put there, which for a
+    // real session is the transaction that created it and for this fixture is
+    // nowhere at all.
+    for (let i = 0; i < 3; i += 1) next();
+    expect(log()).toEqual([]);
+
+    // This one crosses into segment 1 — a new segment, and a new turn with it.
+    next();
+    expect(log()).toEqual([segmentBegan(2, 1)]);
+
+    // Every segment the walk lands in gets a line, including the ones it reaches
+    // by stepping over the empty ones between.
+    next();
+    next();
+    expect(log()).toEqual([segmentBegan(2, 1), segmentBegan(2, 2), segmentBegan(2, 3)]);
+
+    // Stepping back is the clock arriving somewhere too: `Previous` is how a
+    // game master corrects a click, and the log should show where the fight
+    // actually went rather than only where it went forwards.
+    prev();
+    expect(log()).toEqual([
+      segmentBegan(2, 1),
+      segmentBegan(2, 2),
+      segmentBegan(2, 3),
+      segmentBegan(2, 2),
+    ]);
+  });
+
+  test("a marker cleared mid-fight does not announce the segment twice", () => {
+    const log = () => sessionEvents.list(sessionId).map((event) => event.message);
+
+    // Into segment 3 of turn 2, then the character who is up walks off the
+    // stage, which is what clears the marker.
+    for (let i = 0; i < 6; i += 1) next();
+    const on = gameSessions.byId(sessionId)!.active_slot_id!;
+    sessionCharacters.remove(sessionId, on);
+    expect(gameSessions.byId(sessionId)!.active_slot_id).toBe(null);
+    const before = log();
+
+    // The next press picks the segment up where it was. The clock never left it,
+    // and it was announced on the way in, so it is not announced again.
+    next();
+    expect(gameSessions.byId(sessionId)!.segment).toBe(3);
+    expect(log()).toEqual(before);
   });
 
   test("only the characters whose SPD gives them a phase come up", () => {

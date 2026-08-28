@@ -159,7 +159,12 @@ async function playerIn(code: string, name: string, campaignName?: string): Prom
  * Matched on the shape of the heading rather than on its words, since the segment
  * in it changes as the fight walks the clock.
  */
-const stagePanel = (page: Page) => page.locator("section", { hasText: /Segment \d+/ });
+const stagePanel = (page: Page) =>
+  // Matched on the panel's own heading rather than on any text inside it: the
+  // log names segments too, now that the clock writes a line each time the fight
+  // reaches one, and a panel is what this wants rather than whatever mentions a
+  // segment.
+  page.locator("section").filter({ has: page.getByRole("heading", { name: /Segment \d+/ }) });
 
 /**
  * Waits for the panel to hold `count` characters.
@@ -234,7 +239,7 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
       await gm.getByRole("button", { name: "Next" }).click();
       await gm.waitForTimeout(120);
     }
-    await player.getByText("Turn 2").waitFor({ timeout: 5000 });
+    await player.getByText("Turn 2", { exact: true }).waitFor({ timeout: 5000 });
 
     // Removing an NPC takes it off the player's list.
     await gm.getByRole("listitem").filter({ hasText: "Strahd" })
@@ -391,14 +396,14 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
       await gm.getByRole("button", { name: "Next" }).click();
       await gm.waitForTimeout(120);
     }
-    await player.getByText("Turn 2").waitFor({ timeout: 5000 });
+    await player.getByText("Turn 2", { exact: true }).waitFor({ timeout: 5000 });
 
     // Restarting asks first, and backing out of the question changes nothing.
     await gm.getByRole("button", { name: "Restart" }).click();
     await gm.getByRole("dialog", { name: "Start over at turn 1?" })
       .getByRole("button", { name: "Cancel" }).click();
     await gm.waitForTimeout(200);
-    expect(await gm.getByText("Turn 2").count()).toBe(1);
+    expect(await gm.getByText("Turn 2", { exact: true }).count()).toBe(1);
 
     await gm.getByRole("button", { name: "Restart" }).click();
     await gm.getByRole("dialog", { name: "Start over at turn 1?" })
@@ -406,7 +411,7 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
 
     // Turn one, nobody up, and the player sees it without a refresh.
     await gm.getByText("No turn set yet").waitFor({ timeout: 5000 });
-    await player.getByText("Turn 1").waitFor({ timeout: 5000 });
+    await player.getByText("Turn 1", { exact: true }).waitFor({ timeout: 5000 });
     await player.getByText("No turn set yet").waitFor({ timeout: 5000 });
 
     // The stage is untouched: the same three are still in the scene.
@@ -416,7 +421,7 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     await gm.getByRole("button", { name: "Next" }).click();
     await gm.locator("p", { hasText: "Up now:" }).getByText("Elara")
       .waitFor({ timeout: 5000 });
-    expect(await gm.getByText("Turn 1").count()).toBe(1);
+    expect(await gm.getByText("Turn 1", { exact: true }).count()).toBe(1);
   }, 60_000);
 
   test("the player whose turn it is gets told", async () => {
