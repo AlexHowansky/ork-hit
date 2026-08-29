@@ -20,7 +20,7 @@
 
 import { createContext, useCallback, useContext, useState } from "react";
 import type { ReactNode } from "react";
-import { Button, Modal } from "./ui.tsx";
+import { Button, Modal, TEXT_MUTED } from "./ui.tsx";
 
 interface ConfirmOptions {
   /** The question itself, which is the dialog's heading. */
@@ -101,9 +101,9 @@ function ConfirmDialog({
   return (
     <Modal title={options.title} onClose={() => onAnswer(false)}>
       {options.body ? (
-        <p className="text-sm text-stone-600 dark:text-stone-400">{options.body}</p>
+        <p className={`text-sm ${TEXT_MUTED}`}>{options.body}</p>
       ) : null}
-      <div className={`flex justify-end gap-2 ${options.body ? "mt-5" : ""}`}>
+      <div className={`modal-action ${options.body ? "mt-5" : "mt-0"}`}>
         <Button type="button" onClick={() => onAnswer(false)}>
           Cancel
         </Button>

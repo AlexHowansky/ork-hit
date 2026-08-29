@@ -29,7 +29,6 @@ import {
   EmptyState,
   Icon,
   KindBadge,
-  TEXT_BODY,
   TEXT_MUTED,
 } from "./ui.tsx";
 import { Vitals, type VitalsPatch } from "./Vitals.tsx";
@@ -122,10 +121,10 @@ function Row({
       // takes them out of the list entirely for a reader who would rather that.
       className={`flex flex-col gap-1 border-l-4 px-3 py-2.5 ${
         isActive
-          ? "border-l-amber-500 bg-amber-50 dark:bg-amber-950/40"
+          ? "border-l-primary bg-primary/10"
           : isUnclaimed
-            ? "border-l-rose-400 bg-rose-50 hover:bg-rose-100 dark:border-l-rose-500/70 dark:bg-rose-950/40 dark:hover:bg-rose-950/60"
-            : "border-l-transparent hover:bg-stone-50 dark:hover:bg-stone-800/50"
+            ? "border-l-error bg-error/15 hover:bg-error/25"
+            : "border-l-transparent hover:bg-base-200"
       } ${isActing ? "" : "opacity-60"}`}
       aria-current={isActive ? "true" : undefined}
     >
@@ -139,7 +138,7 @@ function Row({
       */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
       <span
-        className="w-5 text-center text-xs tabular-nums text-stone-400 dark:text-stone-500"
+        className={`w-5 text-center text-xs tabular-nums ${TEXT_MUTED}`}
         aria-hidden="true"
       >
         {index + 1}
@@ -154,9 +153,9 @@ function Row({
           <span
             className={`max-w-full truncate ${
               isActive
-                ? "font-semibold text-stone-900 dark:text-stone-50"
+                ? "font-semibold text-base-content"
                 : isActing
-                  ? TEXT_BODY
+                  ? "text-base-content"
                   : TEXT_MUTED
             }`}
           >
@@ -168,12 +167,12 @@ function Row({
           ) : null}
           <KindBadge kind={character.kind} />
           {isActive ? (
-            <span className="rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-white uppercase dark:text-stone-950">
+            <span className="badge badge-xs badge-primary font-semibold tracking-wide uppercase">
               Turn
             </span>
           ) : null}
           {isUnclaimed ? (
-            <span className="rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-rose-800 uppercase dark:bg-rose-950 dark:text-rose-200">
+            <span className="badge badge-xs badge-error badge-soft font-semibold tracking-wide uppercase">
               Unclaimed
             </span>
           ) : null}
@@ -200,7 +199,10 @@ function Row({
           <p
             className={`mt-0.5 truncate text-xs ${
               isUnclaimed
-                ? "font-medium text-rose-700 dark:text-rose-300"
+                // Un-muted rather than coloured: the row's own error wash and
+                // the "Unclaimed" badge already carry the signal, and a caption
+                // drawn in a pale theme colour is the one that stops being read.
+                ? "font-medium text-base-content"
                 : TEXT_MUTED
             }`}
           >
@@ -219,7 +221,7 @@ function Row({
           <button
             type="button"
             onClick={onSetTurn}
-            className="rounded px-2 py-1 text-xs text-stone-600 hover:bg-stone-200 dark:text-stone-400 dark:hover:bg-stone-700"
+            className="btn btn-ghost btn-xs"
           >
             <Icon icon={faPlay} /> Go now
           </button>
@@ -228,7 +230,7 @@ function Row({
           <button
             type="button"
             onClick={onRemove}
-            className="rounded px-2 py-1 text-xs text-red-600 hover:bg-red-100 dark:text-red-400 dark:hover:bg-red-950"
+            className="btn btn-soft btn-error btn-xs"
             aria-label={`Remove ${copyLabel} from the session`}
           >
             <Icon icon={faUserMinus} /> Remove
@@ -365,5 +367,5 @@ export function InitiativeList({
     return <EmptyState>Nobody acts in segment {segment}.</EmptyState>;
   }
 
-  return <ul className="divide-y divide-stone-100 dark:divide-stone-800">{rows}</ul>;
+  return <ul className="divide-y divide-base-200">{rows}</ul>;
 }

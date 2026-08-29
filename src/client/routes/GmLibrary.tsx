@@ -29,10 +29,8 @@ import { ThemeToggle } from "../components/ThemeToggle.tsx";
 import {
   AppPage,
   Button,
-  CardActions,
   CardPicture,
   CardWell,
-  CARD_BASE,
   CARD_CAPTION,
   CARD_GRID,
   CARD_NAME,
@@ -43,9 +41,8 @@ import {
   Field,
   FIELD_CAPTION,
   FileDrop,
-  FILE_INPUT,
-  FORM_CONTROL,
   HAIRLINE,
+  HoverCard,
   Icon,
   IconButton,
   LoadingNote,
@@ -53,7 +50,6 @@ import {
   Panel,
   SheetIcon,
   TEXT_MUTED,
-  TEXT_STRONG,
   useDropTarget,
   useFileDropTarget,
 } from "../components/ui.tsx";
@@ -111,7 +107,7 @@ function CampaignForm({
           type="file"
           name="background"
           accept="image/png,image/jpeg,image/gif,image/webp"
-          className={FILE_INPUT}
+          className="file-input file-input-sm w-full"
         />
       </label>
       {campaign?.backgroundUrl ? (
@@ -142,7 +138,7 @@ function StatLabel({ field }: { field: HeroStatField }) {
   return (
     <span className="inline-flex items-center gap-1">
       {label}
-      <Icon icon={faCircleInfo} className="h-3 w-3 text-stone-400 dark:text-stone-500" />
+      <Icon icon={faCircleInfo} className={`h-3 w-3 ${TEXT_MUTED}`} />
     </span>
   );
 }
@@ -225,7 +221,7 @@ function CharacterForm({
 
       <label className="block">
         <span className={FIELD_CAPTION}>Type</span>
-        <select name="kind" defaultValue={character?.kind ?? "pc"} className={FORM_CONTROL}>
+        <select name="kind" defaultValue={character?.kind ?? "pc"} className="select w-full">
           <option value="pc">Player character</option>
           <option value="npc">Non-player character</option>
         </select>
@@ -237,7 +233,7 @@ function CharacterForm({
           name="campaignId"
           defaultValue={character?.campaignId ?? defaultCampaignId}
           required
-          className={FORM_CONTROL}
+          className="select w-full"
         >
           {campaigns.map((campaign) => (
             <option key={campaign.id} value={campaign.id}>
@@ -312,7 +308,7 @@ function SessionRow({
 
   return (
     <div className="flex items-center justify-between gap-3">
-      <span className="text-sm text-stone-700 dark:text-stone-300">
+      <span className="text-sm">
         {session.campaignName}
         <span className={`ml-2 text-xs ${TEXT_MUTED}`}>
           turn {turn} ·{" "}
@@ -368,27 +364,27 @@ function CampaignCard({
   const inviting = over && takes !== null;
 
   return (
-    <article
+    // The picture used to carry a full-bleed button of its own; `HoverCard`'s
+    // zones sit over it, so the whole card is the select control instead. The
+    // ring stays out on the frame rather than on the tile: it is the answer to
+    // "may this campaign take what you are dragging", which is about the slot the
+    // card sits in rather than about the card, and `tests/e2e.test.ts` reads it
+    // off the `<article>`.
+    <HoverCard
       {...(takes ? dropProps : {})}
-      className={`${CARD_BASE} ${
+      label={`Select ${campaign.name}`}
+      onClick={onSelect}
+      pressed={selected}
+      className={
         inviting
-          ? "border-amber-500 ring-2 ring-amber-500 ring-offset-2 ring-offset-stone-100 dark:ring-offset-stone-950"
+          ? "rounded-xl ring-2 ring-primary ring-offset-2 ring-offset-base-200"
           : selected
-            ? "border-amber-500 ring-2 ring-amber-500/30"
-            : HAIRLINE
-      } bg-white dark:bg-stone-900`}
-    >
-      <CardWell>
-        <button
-          type="button"
-          onClick={onSelect}
-          className="absolute inset-0 h-full w-full text-left"
-          aria-pressed={selected}
-          aria-label={`Select ${campaign.name}`}
-        >
-          <CardPicture src={campaign.backgroundUrl} icon={faScroll} draggable={false} />
-        </button>
-        <CardActions>
+            ? "rounded-xl ring-2 ring-primary/30"
+            : ""
+      }
+      cardClassName={`${inviting || selected ? "border-primary" : HAIRLINE} bg-base-100`}
+      actions={
+        <>
           <IconButton label={`Edit ${campaign.name}`} icon={<EditIcon />} onClick={onEdit} />
           <IconButton
             label={`Delete ${campaign.name}`}
@@ -396,13 +392,17 @@ function CampaignCard({
             danger
             onClick={onDelete}
           />
-        </CardActions>
+        </>
+      }
+    >
+      <CardWell>
+        <CardPicture src={campaign.backgroundUrl} icon={faScroll} draggable={false} />
       </CardWell>
 
       <div className={CARD_CAPTION}>
         <h3 className={CARD_NAME}>{campaign.name}</h3>
       </div>
-    </article>
+    </HoverCard>
   );
 }
 
@@ -608,7 +608,7 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
     <AppPage>
       <header className="flex shrink-0 flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className={`text-xl font-semibold ${TEXT_STRONG}`}>Your library</h1>
+          <h1 className="text-xl font-semibold">Your library</h1>
           <p className={`text-sm ${TEXT_MUTED}`}>Signed in as {email}</p>
         </div>
         <div className="flex items-center gap-2">
@@ -677,9 +677,9 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
             scroll
             {...sheetDrop}
             // A ring rather than a border or a background tint: those would fight
-            // the panel's own `border-stone-200` and `bg-white` for the same
+            // the panel's own `border-base-300` and `bg-base-100` for the same
             // property, and which wins is down to stylesheet order.
-            className={sheetOver ? "ring-2 ring-amber-500" : ""}
+            className={sheetOver ? "ring-2 ring-primary" : ""}
             title={`Characters in ${selectedCampaign.name}`}
             actions={
               <div className="flex gap-2">

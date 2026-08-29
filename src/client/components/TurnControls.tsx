@@ -14,7 +14,7 @@
 
 import { useEffect } from "react";
 import { faArrowLeft, faArrowRight, faRotateLeft } from "@fortawesome/free-solid-svg-icons";
-import { Button, Icon, PANEL_CAPTION, SURFACE, TEXT_BODY, TEXT_MUTED } from "./ui.tsx";
+import { Button, Icon, PANEL_CAPTION, SURFACE, TEXT_MUTED } from "./ui.tsx";
 
 export function TurnControls({
   turn,
@@ -59,11 +59,15 @@ export function TurnControls({
 
   return (
     <div
-      className={`flex flex-wrap items-center justify-between gap-3 px-4 py-3 ${SURFACE} ${className}`}
+      // `flex-row` explicitly: `SURFACE` is daisyUI's `card`, which is a flex
+      // *column*, and `flex` alone would leave that direction in place — the
+      // counter and the buttons would stack up the middle instead of sitting at
+      // either end of the bar.
+      className={`flex flex-row flex-wrap items-center justify-between gap-3 px-4 py-3 ${SURFACE} ${className}`}
     >
       <div>
         <p className={`text-xs ${PANEL_CAPTION}`}>Turn {turn}</p>
-        <p className={`mt-0.5 text-sm ${TEXT_BODY}`} aria-live="polite">
+        <p className="mt-0.5 text-sm" aria-live="polite">
           {activeCharacterName ? (
             <>
               <span className={TEXT_MUTED}>Up now: </span>

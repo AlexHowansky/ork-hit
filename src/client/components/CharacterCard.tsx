@@ -1,15 +1,14 @@
 /** A character in the library, presented as a card with its background image. */
 
-import type { HTMLAttributes } from "react";
+import type { HTMLAttributes, ReactNode } from "react";
 import { faDragon, faShieldHalved } from "@fortawesome/free-solid-svg-icons";
 import type { Character } from "../types.ts";
 import {
-  CARD_BASE,
   CARD_CAPTION,
   CARD_NAME,
-  CardActions,
   CardPicture,
   CardWell,
+  HoverCard,
   KindBadge,
 } from "./ui.tsx";
 
@@ -20,15 +19,23 @@ export function CharacterCard({
   dragProps,
 }: {
   character: Character;
-  actions?: React.ReactNode;
+  actions?: ReactNode;
   onOpen?: () => void;
   /** Makes the card something that can be picked up — see `GmLibrary`. */
   dragProps?: HTMLAttributes<HTMLElement> & { draggable?: boolean };
 }) {
   return (
-    <article
+    // The whole card opens the character, rather than the name under it doing so:
+    // `HoverCard`'s zones cover the name, and the card's one obvious action is
+    // better as the card than as a word inside it. The label is the character's
+    // name alone, since the name it would otherwise take is everything printed on
+    // the tile — the kind badge included.
+    <HoverCard
       {...dragProps}
-      className={`${CARD_BASE} border-stone-200 bg-white dark:border-stone-800 dark:bg-stone-900`}
+      label={onOpen ? character.name : undefined}
+      onClick={onOpen}
+      actions={actions}
+      cardClassName="border-base-300 bg-base-100"
     >
       <CardWell>
         <CardPicture
@@ -39,22 +46,11 @@ export function CharacterCard({
         <div className="absolute top-2 left-2">
           <KindBadge kind={character.kind} />
         </div>
-        {actions ? <CardActions>{actions}</CardActions> : null}
       </CardWell>
 
       <div className={CARD_CAPTION}>
-        {onOpen ? (
-          <button
-            type="button"
-            onClick={onOpen}
-            className={`block w-full text-left hover:underline ${CARD_NAME}`}
-          >
-            {character.name}
-          </button>
-        ) : (
-          <h3 className={CARD_NAME}>{character.name}</h3>
-        )}
+        <h3 className={CARD_NAME}>{character.name}</h3>
       </div>
-    </article>
+    </HoverCard>
   );
 }

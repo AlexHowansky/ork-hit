@@ -10,9 +10,14 @@ document explains the requirements that must be adhered to.
 
 * Use SQLite for local storage.
 
-* Use Tailwind for styling. Always offer light and dark mode for visual
-  elements. Every page carries the light/dark/system control, so the choice can
-  be made or changed wherever the reader happens to be.
+* Use Tailwind for styling, with daisyUI on top of it for components and for
+  colour. Every colour in the app is one of daisyUI's semantic tokens —
+  `base-100`, `base-content`, `primary`, `error` and their neighbours — resolved
+  by whichever theme is active; nothing names a palette shade of its own, and
+  nothing carries a hand-written dark-mode twin. Always offer light and dark
+  mode for visual elements: daisyUI's stock `winter` and `night`. Every page
+  carries the light/dark/system control, so the choice can be made or changed
+  wherever the reader happens to be.
 
 * Make good use of the screen. A page always takes the full width of the window
   it is in: never a centred column with empty glass either side of it, and never
@@ -42,7 +47,13 @@ document explains the requirements that must be adhered to.
   Cards must come out the same size as each other whatever the length of the name
   they carry, and in every library. They must show a clear highlight when
   hovered, and give the same feedback to anyone arriving by keyboard rather than
-  mouse.
+  mouse. A card tilts towards the pointer as it is hovered, so it reads as an
+  object being handled rather than a picture on a page — but a reader who has
+  asked for less motion is not tilted at, and keeps the highlight on its own.
+
+* Pressing a card anywhere does the card's own thing: selecting a campaign,
+  opening a character. Its corner controls stay reachable over the top of that,
+  and remain reachable however the card is animated.
 
 * Icons come from one published set rather than being drawn per control or typed
   as text symbols, so they match each other and render the same everywhere. An

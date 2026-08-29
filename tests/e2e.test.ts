@@ -804,9 +804,13 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
 
     // The picture is what the setting measures, so the picture is what is
     // measured here: the square image well of a card, in CSS pixels.
-    // The select button fills the card's image well exactly, so its box is the
-    // picture's box.
-    const well = gm.getByRole("button", { name: `Select ${campaignName}` });
+    // The well is found by its own shape rather than through a control inside it.
+    // It used to hold a full-bleed select button whose box was the picture's box,
+    // but the card tilts now (`HoverCard`) and the whole card is the select
+    // control, so that button's box is the card's.
+    const well = gm
+      .locator(`article:has(button[aria-label="Select ${campaignName}"]) .aspect-square`)
+      .first();
     const box = (await well.boundingBox())!;
 
     expect(Math.round(box.width)).toBe(config.cardImagePx);

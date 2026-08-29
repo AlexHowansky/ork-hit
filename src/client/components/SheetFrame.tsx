@@ -70,7 +70,7 @@ export function SheetOverlay({
 
   return (
     <div
-      className="fixed inset-0 z-40 flex items-center justify-center bg-black/50"
+      className="modal modal-open"
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
@@ -79,7 +79,7 @@ export function SheetOverlay({
         role="dialog"
         aria-modal="true"
         aria-label={`${title} character sheet`}
-        className="h-[calc(var(--sheet-size)*1dvh)] w-[calc(var(--sheet-size)*1dvw)] overflow-hidden bg-white dark:bg-stone-900"
+        className="h-[calc(var(--sheet-size)*1dvh)] w-[calc(var(--sheet-size)*1dvw)] overflow-hidden bg-base-100"
       >
         <SheetFrame src={src} title={title} />
       </div>

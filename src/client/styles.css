@@ -3,23 +3,24 @@
 /*
   Theme.
 
-  Light is the default. Dark applies either when the reader's system asks for it,
-  or when they have explicitly chosen it with the toggle. An explicit choice is
-  recorded as `data-theme` on <html> and always wins over the system preference,
-  which is why the media query excludes an explicit light choice.
+  Colour is daisyUI's, not ours. Two of its stock themes are enabled — `winter`
+  for light and `night` for dark — and every component is written against the
+  semantic tokens they define (`base-100`, `base-content`, `primary`, `error`,
+  and so on) rather than against a palette. Nothing in this app names a colour.
 
-  Because the system preference is handled in CSS rather than JavaScript, the
+  The three states a reader can be in are all handled here:
+
+  - `winter --default` applies at `:root`, so it is what an untouched page gets.
+  - `night --prefersdark` applies under `prefers-color-scheme: dark` when no
+    `data-theme` attribute is set, which is the "follow the system" state.
+  - An explicit choice writes `data-theme="winter"` or `data-theme="night"` onto
+    <html> (see `theme.ts`) and wins over both.
+
+  Because the system preference is resolved in CSS rather than JavaScript, the
   first paint is already correct for most readers with no script involved.
 */
-@custom-variant dark {
-  &:where([data-theme="dark"], [data-theme="dark"] *) {
-    @slot;
-  }
-  @media (prefers-color-scheme: dark) {
-    &:where(:root:not([data-theme="light"]) *, :root:not([data-theme="light"])) {
-      @slot;
-    }
-  }
+@plugin "daisyui" {
+  themes: winter --default, night --prefersdark;
 }
 
 /*
@@ -88,37 +89,26 @@
   --sheet-size: 90;
 }
 
-:root {
-  color-scheme: light;
-}
+/*
+  The page's ground.
 
-:root[data-theme="dark"] {
-  color-scheme: dark;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    color-scheme: dark;
-  }
+  daisyUI paints the root `base-100`, which is the colour of a panel — so the
+  panels would have no ground to sit on. A step down to `base-200` is what puts
+  them on something. Set on the root as well as on the body so an overscroll past
+  the end of a short page shows the same colour rather than the panel's.
+*/
+:root,
+body {
+  @apply bg-base-200;
 }
 
 body {
-  @apply bg-stone-100 text-stone-900 antialiased;
-}
-
-:root[data-theme="dark"] body {
-  @apply bg-stone-950 text-stone-100;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) body {
-    @apply bg-stone-950 text-stone-100;
-  }
+  @apply min-h-dvh text-base-content antialiased;
 }
 
 /* A visible focus ring everywhere, since much of this app is driven by keyboard. */
 :focus-visible {
-  @apply outline-2 outline-offset-2 outline-amber-600;
+  @apply outline-2 outline-offset-2 outline-primary;
 }
 
 /* Respect a reader who has asked for less motion; the drag list animates a lot. */
@@ -128,5 +118,23 @@ body {
   *::after {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
+  }
+
+  /*
+    Zeroing the durations above is not enough for the cards: `hover-3d` tilts and
+    scales them on hover, and with no duration to run over that becomes a snap
+    from flat to tilted and back, which is a worse thing to put in front of
+    somebody who asked for less movement than the slide was. So the card simply
+    does not move for them. The hover and focus border in `CARD_BASE` still says
+    which card the pointer is on.
+
+    Written unlayered, on purpose: daisyUI's rules live in a sublayer of
+    `@layer utilities`, and an unlayered author rule beats every layered one
+    whatever its specificity.
+  */
+  .hover-3d > :first-child,
+  .hover-3d:hover > :first-child {
+    transform: none;
+    scale: 1;
   }
 }

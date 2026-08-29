@@ -34,7 +34,7 @@ import {
   STATUS_TAGS,
   type StatusTag,
 } from "../../lib/hero.ts";
-import { Button, Field, HAIRLINE, Icon, Modal, PANEL_CAPTION } from "./ui.tsx";
+import { Button, Field, HAIRLINE, Icon, Modal, PANEL_CAPTION, TEXT_MUTED } from "./ui.tsx";
 import type { SessionCharacter } from "../types.ts";
 
 /**
@@ -86,7 +86,7 @@ export function StatusTagPills({ tags }: { tags: string[] }) {
           <span
             key={tag}
             title={hint ? `${label} — ${hint}` : label}
-            className="inline-flex max-w-32 items-center gap-1 rounded bg-amber-200 px-1.5 py-0.5 text-[10px] font-semibold text-amber-950 dark:bg-amber-800 dark:text-amber-50"
+            className="badge badge-xs badge-primary badge-soft max-w-32 gap-1 font-semibold"
           >
             <Icon icon={icon} className="h-3 w-3" />
             {isKnownTag(tag) ? <span className="sr-only">{label}</span> : (
@@ -118,11 +118,7 @@ function TagToggle({
       onClick={() => onToggle(!on)}
       // Pressed is a filled background as well as a colour, so the state is not
       // carried by hue alone.
-      className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium ${
-        on
-          ? "bg-amber-500 text-white hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500"
-          : "bg-stone-100 text-stone-700 hover:bg-stone-200 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-stone-700"
-      }`}
+      className={`btn justify-start gap-2 ${on ? "btn-primary" : ""}`}
     >
       <Icon icon={icon} />
       <span className="truncate">{label}</span>
@@ -222,7 +218,7 @@ export function StatusTagButton({ character, onOpen }: {
       onPointerDown={(event) => event.stopPropagation()}
       title={`Set ${character.name}'s status`}
       aria-label={`Set ${character.name}'s status`}
-      className="flex h-6 w-6 items-center justify-center rounded text-stone-500 hover:bg-stone-200 hover:text-stone-800 dark:text-stone-400 dark:hover:bg-stone-700 dark:hover:text-stone-100"
+      className={`btn btn-ghost btn-square btn-xs ${TEXT_MUTED}`}
     >
       <Icon icon={faTag} />
     </button>

@@ -5,11 +5,20 @@
  * default and is handled entirely in CSS, so a reader who never touches the
  * toggle gets a correct first paint with no script involved. An explicit choice
  * is written to <html data-theme> and remembered in localStorage.
+ *
+ * What is stored is the preference — "light" or "dark" — and what is written to
+ * the attribute is the daisyUI theme that realises it. The two are kept apart
+ * deliberately: `THEMES` is the only place in the app that knows which stock
+ * themes we have chosen, so swapping `winter` for another light theme is a
+ * one-line change that leaves every reader's stored preference intact.
  */
 
 export type ThemePreference = "system" | "light" | "dark";
 
 const STORAGE_KEY = "ttrpg.theme";
+
+/** The daisyUI theme each explicit preference selects. See `styles.css`. */
+const THEMES = { light: "winter", dark: "night" } as const;
 
 function isPreference(value: unknown): value is ThemePreference {
   return value === "system" || value === "light" || value === "dark";
@@ -27,8 +36,11 @@ export function readPreference(): ThemePreference {
 
 export function applyPreference(preference: ThemePreference): void {
   const root = document.documentElement;
+  // No attribute at all is the "follow the system" state: with nothing set, the
+  // `--prefersdark` theme takes over inside a dark media query and the default
+  // one applies otherwise.
   if (preference === "system") root.removeAttribute("data-theme");
-  else root.setAttribute("data-theme", preference);
+  else root.setAttribute("data-theme", THEMES[preference]);
 
   try {
     if (preference === "system") localStorage.removeItem(STORAGE_KEY);
@@ -41,5 +53,5 @@ export function applyPreference(preference: ThemePreference): void {
 /** Applied before React renders, so a stored choice doesn't flash the other theme. */
 export function initTheme(): void {
   const preference = readPreference();
-  if (preference !== "system") document.documentElement.setAttribute("data-theme", preference);
+  if (preference !== "system") document.documentElement.setAttribute("data-theme", THEMES[preference]);
 }

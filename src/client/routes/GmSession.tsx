@@ -22,9 +22,7 @@ import {
   KindBadge,
   LoadingNote,
   Panel,
-  TEXT_BODY,
   TEXT_MUTED,
-  TEXT_STRONG,
 } from "../components/ui.tsx";
 import {
   faBook,
@@ -294,7 +292,7 @@ export function GmSessionConsole({ onSignOut }: { onSignOut: () => void }) {
   const invite = (
     <Panel className="order-first sm:order-none">
       <div className="flex flex-wrap items-center gap-3">
-        <code className="rounded-lg bg-stone-100 px-3 py-2 font-mono text-sm tracking-wider text-stone-900 dark:bg-stone-800 dark:text-stone-100">
+        <code className="rounded-lg bg-base-200 px-3 py-2 font-mono text-sm tracking-wider">
           {session.code}
         </code>
         <CopyButton value={session.code} label="Code" icon={faCopy} />
@@ -324,13 +322,13 @@ export function GmSessionConsole({ onSignOut }: { onSignOut: () => void }) {
           </Button>
         </div>
 
-        <h1 className={`truncate text-center text-xl font-semibold ${TEXT_STRONG}`}>
+        <h1 className="truncate text-center text-xl font-semibold">
           {session.campaignName}
         </h1>
 
         <div className="flex flex-wrap items-center justify-end gap-2 justify-self-end">
           {connection === "reconnecting" ? (
-            <span className="text-xs text-amber-700 dark:text-amber-400">Reconnecting…</span>
+            <span className="badge badge-sm badge-warning badge-soft">Reconnecting…</span>
           ) : null}
           <ThemeToggle />
           {/* Signing out is about this browser, not about the table: the session
@@ -428,7 +426,7 @@ export function GmSessionConsole({ onSignOut }: { onSignOut: () => void }) {
 
           <Panel title={`Players (${snapshot?.players.length ?? 0})`} scroll>
             {snapshot && snapshot.players.length > 0 ? (
-              <ul className="divide-y divide-stone-100 dark:divide-stone-800">
+              <ul className="divide-y divide-base-200">
                 {snapshot.players.map((player) => {
                   const claimed = snapshot.characters.find(
                     (character) => character.characterId === player.claimedCharacterId,
@@ -436,7 +434,7 @@ export function GmSessionConsole({ onSignOut }: { onSignOut: () => void }) {
                   return (
                     <li key={player.id} className="flex items-center gap-3 py-2.5">
                       <div className="min-w-0 flex-1">
-                        <p className={`truncate font-medium ${TEXT_STRONG}`}>{player.name}</p>
+                        <p className="truncate font-medium">{player.name}</p>
                         <p className={`truncate text-xs ${TEXT_MUTED}`}>
                           {claimed ? `Playing ${claimed.name}` : "No character chosen yet"}
                         </p>
@@ -447,7 +445,7 @@ export function GmSessionConsole({ onSignOut }: { onSignOut: () => void }) {
                           void setClaim(player.id, event.target.value || null)
                         }
                         aria-label={`Character played by ${player.name}`}
-                        className="rounded-md border border-stone-300 bg-white px-2 py-1 text-xs dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100"
+                        className="select select-xs w-auto"
                       >
                         <option value="">— none —</option>
                         {playerCharacters.map((character) => (
@@ -500,8 +498,8 @@ export function GmSessionConsole({ onSignOut }: { onSignOut: () => void }) {
                       index === 0
                         ? ""
                         : opensTheOffStageBlock(index)
-                          ? "border-t-2 border-stone-400 dark:border-stone-500"
-                          : "border-t border-stone-100 dark:border-stone-800"
+                          ? "border-t-2 border-base-content/30"
+                          : "border-t border-base-200"
                     }`}
                   >
                     {/*
@@ -526,7 +524,7 @@ export function GmSessionConsole({ onSignOut }: { onSignOut: () => void }) {
                         kind={character.kind}
                         backgroundUrl={character.backgroundUrl}
                       />
-                      <span className={`flex-1 truncate text-sm ${TEXT_BODY}`}>
+                      <span className="flex-1 truncate text-sm">
                         {character.name}
                       </span>
                       {/* How many of this one are out there already. Only monsters

@@ -33,7 +33,7 @@ import {
   Icon,
   Modal,
   PANEL_CAPTION,
-  TEXT_STRONG,
+  TEXT_MUTED,
 } from "./ui.tsx";
 import {
   HERO_STAT_LABELS,
@@ -64,18 +64,20 @@ export type VitalsPatch = Partial<Record<HeroVitalField, number>>;
  * gauge gives, so a game master glancing down the initiative order sees who is
  * in trouble without reading a single number. `bandFor` decides which is which.
  *
- * Border, number and a faint wash together, because the boxes are small: a
- * border alone at this size is a hairline. The number is always there to read,
- * which is what a reader who cannot separate red from green goes by, and the
- * wash stays faint enough to keep it legible in both themes.
+ * Border and a faint wash together, because the boxes are small: a border alone
+ * at this size is a hairline. The number itself deliberately stays
+ * `base-content` rather than taking the band's colour — daisyUI's `error`,
+ * `warning` and `success` are pale by design, meant to be washed behind text or
+ * filled behind their own `-content` pair, and a number drawn in one of them on
+ * a light theme is barely there. The number is what a reader who cannot separate
+ * red from green goes by, so it is the one part that must stay readable.
  */
 const TONES: Record<VitalBand, string> = {
-  low: "border-rose-400 bg-rose-50 text-rose-900 dark:border-rose-500/70 dark:bg-rose-950/50 dark:text-rose-100",
-  middling:
-    "border-amber-400 bg-amber-50 text-amber-900 dark:border-amber-500/70 dark:bg-amber-950/50 dark:text-amber-100",
-  full: "border-emerald-400 bg-emerald-50 text-emerald-900 dark:border-emerald-500/70 dark:bg-emerald-950/50 dark:text-emerald-100",
+  low: "border-error bg-error/25",
+  middling: "border-warning bg-warning/25",
+  full: "border-success bg-success/25",
   // No total is no reading, rather than a good one or a bad one.
-  unknown: "border-stone-300 bg-white text-stone-900 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100",
+  unknown: "border-base-300 bg-base-100",
 };
 
 const toneFor = (current: number, max: number) => TONES[bandFor(current, max)];
@@ -123,10 +125,8 @@ function DeltaPicker({
           key={step}
           type="button"
           onClick={() => onPick(sign * step)}
-          className={`rounded py-1 text-xs font-medium tabular-nums ${
-            sign < 0
-              ? "bg-rose-50 text-rose-900 hover:bg-rose-200 dark:bg-rose-950/50 dark:text-rose-100 dark:hover:bg-rose-900"
-              : "bg-emerald-50 text-emerald-900 hover:bg-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-100 dark:hover:bg-emerald-900"
+          className={`btn btn-soft btn-xs h-auto min-h-0 px-0 py-1 font-medium tabular-nums ${
+            sign < 0 ? "btn-error" : "btn-success"
           }`}
         >
           {sign < 0 ? "−" : "+"}
@@ -138,8 +138,8 @@ function DeltaPicker({
 
   return (
     <Modal title={`${label} — ${name}`} onClose={onClose}>
-      <p className="mb-4 text-sm text-stone-600 dark:text-stone-400">
-        <span className={`font-semibold tabular-nums ${TEXT_STRONG}`}>{current}</span>
+      <p className={`mb-4 text-sm ${TEXT_MUTED}`}>
+        <span className="font-semibold tabular-nums">{current}</span>
         {max > 0 ? <span className="tabular-nums"> of {max}</span> : null}. Choose how much to
         take or recover.
       </p>
@@ -219,7 +219,7 @@ function Box({
             // A row in the initiative order is draggable, and a press here is a
             // press rather than the start of a drag.
             onPointerDown={(event) => event.stopPropagation()}
-            className={`${shared} cursor-pointer hover:brightness-95 dark:hover:brightness-125`}
+            className={`${shared} cursor-pointer hover:opacity-80`}
           >
             {current}
           </button>
@@ -244,7 +244,7 @@ function Box({
       ) : (
         <span className={shared}>{current}</span>
       )}
-      <span className="text-xs tabular-nums text-stone-400 dark:text-stone-500">/{max}</span>
+      <span className={`text-xs tabular-nums ${TEXT_MUTED}`}>/{max}</span>
     </div>
   );
 }
@@ -271,7 +271,7 @@ function VitalAction({ icon, label, title, onClick }: {
       onPointerDown={(event) => event.stopPropagation()}
       title={title}
       aria-label={label}
-      className="flex h-6 w-6 items-center justify-center rounded text-stone-500 hover:bg-stone-200 hover:text-stone-800 dark:text-stone-400 dark:hover:bg-stone-700 dark:hover:text-stone-100"
+      className={`btn btn-ghost btn-square btn-xs ${TEXT_MUTED}`}
     >
       <Icon icon={icon} />
     </button>

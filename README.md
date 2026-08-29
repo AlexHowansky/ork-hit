@@ -6,8 +6,8 @@ code, claim a character, and watch the table update live — who is in the scene
 what order they act in, whose turn it is, and which characters nobody has
 claimed yet.
 
-Built on Bun 1.4, SQLite, React 19 and Tailwind v4. One process, one database
-file, no external services.
+Built on Bun 1.4, SQLite, React 19, Tailwind v4 and daisyUI 5. One process, one
+database file, no external services.
 
 ## Getting started
 
@@ -183,14 +183,15 @@ turn controls kept their words — the icon replaced the arrow beside `Previous`
 not the label. The free icons are CC BY 4.0, © Fonticons, Inc.
 
 **A destructive control in a list is a variant, not a red `className`.** `Button`'s
-`dangerGhost` (`src/client/components/ui.tsx`) is the quiet form of `danger`: red
-text, no fill, for "End session" in the library's list and "Kick" in the players
-panel, where one filled red button per row would drown the row it belongs to. It
-exists as a variant because the obvious shortcut — `variant="ghost"` with a red
-`className` — silently does not work: both set `color`, and which utility wins is
-decided by the order Tailwind emits them in rather than by the order the caller
-wrote them, so those buttons rendered stone grey. The same hazard the drop-target
-ring avoids, in a different property.
+`dangerGhost` (`src/client/components/ui.tsx`) is the quiet form of `danger`:
+daisyUI's `btn-soft btn-error`, a faint red wash rather than a fill, for "End
+session" in the library's list and "Kick" in the players panel, where one filled
+red button per row would drown the row it belongs to. It exists as a variant
+because the obvious shortcut — `variant="ghost"` with a red `className` —
+silently does not work: both set `color`, and which utility wins is decided by
+the order Tailwind emits them in rather than by the order the caller wrote them,
+so those buttons rendered grey. The same hazard the drop-target ring avoids, in a
+different property.
 
 **Nothing is deleted out from under a running session.** A character on the stage
 of a live session cannot be deleted; `DELETE /api/characters/:id` answers 409 and
@@ -290,28 +291,110 @@ tooltip and in an `sr-only` span, since a row already carries a name, a kind, a
 count and four characteristics.
 
 **Card styling is shared.** The campaign and character grids are different
-components, so their shape and hover treatment live in one place — `CARD_BASE`
-in `src/client/components/ui.tsx` — and the player's character picker is built
-from the same two, so a player sees the shape the game master saw. The picture is
-the square, not the card: the
-image well is a full-width square, the card's controls ride on the picture as
-icons in its lower right corner (`CardActions` and `IconButton`) — edit, delete,
-and on a character card one that opens its sheet — and the name sits under it on
-its own. That keeps the card mostly picture, and since every caption is built
-the same way a row still lines up whatever the names are. An icon button always
-carries a label — it is the tooltip and the only thing a screen reader has to go
-on. Every hover rule is paired with a `focus-within` one,
-because a card is a box of buttons and a keyboard user would otherwise get no
-feedback at all.
+components, so their shape lives in one place — `CARD_BASE` in
+`src/client/components/ui.tsx` — and the player's character picker is built from
+the same two, so a player sees the shape the game master saw. The picture is the
+square, not the card: the image well is a full-width square, the card's controls
+ride on the picture as icons in its lower right corner (`IconButton`) — edit,
+delete, and on a character card one that opens its sheet — and the name sits
+under it on its own. That keeps the card mostly picture, and since every caption
+is built the same way a row still lines up whatever the names are. An icon button
+always carries a label — it is the tooltip and the only thing a screen reader has
+to go on. Every hover rule is paired with a `focus-within` one, because a card is
+a box of buttons and a keyboard user would otherwise get no feedback at all.
 
-**And so are the colours and shapes the screens repeat.** `ui.tsx` names them
-once — `TEXT_MUTED`, `TEXT_STRONG`, `SURFACE`, `HAIRLINE`, `FIELD_CAPTION` and
-their neighbours — and the pieces of markup that repeat are small components
-beside them: `CardWell` and `CardPicture` for a card's square picture,
-`CountBadge` for "how many of this one", `LoadingNote` for a screen with nothing
-to show yet. Before that, `text-stone-500 dark:text-stone-400` alone was written
-out in eighteen places, and a change to the muted colour meant finding all
-eighteen.
+**A card tilts towards the pointer, and that decides its markup.** `HoverCard`
+(`ui.tsx`) wraps daisyUI's `hover-3d`, which is a three-by-three grid of exactly
+nine children: the first spans the whole grid and is what tilts, and the other
+eight are empty divs occupying the cells around the middle. Those eight sit
+*above* the content at `z-index: 1` and exist only to be hovered — which corner
+the pointer is in is read back with `:has()` and turned into the rotation. They
+therefore swallow every pointer event over the card, and daisyUI says outright
+that buttons must not go inside the wrapper. Every card here is a box of buttons,
+so both of the ways out are in `HoverCard`:
+
+* **The card's own click target is the wrapper.** A press on a zone bubbles up to
+  the `<button>` containing it, so the whole card is pressable while the zones
+  keep working — daisyUI's own advice, "wrap the entire component in a link". It
+  is why `label` is required beside `onClick`: left to compute its own name, the
+  button would be called after everything printed on the tile, kind badge
+  included, and `tests/e2e.test.ts` looks a character up by its name exactly.
+  This is also what retired the two full-bleed buttons that used to cover a
+  card's picture — selecting a campaign, and opening a character — since the card
+  itself is now the control.
+* **The corner controls are a tenth child.** `hover-3d` only ever names
+  `:first-child` and `:nth-child(2)` through `:nth-child(9)`, so a tenth is
+  untouched by it and free to sit above the zones. It is laid out as a square over
+  the picture rather than pinned to the card's bottom, so it lands in the same
+  place whatever height the name below it needs, and the box passes the pointer
+  through with only the buttons taking it back — otherwise it would blank out the
+  tilt across the whole picture. The controls stay flat while the picture tilts
+  under them, which reads as chrome on top of the card rather than part of its
+  face.
+
+Two consequences worth knowing before editing `CARD_BASE`. It carries **no
+`transform`, `transition` or hover shadow** — `hover-3d` sets all three on that
+same element, and a Tailwind utility for any of them silently wins (Tailwind's
+utilities are unlayered within `@layer utilities`; daisyUI's are in a sublayer),
+which would simply stop the tilt. The lift the cards used to have is what the
+tilt replaces. And its hover colours are **`group-` variants**, because the
+pointer is never over that element at all: the zones cover it and are its
+siblings, not its children, so its own `:hover` never fires. The group is the
+`hover-3d` wrapper, which the zones *are* inside.
+
+Under `prefers-reduced-motion`, the card does not move. Zeroing transition
+durations is not enough — it would turn the tilt into a snap, which is worse than
+the slide — so `styles.css` neutralises the transform outright, unlayered so it
+beats daisyUI's own rule. The hover border still says which card the pointer is
+on.
+
+**Colour belongs to daisyUI, not to the components.** `src/client/styles.css`
+enables two of its stock themes — `winter` for light and `night` for dark — and
+every component is written against the semantic tokens they define: `base-100`
+for a panel, `base-200` for the ground it sits on, `base-300` for an inert well,
+`base-content` for text, and `primary` / `error` / `warning` / `success` / `info`
+/ `secondary` for the six things that mean something. Nothing in `src/client`
+names a palette shade, and nothing carries a `dark:` twin — the theme decides
+what each token resolves to, so dark mode stopped being per-utility work. A
+`grep` for `stone-`, `amber-` or `dark:` over the client is the check that this
+still holds; it should find nothing but prose.
+
+Components come from daisyUI too: `btn`, `card`, `badge`, `alert`, `input`,
+`select`, `file-input`, `modal`, `join`, `avatar`, `loading`. What is left in
+`ui.tsx` is the handful of decisions daisyUI has no opinion about.
+
+**The theme control has three states for two themes.** Light and dark are the
+themes; "system" is the *absence* of a choice, and it is handled entirely in CSS
+— `winter --default` applies at `:root`, `night --prefersdark` applies inside a
+`prefers-color-scheme: dark` query when no `data-theme` attribute is set. So a
+reader who never touches the toggle gets a correct first paint with no script
+involved. An explicit choice writes `data-theme` onto `<html>` and is remembered
+in `localStorage` under `ttrpg.theme`; `initTheme()` applies it before React
+renders so a stored choice never flashes the other theme. What is *stored* is the
+preference ("light"), and what is written to the attribute is the theme that
+realises it ("winter") — `THEMES` in `src/client/theme.ts` is the only place that
+knows which stock themes were picked, so swapping one leaves every reader's
+stored preference intact. That split is also why the toggle is a `join` of three
+buttons rather than daisyUI's `theme-controller` radio, which has no way to
+express "no attribute".
+
+Two of its habits are worth knowing before adding a control. **Its form controls
+are `width: 100%` by default** — a `select` dropped into a flex row will take the
+whole row and squeeze its siblings to nothing, which is why the one in the GM's
+player list carries `w-auto`. And **its `error`, `warning` and `success` are pale
+by design**, meant to be washed behind text or filled behind their own `-content`
+pair; a number or a caption drawn in one of them on the light theme is barely
+there. Where a colour has to carry meaning *and* be read, the tone goes on the
+border and the wash and the text stays `base-content` — see `TONES` in
+`Vitals.tsx` and the unclaimed row in `InitiativeList.tsx`.
+
+**And so are the shapes the screens repeat.** `ui.tsx` names them once —
+`TEXT_MUTED`, `SURFACE`, `HAIRLINE`, `FIELD_CAPTION`, `PANEL_CAPTION` and their
+neighbours — and the pieces of markup that repeat are small components beside
+them: `CardWell` and `CardPicture` for a card's square picture, `CountBadge` for
+"how many of this one", `LoadingNote` for a screen with nothing to show yet.
+Before that, the muted-text classes alone were written out in eighteen places,
+and a change to them meant finding all eighteen.
 
 These are exported class *strings* interpolated into `className`, not CSS classes
 built with `@apply`. That is what Tailwind itself recommends for a React codebase,
@@ -585,7 +668,8 @@ Each box is coloured by how much of the total is left, so the state of a fight
 reads off the panel before any of the numbers do. Where the boundaries fall is a
 rule about characters rather than about colours, so it lives in `bandFor`
 (`src/lib/hero.ts`) with the characteristics themselves, and the component is
-left deciding only what red, yellow and green look like in each theme.
+left only mapping each band onto a daisyUI tone — `error`, `warning`, `success` —
+which each theme then draws in its own red, yellow and green.
 
 A Recovery is a button, but the arithmetic is not: `POST
 /api/sessions/:id/stage/:slotId/recover` does it in one `UPDATE`, adding RECOVERY

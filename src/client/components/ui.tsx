@@ -21,92 +21,79 @@ import type {
   Ref,
 } from "react";
 
-const BUTTON_BASE =
-  "inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50";
-
 /*
-  The colours and shapes the screens repeat, named once.
+  The shapes the screens repeat, named once.
 
-  These are interpolated into `className` strings rather than written as CSS
-  classes with `@apply`, which is what Tailwind itself recommends for a React
-  codebase and what keeps every class in this app inside one mental model: when
-  two of them set the same property, which wins is decided by the order Tailwind
-  emits them in, and that rule holds for a constant exactly as it does for a
-  literal. It is also why each of these deliberately leaves out any property its
-  callers disagree about — see the notes on the ones that do.
+  Colour is daisyUI's. Every class here is either one of its component classes
+  (`btn`, `card`, `badge`, `input`) or one of its semantic tokens (`base-100`,
+  `base-content`, `primary`, `error`) — nothing in this app names a colour from a
+  palette, and nothing carries a `dark:` twin, because the active theme decides
+  what each token resolves to. See `styles.css` for which themes those are.
+
+  What is left here is the handful of decisions daisyUI has no opinion about: how
+  a card library is laid out, how quiet a caption should be, what the strip under
+  a picture sits on. These are interpolated into `className` strings rather than
+  written as CSS classes with `@apply`, which is what Tailwind itself recommends
+  for a React codebase: when two of them set the same property, which wins is
+  decided by the order Tailwind emits them in, and that rule holds for a constant
+  exactly as it does for a literal. It is also why each of these deliberately
+  leaves out any property its callers disagree about — see the notes on the ones
+  that do.
 */
 
 /** Secondary text: a caption, a hint, a count, anything read after the thing itself. */
-export const TEXT_MUTED = "text-stone-500 dark:text-stone-400";
-
-/** A heading, or a name — the thing on the screen with the most to say. */
-export const TEXT_STRONG = "text-stone-900 dark:text-stone-100";
-
-/** Ordinary running text, a step quieter than a heading and louder than a hint. */
-export const TEXT_BODY = "text-stone-800 dark:text-stone-200";
+export const TEXT_MUTED = "text-base-content/60";
 
 /**
  * The colour of a rule between two parts of a panel — and only the colour: which
  * edge it is drawn on is the caller's, since the four that use it disagree
  * (`border-b` under a panel heading, `border-t` above the Vitals actions).
  */
-export const HAIRLINE = "border-stone-200 dark:border-stone-800";
-
-/**
- * A raised box on the page's ground: panels, dialogs, the sign-in card.
- *
- * No shadow and no padding. Most of these want `shadow-sm` and one — the turn
- * bar — deliberately does not, so it is added at the call site rather than
- * fought with here.
- */
-export const SURFACE =
-  "rounded-xl border border-stone-200 bg-white dark:border-stone-800 dark:bg-stone-900";
+export const HAIRLINE = "border-base-300";
 
 /**
  * The caption above a form field. Every field in the app is a `<label>` whose
- * first child is this, which is the shape `tests/e2e.test.ts` reads a form by.
+ * first child is this, which is the shape `tests/e2e.test.ts` reads a form by —
+ * which is also why these are not daisyUI's `fieldset`/`legend` form pattern.
  */
-export const FIELD_CAPTION = "mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300";
+export const FIELD_CAPTION = "mb-1 block text-sm font-medium";
 
 /**
  * The small upright heading over a panel or a group of numbers. Carries no font
  * size: these run from `text-[10px]` over a Vitals box to `text-sm` over a
  * panel, and the size is the part each caller chooses.
  */
-export const PANEL_CAPTION =
-  "font-semibold tracking-wide text-stone-500 uppercase dark:text-stone-400";
-
-/** A box someone types or chooses in: text inputs and selects alike. */
-export const FORM_CONTROL =
-  "w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm " +
-  "dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100";
-
-/**
- * A file input, whose button is styled through `file:` rather than by hiding the
- * control and drawing our own — the native one already opens the right picker
- * and says the right thing to a screen reader.
- */
-export const FILE_INPUT =
-  "w-full text-sm text-stone-600 file:mr-3 file:rounded-md file:border-0 " +
-  "file:bg-stone-200 file:px-3 file:py-1.5 file:text-sm dark:text-stone-400 " +
-  "dark:file:bg-stone-800 dark:file:text-stone-200";
+export const PANEL_CAPTION = `font-semibold tracking-wide uppercase ${TEXT_MUTED}`;
 
 /** A card's name, in the strip under its picture. Truncates rather than wraps. */
-export const CARD_NAME = "truncate font-medium text-stone-900 dark:text-stone-100";
+export const CARD_NAME = "truncate font-medium";
 
 /**
- * The shape and behaviour shared by every card in the library.
+ * The shape shared by every card in the library — the tile itself, without the
+ * behaviour, which `HoverCard` around it supplies.
  *
+ * daisyUI's `card` gives the rounding and the surface; the rest is this app's.
  * The picture is the square, not the card: the image well is a full-width square
- * and the caption sits under it at whatever height its name and buttons need. Since
- * every caption is built the same way, a row of cards still lines up whatever the
- * names are. `focus-within` repeats the hover lift for anyone arriving by keyboard,
- * since a card is a box of buttons and hover alone would leave them out.
+ * and the caption sits under it at whatever height its name needs. Since every
+ * caption is built the same way, a row of cards still lines up whatever the names
+ * are.
+ *
+ * Deliberately carries no `transform`, no `transition` and no hover shadow.
+ * `hover-3d` sets all three on this element to tilt it, and a Tailwind utility
+ * for any of them would silently win — Tailwind's utilities are unlayered inside
+ * `@layer utilities` while daisyUI's sit in a sublayer of it, so the utility
+ * takes precedence and the tilt would simply stop. The lift these used to have is
+ * what the tilt replaces.
+ *
+ * The hover and focus colours are `group-` variants because the pointer is never
+ * actually over this element: `hover-3d`'s eight zones cover it and are its
+ * siblings, not its children, so its own `:hover` never fires. The group is the
+ * `hover-3d` wrapper, which the zones *are* inside.
  *
  * Callers supply the border and background colours, which vary with selection.
  */
 export const CARD_BASE =
-  "group flex flex-col overflow-hidden rounded-xl border-[length:var(--card-border)] shadow-sm transition duration-150 hover:-translate-y-0.5 hover:border-amber-400 hover:shadow-lg focus-within:-translate-y-0.5 focus-within:border-amber-400 focus-within:shadow-lg dark:hover:border-amber-500/70 dark:focus-within:border-amber-500/70";
+  "card flex flex-col overflow-hidden border-[length:var(--card-border)] shadow-sm group-hover:border-primary group-focus-within:border-primary";
 
 /**
  * The strip under a card's picture, carrying its name.
@@ -117,10 +104,10 @@ export const CARD_BASE =
  * — campaigns, characters, and the player's pick-a-character grid — and a card
  * that matched in every respect but this one would be the odd one out.
  *
- * The value is the same pair `body` carries in `styles.css`; the two are meant to
- * be the same colour and should move together.
+ * `base-200` is the same token `body` carries in `styles.css`; the two are meant
+ * to be the same colour and should move together.
  */
-export const CARD_CAPTION = "shrink-0 bg-stone-100 p-3 dark:bg-stone-950";
+export const CARD_CAPTION = "shrink-0 bg-base-200 p-3";
 
 /**
  * The grid every card library sits in.
@@ -142,29 +129,35 @@ export const CARD_GRID =
   "grid grid-cols-1 gap-4 " +
   "sm:grid-cols-[repeat(auto-fill,calc(var(--card-image-size)+2*var(--card-border)))]";
 
+/*
+  Which daisyUI colour a button takes.
+
+  `secondary` is a plain `btn` on purpose: unqualified, daisyUI draws the quiet
+  neutral button this app wants for its non-primary actions, whereas
+  `btn-secondary` is a second loud colour. `dangerGhost` is destructive but quiet
+  enough to sit in a list without shouting — one filled red button per row would
+  drown the row it belongs to.
+*/
 const VARIANTS = {
-  primary:
-    "bg-amber-600 text-white hover:bg-amber-700 dark:bg-amber-500 dark:text-stone-950 dark:hover:bg-amber-400",
-  secondary:
-    "bg-stone-200 text-stone-800 hover:bg-stone-300 dark:bg-stone-800 dark:text-stone-100 dark:hover:bg-stone-700",
-  danger:
-    "bg-red-600 text-white hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600",
-  ghost:
-    "text-stone-600 hover:bg-stone-200 hover:text-stone-900 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-100",
-  // Destructive, but quiet enough to sit in a list without shouting — one filled
-  // red button per row would drown the row it belongs to. A variant rather than
-  // `ghost` plus a red `className`: both set `color`, so which one wins is down
-  // to the order Tailwind happens to emit them in rather than to the caller.
-  dangerGhost:
-    "text-red-600 hover:bg-red-100 dark:text-red-400 dark:hover:bg-red-950",
+  primary: "btn-primary",
+  secondary: "",
+  danger: "btn-error",
+  ghost: "btn-ghost",
+  dangerGhost: "btn-soft btn-error",
 } as const;
 
+/**
+ * `btn-sm` rather than daisyUI's default size: these screens are dense — lists
+ * with a row of controls on every line — and the full-size button is built for a
+ * page with more room than any of them have. A caller wanting the bigger one
+ * says so with `btn-md`, which comes after this in the class list and wins.
+ */
 export function Button({
   variant = "secondary",
   className = "",
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: keyof typeof VARIANTS }) {
-  return <button {...props} className={`${BUTTON_BASE} ${VARIANTS[variant]} ${className}`} />;
+  return <button {...props} className={`btn btn-sm ${VARIANTS[variant]} ${className}`} />;
 }
 
 /**
@@ -189,10 +182,7 @@ export function Field({
     // exactly the part a reader points at when they don't know what it means.
     <label className="block" title={title}>
       <span className={FIELD_CAPTION}>{label}</span>
-      <input
-        {...props}
-        className={`${FORM_CONTROL} text-stone-900 placeholder:text-stone-400 focus:border-amber-500 dark:placeholder:text-stone-600 ${className}`}
-      />
+      <input {...props} className={`input w-full ${className}`} />
       {hint ? <span className={`mt-1 block text-xs ${TEXT_MUTED}`}>{hint}</span> : null}
     </label>
   );
@@ -229,6 +219,20 @@ export function AppPage({
 }
 
 /**
+ * A raised box on the page's ground: panels, dialogs, the sign-in card.
+ *
+ * daisyUI's `card` with an explicit border, which is what tells a `base-100`
+ * panel from the `base-200` ground behind it in the light theme, where the two
+ * are only a shade apart. No shadow and no padding: most callers want `shadow-sm`
+ * and one — the turn bar — deliberately does not.
+ *
+ * `card` is a flex *column*, so a surface whose contents belong in a row has to
+ * say `flex-row` and not merely `flex` — see `TurnControls`, where leaving it out
+ * stacked the counter and the buttons up the middle of the bar.
+ */
+export const SURFACE = "card border border-base-300 bg-base-100";
+
+/**
  * `scroll` keeps a panel inside the height its parent gives it and moves its
  * body's overflow into the panel instead, leaving the heading pinned. It only
  * means anything where the parent has a height to give — inside `AppPage`'s wide
@@ -237,6 +241,10 @@ export function AppPage({
  * A panel with no `title` and no `actions` has no heading strip at all: a row of
  * controls that says plainly what it is does not need a word above it repeating
  * the point.
+ *
+ * Always a `<section>` with an `<h2>` inside it, whatever daisyUI's card markup
+ * would prefer: that is the shape `tests/e2e.test.ts` finds a panel by, and it
+ * is the right outline for the page besides.
  */
 export function Panel({
   title,
@@ -284,12 +292,19 @@ export function Panel({
  * a character sheet is a whole page of someone else's design, whereas everything
  * here — a form, a question — is ours and wants a heading to say what it is.
  *
- * Escape closes it. A click on the dimmed backdrop deliberately does not: these
- * hold forms people are part way through typing into, and losing that to a stray
- * click is worse than the extra press it costs to leave on purpose.
+ * daisyUI's `modal`, on a `<dialog>` for the role and the semantics — but held
+ * open by the `open` attribute rather than by `showModal()`. A dialog opened the
+ * native way is promoted to the browser's top layer, which sits above every
+ * `z-index` on the page and would put the toasts *under* it; the whole point of
+ * the ordering here is that a message about what just happened stays readable
+ * over an open dialog. On the attribute it is an ordinary fixed element at
+ * daisyUI's `z-index: 999`, and `Toast` sits deliberately above that.
  *
- * `z-40` puts it under the toasts at `z-50`, so a message about what just
- * happened is still readable over an open dialog.
+ * Escape closes it, which is ours to do for the same reason — the native handler
+ * comes with `showModal()`. A click on the dimmed backdrop deliberately does not,
+ * which is why there is no `modal-backdrop` form: these hold forms people are
+ * part way through typing into, and losing that to a stray click is worse than
+ * the extra press it costs to leave on purpose.
  */
 export function Modal({
   title,
@@ -311,46 +326,142 @@ export function Modal({
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 p-4">
+    <dialog open className="modal" aria-label={title}>
       <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-        className={`flex max-h-[90vh] w-full flex-col overflow-hidden rounded-xl bg-white shadow-xl dark:bg-stone-900 ${
+        className={`modal-box flex max-h-[90vh] flex-col overflow-hidden p-0 ${
           wide ? "max-w-5xl wide:max-w-7xl" : "max-w-lg"
         }`}
       >
         <header className={`flex items-center justify-between border-b px-5 py-3 ${HAIRLINE}`}>
-          <h2 className={`font-semibold ${TEXT_STRONG}`}>{title}</h2>
+          <h2 className="font-semibold">{title}</h2>
           <Button variant="ghost" onClick={onClose} aria-label="Close">
             <Icon icon={faXmark} />
           </Button>
         </header>
         <div className="flex-1 overflow-auto p-5">{children}</div>
       </div>
-    </div>
+    </dialog>
   );
 }
 
 
+/** The eight hover zones `hover-3d` needs, which are eight empty divs. */
+const ZONES = [0, 1, 2, 3, 4, 5, 6, 7];
+
 /**
- * The edit and delete controls for a card, laid over the bottom right of its
- * picture.
+ * A card that tilts towards the pointer: daisyUI's `hover-3d`, wrapped so the
+ * three card libraries get it the same way.
  *
- * They sit on the image rather than in a row beneath the name so the card stays
- * mostly picture. Position it inside the card's image well, which must be
- * `relative`.
+ * How the component works is worth knowing before changing anything here, because
+ * it constrains the markup completely. `hover-3d` is a three-by-three grid of
+ * exactly nine children: the first spans the whole grid and is the thing that
+ * tilts, and the other eight are empty divs occupying the eight cells around the
+ * middle. Those eight sit *above* the content at `z-index: 1` and exist only to be
+ * hovered — which corner is under the pointer is read back out with `:has()` and
+ * turned into the rotation. So they swallow every pointer event over the card, and
+ * daisyUI says outright that buttons must not go inside the wrapper.
+ *
+ * Both of this app's ways out are here:
+ *
+ * - **The card's own click target is the wrapper**, not something inside it. A
+ *   press on a zone bubbles up to the `<button>` that contains it, so the whole
+ *   card is clickable while the zones keep doing their job. That is daisyUI's own
+ *   advice — "wrap the entire component in a link" — and it is why `label` is
+ *   required alongside `onClick`: the button's name has to be the card's subject
+ *   rather than everything printed on it.
+ * - **The corner controls are a tenth child.** `hover-3d`'s CSS only ever names
+ *   `:first-child` and `:nth-child(2)` through `:nth-child(9)`, so a tenth is
+ *   untouched by it and free to be positioned over the card at a `z-index` above
+ *   the zones. It is laid out as a square over the picture rather than pinned to
+ *   the card's bottom, so it lands in the same place whatever height the name
+ *   below it turns out to need. The box itself passes the pointer through and only
+ *   the buttons take it back, or it would blank out the tilt across the whole
+ *   picture.
+ *
+ * The controls therefore stay flat while the picture tilts under them, which is a
+ * deliberate trade: they are the card's chrome rather than part of its face.
+ *
+ * Anything else — a drag source, a drop target — goes on the outer `<article>`
+ * through `...rest`, which is also what keeps `article:has(button[…])` working as
+ * the way `tests/e2e.test.ts` finds a card.
  */
-export function CardActions({ children }: { children: ReactNode }) {
-  return <div className="absolute right-1 bottom-1 z-10 flex gap-1">{children}</div>;
+export function HoverCard({
+  label,
+  onClick,
+  pressed,
+  disabled,
+  actions,
+  cardClassName = "",
+  className = "",
+  children,
+  ...rest
+}: HTMLAttributes<HTMLElement> & {
+  /** The card's accessible name. Required with `onClick`; ignored without it. */
+  label?: string;
+  /** What pressing the card does. Without it the card is not a control at all. */
+  onClick?: () => void;
+  pressed?: boolean;
+  disabled?: boolean;
+  /** Icon buttons laid over the bottom right of the picture, above the zones. */
+  actions?: ReactNode;
+  /** Border and background for the tile, which vary with selection. */
+  cardClassName?: string;
+  /** For the frame around the card: a drop target's ring, and nothing else. */
+  className?: string;
+  children: ReactNode;
+}) {
+  const tile = <div className={`${CARD_BASE} ${cardClassName}`}>{children}</div>;
+  // `key` on a list of empties only to keep React quiet; they are interchangeable.
+  const zones = ZONES.map((zone) => <div key={zone} />);
+
+  return (
+    // `flex` rather than `block`: `hover-3d` is an `inline-grid`, and an inline
+    // box would sit on the text baseline with a descender's worth of gap under it.
+    // A flex item is blockified instead, and fills the grid track it was given.
+    <article {...rest} className={`relative flex ${className}`}>
+      {onClick ? (
+        <button
+          type="button"
+          onClick={onClick}
+          disabled={disabled}
+          aria-label={label}
+          aria-pressed={pressed}
+          // No display utility here, ever: `hover-3d` *is* the display, and a
+          // `block` or `flex` alongside it would win and take the grid with it.
+          className="hover-3d group w-full cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {tile}
+          {zones}
+        </button>
+      ) : (
+        <div className="hover-3d group w-full">
+          {tile}
+          {zones}
+        </div>
+      )}
+      {actions ? (
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 z-20 flex aspect-square items-end justify-end p-1"
+          aria-hidden={false}
+        >
+          <div className="pointer-events-auto flex gap-1">{actions}</div>
+        </div>
+      ) : null}
+    </article>
+  );
 }
 
 /**
  * A square button carrying an icon instead of a word.
  *
  * The label is required and never drawn: an icon on its own says nothing to a
- * screen reader, and it doubles as the tooltip. The dark translucent pill is what
- * keeps the icon readable over a picture we know nothing about, in either theme.
+ * screen reader, and it doubles as the tooltip.
+ *
+ * The one place in the app that still fixes its own colours, and deliberately:
+ * this button is laid over a picture we know nothing about, so it cannot take a
+ * theme token and stay readable. `neutral` is the darkest thing every theme
+ * defines, and a translucent pill of it with its own content colour reads over
+ * any photograph in either theme.
  */
 export function IconButton({
   label,
@@ -369,8 +480,8 @@ export function IconButton({
       type="button"
       title={label}
       aria-label={label}
-      className={`flex h-7 w-7 items-center justify-center rounded-md bg-stone-900/60 text-white shadow-sm backdrop-blur-sm transition-colors ${
-        danger ? "hover:bg-red-600" : "hover:bg-stone-900/90"
+      className={`btn btn-square btn-xs border-0 bg-neutral/60 text-neutral-content shadow-sm backdrop-blur-sm ${
+        danger ? "hover:bg-error hover:text-error-content" : "hover:bg-neutral/90"
       } ${className}`}
     >
       <span aria-hidden="true">{icon}</span>
@@ -416,20 +527,24 @@ export function EmptyState({ children }: { children: ReactNode }) {
 /**
  * A whole screen that has nothing to show yet, as against `EmptyState`, which is
  * a panel that has nothing in it. Roomier and at full size, because this is the
- * only thing on the page rather than one empty box among several.
+ * only thing on the page rather than one empty box among several — and it carries
+ * a spinner, because unlike an empty panel this one is genuinely waiting.
  */
 export function LoadingNote({ children }: { children: ReactNode }) {
-  return <p className={`p-8 text-center ${TEXT_MUTED}`}>{children}</p>;
+  return (
+    <p className={`flex items-center justify-center gap-3 p-8 ${TEXT_MUTED}`}>
+      <span className="loading loading-spinner loading-sm" aria-hidden="true" />
+      {children}
+    </p>
+  );
 }
 
 /** Distinguishes a PC from an NPC in lists where both appear. */
 export function KindBadge({ kind }: { kind: "pc" | "npc" }) {
   return (
     <span
-      className={`rounded px-1.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase ${
-        kind === "pc"
-          ? "bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300"
-          : "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300"
+      className={`badge badge-xs font-semibold tracking-wide uppercase ${
+        kind === "pc" ? "badge-info" : "badge-secondary"
       }`}
     >
       {kind === "pc" ? "PC" : "NPC"}
@@ -459,7 +574,7 @@ export function CountBadge({
     <span
       title={title}
       aria-hidden={hidden ? "true" : undefined}
-      className="rounded bg-stone-200 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-stone-700 dark:bg-stone-700 dark:text-stone-200"
+      className="badge badge-xs badge-neutral font-semibold tabular-nums"
     >
       {children}
     </span>
@@ -476,7 +591,7 @@ export function CountBadge({
  */
 export function CardWell({ children }: { children: ReactNode }) {
   return (
-    <div className="relative aspect-square w-full shrink-0 overflow-hidden bg-stone-200 dark:bg-stone-800">
+    <div className="relative aspect-square w-full shrink-0 overflow-hidden bg-base-300">
       {children}
     </div>
   );
@@ -487,9 +602,9 @@ export function CardWell({ children }: { children: ReactNode }) {
  * is none.
  *
  * Always decorative — every card puts the name in the strip underneath — so the
- * image carries no alt text and the placeholder is hidden outright. The gentle
- * zoom is keyed on the card's `group`, which `CARD_BASE` establishes, so hovering
- * anywhere on the card moves the picture.
+ * image carries no alt text and the placeholder is hidden outright. It used to
+ * zoom gently on hover; `HoverCard`'s tilt is the movement now, and two scales at
+ * once read as fidgeting rather than as one gesture.
  */
 export function CardPicture({
   src,
@@ -519,7 +634,7 @@ export function CardPicture({
       alt=""
       draggable={draggable}
       loading="lazy"
-      className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105 group-focus-within:scale-105"
+      className="h-full w-full object-cover"
     />
   );
 }
@@ -527,6 +642,7 @@ export function CardPicture({
 /**
  * A character's picture at list size, for the session screens.
  *
+ * daisyUI's `avatar`, which is what a small square portrait beside a name is.
  * Decorative: every list that uses one puts the character's name right beside it,
  * so the image carries no alt text and the placeholder is hidden outright.
  */
@@ -538,17 +654,19 @@ export function CharacterThumb({
   backgroundUrl: string | null;
 }) {
   return (
-    <div className="h-10 w-10 shrink-0 overflow-hidden rounded-md bg-stone-200 dark:bg-stone-800">
-      {backgroundUrl ? (
-        <img src={backgroundUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
-      ) : (
-        <span
-          className="flex h-full w-full items-center justify-center opacity-40"
-          aria-hidden="true"
-        >
-          <Icon icon={kind === "pc" ? faShieldHalved : faDragon} className="h-5 w-5" />
-        </span>
-      )}
+    <div className="avatar shrink-0">
+      <div className="h-10 w-10 overflow-hidden rounded-md bg-base-300">
+        {backgroundUrl ? (
+          <img src={backgroundUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
+        ) : (
+          <span
+            className="flex h-full w-full items-center justify-center opacity-40"
+            aria-hidden="true"
+          >
+            <Icon icon={kind === "pc" ? faShieldHalved : faDragon} className="h-5 w-5" />
+          </span>
+        )}
+      </div>
     </div>
   );
 }
@@ -721,9 +839,7 @@ export function FileDrop({
       <div
         {...dropProps}
         className={`rounded-lg border border-dashed p-3 transition-colors ${
-          over
-            ? "border-amber-500 bg-amber-50 dark:border-amber-500 dark:bg-amber-950/30"
-            : "border-stone-300 dark:border-stone-700"
+          over ? "border-primary bg-primary/10" : HAIRLINE
         }`}
       >
         <input
@@ -736,7 +852,7 @@ export function FileDrop({
             setChosen(file?.name ?? null);
             if (file) onFile?.(file);
           }}
-          className={FILE_INPUT}
+          className="file-input file-input-sm w-full"
         />
         <span className={`mt-2 block text-xs ${TEXT_MUTED}`}>
           {chosen ? `Ready to upload: ${chosen}` : "…or drop a file here."}

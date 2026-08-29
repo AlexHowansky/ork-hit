@@ -22,11 +22,11 @@ export function ThemeToggle() {
   };
 
   return (
-    <div
-      className="inline-flex rounded-lg bg-stone-200 p-0.5 dark:bg-stone-800"
-      role="group"
-      aria-label="Colour theme"
-    >
+    // A `join` rather than daisyUI's `theme-controller`, which is a radio input
+    // that writes the attribute itself: this app has three choices for two
+    // themes, and the third — following the system — is the absence of the
+    // attribute, which `theme-controller` has no way to express.
+    <div className="join" role="group" aria-label="Colour theme">
       {OPTIONS.map((option) => (
         <button
           key={option.value}
@@ -34,11 +34,7 @@ export function ThemeToggle() {
           onClick={() => choose(option.value)}
           aria-pressed={preference === option.value}
           title={`${option.label} theme`}
-          className={`rounded-md px-2.5 py-1 text-sm transition-colors ${
-            preference === option.value
-              ? "bg-white text-stone-900 shadow-sm dark:bg-stone-600 dark:text-stone-50"
-              : "text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-100"
-          }`}
+          className={`btn join-item btn-sm ${preference === option.value ? "btn-active" : ""}`}
         >
           <Icon icon={option.icon} />
           <span className="sr-only">{option.label}</span>

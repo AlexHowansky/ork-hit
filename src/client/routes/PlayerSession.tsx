@@ -20,12 +20,12 @@ import { useSessionSocket } from "../useSessionSocket.ts";
 import {
   AppPage,
   Button,
-  CARD_BASE,
   CARD_CAPTION,
   CARD_GRID,
   CARD_NAME,
   CardPicture,
   CardWell,
+  HoverCard,
   CharacterThumb,
   EmptyState,
   Icon,
@@ -33,7 +33,6 @@ import {
   Panel,
   SURFACE,
   TEXT_MUTED,
-  TEXT_STRONG,
 } from "../components/ui.tsx";
 import { InitiativeList, stageLabel } from "../components/InitiativeList.tsx";
 import { LogDrawer, LogToggle, useLogDrawer } from "../components/EventLog.tsx";
@@ -56,8 +55,8 @@ function Notice({ title, body, onLeave }: { title: string; body: string; onLeave
   return (
     <div className="flex min-h-screen items-center justify-center p-4">
       <div className={`max-w-md p-6 text-center shadow-sm ${SURFACE}`}>
-        <h1 className={`text-lg font-semibold ${TEXT_STRONG}`}>{title}</h1>
-        <p className="mt-2 text-sm text-stone-600 dark:text-stone-400">{body}</p>
+        <h1 className="text-lg font-semibold">{title}</h1>
+        <p className={`mt-2 text-sm ${TEXT_MUTED}`}>{body}</p>
         <Button variant="primary" onClick={onLeave} className="mt-5">
           Back to the start
         </Button>
@@ -270,7 +269,7 @@ export function PlayerSession({
     return (
       <div className="w-full p-2 sm:p-3">
         <header className="mb-6 flex items-center justify-between">
-          <h1 className={`text-xl font-semibold ${TEXT_STRONG}`}>Welcome, {playerName}</h1>
+          <h1 className="text-xl font-semibold">Welcome, {playerName}</h1>
           <ThemeToggle />
         </header>
 
@@ -286,12 +285,12 @@ export function PlayerSession({
             // here, since picking a character is all there is to do with one.
             <div className={CARD_GRID}>
               {available.map((character) => (
-                <button
+                <HoverCard
                   key={character.id}
-                  type="button"
-                  disabled={claiming}
+                  label={character.name}
                   onClick={() => void claim(character.characterId)}
-                  className={`${CARD_BASE} border-stone-200 bg-white text-left disabled:opacity-50 dark:border-stone-800 dark:bg-stone-900`}
+                  disabled={claiming}
+                  cardClassName="border-base-300 bg-base-100 text-left"
                 >
                   <CardWell>
                     <CardPicture src={character.backgroundUrl} icon={faShieldHalved} />
@@ -301,7 +300,7 @@ export function PlayerSession({
                       {character.name}
                     </p>
                   </div>
-                </button>
+                </HoverCard>
               ))}
             </div>
           )}
@@ -329,13 +328,13 @@ export function PlayerSession({
           <LogToggle open={logOpen} onToggle={toggleLog} />
         </div>
 
-        <h1 className={`truncate text-center text-xl font-semibold ${TEXT_STRONG}`}>
+        <h1 className="truncate text-center text-xl font-semibold">
           {snapshot.session.campaignName}
         </h1>
 
         <div className="flex items-center justify-end gap-2">
           {connection === "reconnecting" ? (
-            <span className="text-xs text-amber-700 dark:text-amber-400">Reconnecting…</span>
+            <span className="badge badge-sm badge-warning badge-soft">Reconnecting…</span>
           ) : null}
           <ThemeToggle />
           {/* The same picture the game master's `Sign out` carries: for a player,
@@ -405,7 +404,7 @@ export function PlayerSession({
                     backgroundUrl={myCharacter.backgroundUrl}
                   />
                   <div className="min-w-0">
-                    <p className={`truncate font-medium ${TEXT_STRONG}`}>{myCharacter.name}</p>
+                    <p className="truncate font-medium">{myCharacter.name}</p>
                     <StatLine character={myCharacter} />
                   </div>
                 </div>
@@ -455,14 +454,14 @@ export function PlayerSession({
             scroll
             className="order-last lg:order-none"
           >
-            <ul className="divide-y divide-stone-100 dark:divide-stone-800">
+            <ul className="divide-y divide-base-200">
               {snapshot.players.map((player) => {
                 const character = snapshot.characters.find(
                   (entry) => entry.characterId === player.claimedCharacterId,
                 );
                 return (
                   <li key={player.id} className="py-2.5">
-                    <p className={`font-medium ${TEXT_STRONG}`}>
+                    <p className="font-medium">
                       {player.name}
                       {player.id === playerId ? (
                         <span className={`ml-1.5 text-xs font-normal ${TEXT_MUTED}`}>(you)</span>
