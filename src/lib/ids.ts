@@ -9,8 +9,8 @@
  */
 const CODE_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 
-/** Characters in a session code. 24 x 5 bits = 120 bits of entropy. */
-const CODE_LENGTH = 24;
+/** Characters in a session code. 12 x 5 bits = 60 bits of entropy. */
+const CODE_LENGTH = 12;
 
 /** Groups of 4, hyphen separated, so a human can transcribe it without losing place. */
 const CODE_GROUP = 4;
@@ -34,7 +34,7 @@ function randomFromAlphabet(alphabet: string, length: number): string {
   return out.join("");
 }
 
-/** A fresh session code, formatted for display: `XXXX-XXXX-XXXX-XXXX-XXXX-XXXX`. */
+/** A fresh session code, formatted for display: `XXXX-XXXX-XXXX`. */
 export function generateSessionCode(): string {
   const raw = randomFromAlphabet(CODE_ALPHABET, CODE_LENGTH);
   const groups: string[] = [];

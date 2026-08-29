@@ -4,10 +4,10 @@ import { describe, expect, test } from "bun:test";
 import { generateSessionCode, generateToken, hashToken, normalizeSessionCode } from "../src/lib/ids.ts";
 
 describe("session codes", () => {
-  test("are 24 characters from an unambiguous alphabet, grouped for reading", () => {
+  test("are 12 characters from an unambiguous alphabet, grouped for reading", () => {
     const code = generateSessionCode();
-    expect(code).toMatch(/^[0-9A-HJ-NP-TV-Z]{4}(-[0-9A-HJ-NP-TV-Z]{4}){5}$/);
-    expect(code.replace(/-/g, "")).toHaveLength(24);
+    expect(code).toMatch(/^[0-9A-HJ-NP-TV-Z]{4}(-[0-9A-HJ-NP-TV-Z]{4}){2}$/);
+    expect(code.replace(/-/g, "")).toHaveLength(12);
   });
 
   test("omit the glyphs that are misread aloud", () => {
@@ -22,13 +22,14 @@ describe("session codes", () => {
 
   test("do not repeat", () => {
     const codes = new Set(Array.from({ length: 5000 }, generateSessionCode));
-    // 120 bits of entropy: a collision here means the generator is broken.
+    // 60 bits of entropy: a collision here means the generator is broken.
     expect(codes.size).toBe(5000);
   });
 
   test("carry enough entropy that guessing is hopeless", () => {
-    // 24 characters drawn from 32 symbols is 5 bits each.
-    expect(24 * Math.log2(32)).toBeGreaterThanOrEqual(120);
+    // 12 characters drawn from 32 symbols is 5 bits each. Joining is rate limited,
+    // so 60 bits is many orders of magnitude past what anyone can guess at.
+    expect(12 * Math.log2(32)).toBeGreaterThanOrEqual(60);
   });
 });
 
@@ -44,18 +45,14 @@ describe("normalising a typed code", () => {
 
   test("maps the glyphs people substitute", () => {
     // O reads as zero, I and L read as one.
-    expect(normalizeSessionCode("OOOO-1111-1111-1111-1111-1111")).toBe(
-      "0000-1111-1111-1111-1111-1111",
-    );
-    expect(normalizeSessionCode("IIII-LLLL-1111-1111-1111-1111")).toBe(
-      "1111-1111-1111-1111-1111-1111",
-    );
+    expect(normalizeSessionCode("OOOO-1111-1111")).toBe("0000-1111-1111");
+    expect(normalizeSessionCode("IIII-LLLL-1111")).toBe("1111-1111-1111");
   });
 
   test("rejects anything that isn't a code, before it reaches the database", () => {
     expect(normalizeSessionCode("")).toBeNull();
     expect(normalizeSessionCode("too-short")).toBeNull();
-    expect(normalizeSessionCode("!@#$-%^&*-()__-+===-????-????")).toBeNull();
+    expect(normalizeSessionCode("!@#$-%^&*-()__")).toBeNull();
     expect(normalizeSessionCode("A".repeat(200))).toBeNull();
     // A SQL fragment is simply not a valid code.
     expect(normalizeSessionCode("' OR 1=1 --")).toBeNull();

@@ -851,9 +851,9 @@ Back up `data/` — it holds both the database and every uploaded file.
   neither the wording nor the timing reveals which addresses have accounts.
 - **Session tokens** are 256 bits of CSPRNG output, stored only as a SHA-256
   hash, so a leaked database cannot be replayed as live sessions.
-- **Session codes** are 120 bits (24 characters, ambiguous glyphs excluded so
+- **Session codes** are 60 bits (12 characters, ambiguous glyphs excluded so
   they can be read aloud). Joining is rate limited, and a code stops resolving
-  the moment its session ends.
+  the moment its session ends, so guessing one is not a practical attack.
 - **SQL** is parameterised throughout; every statement lives in
   `src/db/queries.ts` and nothing interpolates into SQL.
 - **CSRF**: cookies are `SameSite=Lax`, and mutating requests must additionally

@@ -119,7 +119,7 @@ export function Login({ onIdentity }: { onIdentity: (identity: Identity) => void
                   label="Session code"
                   value={code}
                   onChange={(event) => setCode(event.target.value)}
-                  placeholder="XXXX-XXXX-XXXX-XXXX-XXXX-XXXX"
+                  placeholder="XXXX-XXXX-XXXX"
                   autoComplete="off"
                   spellCheck={false}
                   required
