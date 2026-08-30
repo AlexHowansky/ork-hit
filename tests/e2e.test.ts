@@ -1701,4 +1701,38 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
 
     await page.close();
   }, 60_000);
+
+  test("the sign-in page puts the cursor in the field still to be filled in", async () => {
+    if (!browser) return;
+    const page = await (await browser!.newContext()).newPage();
+
+    /** The caption above whichever field holds the cursor. */
+    const focused = () =>
+      page.evaluate(
+        () => document.activeElement?.closest("label")?.querySelector("span")?.textContent ?? "",
+      );
+
+    // Arriving cold, the code is what a player has to type first.
+    await page.goto(base);
+    await page.getByLabel("Session code").waitFor();
+    expect(await focused()).toBe("Session code");
+
+    // The game master's tab is a different form in the same place, so the
+    // cursor has to move to it rather than stay where the player's was.
+    await page.getByRole("tab", { name: "Game master" }).click();
+    await page.getByLabel("Email").waitFor();
+    expect(await focused()).toBe("Email");
+
+    // Back to the player's tab, and back to the code.
+    await page.getByRole("tab", { name: "Join a session" }).click();
+    await page.getByLabel("Session code").waitFor();
+    expect(await focused()).toBe("Session code");
+
+    // A join link has already answered the code, so the name is what is left.
+    await page.goto(`${base}/?code=ABCD-EFGH-JKMN`);
+    await page.getByLabel("Player name").waitFor();
+    expect(await focused()).toBe("Player name");
+
+    await page.close();
+  }, 60_000);
 });

@@ -114,12 +114,20 @@ export function Login({ onIdentity }: { onIdentity: (identity: Identity) => void
 
           <div className="p-5">
             {tab === "player" ? (
-              <form onSubmit={joinSession} className="space-y-4">
+              // The two tabs render the same shape of form in the same place, so
+              // without keys of their own React reuses the inputs instead of
+              // replacing them — and `autoFocus`, which only fires when a field
+              // is first created, would never move the cursor across the switch.
+              <form key="player" onSubmit={joinSession} className="space-y-4">
                 <Field
                   label="Session code"
                   value={code}
                   onChange={(event) => setCode(event.target.value)}
                   placeholder="XXXX-XXXX-XXXX"
+                  // A join link fills this in, so the cursor belongs in the
+                  // field that is still empty: the code when there is none, the
+                  // player's name when the link already supplied one.
+                  autoFocus={!codeFromLink}
                   autoComplete="off"
                   spellCheck={false}
                   required
@@ -131,6 +139,7 @@ export function Login({ onIdentity }: { onIdentity: (identity: Identity) => void
                   value={playerName}
                   onChange={(event) => setPlayerName(event.target.value)}
                   placeholder="What should everyone call you?"
+                  autoFocus={Boolean(codeFromLink)}
                   autoComplete="nickname"
                   required
                   hint={
@@ -144,12 +153,15 @@ export function Login({ onIdentity }: { onIdentity: (identity: Identity) => void
                 </Button>
               </form>
             ) : (
-              <form onSubmit={signIn} className="space-y-4">
+              <form key="gm" onSubmit={signIn} className="space-y-4">
                 <Field
                   label="Email"
                   type="email"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
+                  // The tab switch remounts this form, so the focus lands here
+                  // whenever a game master picks their tab.
+                  autoFocus
                   autoComplete="username"
                   required
                 />

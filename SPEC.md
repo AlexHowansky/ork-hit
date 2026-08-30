@@ -144,6 +144,9 @@ The app should have the following features:
 
 * All pages must be inaccessible publicly. Game masters must authenticate with
   email and password, and players must authenticate with a session code.
+  The sign-in page puts the cursor in the first field the person arriving still
+  has to fill in: the session code, or the player's name when a join link has
+  already supplied the code, and the email address on the game master's tab.
 
 * Create a CLI to add, edit, and delete game master accounts. There will be no
   UI for account management.
