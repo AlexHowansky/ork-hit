@@ -345,7 +345,9 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     const player = await playerIn(code, "Gus");
 
     // Strahd is already on the stage once; two more makes three.
-    const library = gm.locator("section", { hasText: "Add from library" });
+    const library = gm
+      .locator("section")
+      .filter({ has: gm.getByRole("heading", { name: "Library" }) });
     await library.getByRole("listitem").filter({ hasText: "Strahd" })
       .getByRole("button", { name: "Add" }).click();
     await stageCount(gm, 4);
@@ -633,7 +635,9 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     if (!browser) return;
     const { page: gm } = await gmWithSession();
 
-    const library = gm.locator("section", { hasText: "Add from library" });
+    const library = gm
+      .locator("section")
+      .filter({ has: gm.getByRole("heading", { name: "Library" }) });
     const rowFor = (name: string) =>
       library.getByRole("listitem").filter({ hasText: name });
 

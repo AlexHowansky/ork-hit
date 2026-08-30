@@ -473,7 +473,7 @@ export function GmSessionConsole({ onSignOut }: { onSignOut: () => void }) {
           </div>
 
           <div className="contents wide:order-2 wide:flex wide:min-h-0 wide:min-w-0 wide:flex-col">
-          <Panel title="Add from library" scroll>
+          <Panel title="Library" scroll>
             {libraryOrder.length === 0 ? (
               <EmptyState>
                 This campaign has no characters yet. They are made on the library page.
