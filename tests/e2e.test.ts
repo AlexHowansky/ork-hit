@@ -819,6 +819,11 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     expect(Math.round(box.height)).toBe(config.cardImagePx);
     const card = (await well.locator("xpath=ancestor::article[1]").boundingBox())!;
     expect(card.height).toBeGreaterThan(box.height);
+
+    // And the card is a playing card: five wide by seven tall, with the square
+    // picture the top five of those sevens and the name strip the bottom two.
+    expect(card.height / card.width).toBeCloseTo(7 / 5, 2);
+    expect((card.height - box.height) / card.width).toBeCloseTo(2 / 5, 1);
   }, 60_000);
 
   test("the character form asks for the sheet first", async () => {

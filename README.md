@@ -298,7 +298,21 @@ square, not the card: the image well is a full-width square, the card's controls
 ride on the picture as icons in its lower right corner (`IconButton`) — edit,
 delete, and on a character card one that opens its sheet — and the name sits
 under it on its own. That keeps the card mostly picture, and since every caption
-is built the same way a row still lines up whatever the names are. An icon button
+is built the same way a row still lines up whatever the names are.
+
+**A card is a playing card**: five wide by seven tall, the top five of those
+sevens the square picture and the bottom two the name under it. The ratio is
+declared once, as `aspect-[5/7]` on `CARD_BASE`, and the two parts divide it
+between them — the well takes its own width as a square and the caption takes
+what is left, which comes to two fifths of the width without a second number to
+keep in step with the first. So the deployment's `CARD_IMAGE_PX` still decides
+the size of a card, and the shape is no longer a matter of how tall a name
+happened to make its strip. The strip's padding is horizontal only, the name
+centred in it both ways: at the smallest card the setting allows, a fixed 12px
+above and below would be taller than the whole strip. Centring is two rules
+rather than one — the caption centres the name as a box, and `CARD_NAME` carries
+`text-center` for the case where the name is too long and that box fills the
+strip, so a truncated name reads centred alongside a short one. An icon button
 always carries a label — it is the tooltip and the only thing a screen reader has
 to go on. Every hover rule is paired with a `focus-within` one, because a card is
 a box of buttons and a keyboard user would otherwise get no feedback at all.
@@ -555,7 +569,8 @@ is not worth an error.
 
 **How big a card is, is a deployment setting.** `CARD_IMAGE_PX` (default 176)
 measures the *picture* on a card; the frame around it and the name underneath
-make the card itself larger. Getting that number into the browser takes a small
+make the card itself larger — by a fixed amount, since the card is five by seven
+whatever the picture size is. Getting that number into the browser takes a small
 detour: the client is a bundle built when the server starts, so the value cannot
 be compiled in, and fetching it as JSON would draw the first cards at one size
 and then resize them. Instead the server serves a two-line stylesheet

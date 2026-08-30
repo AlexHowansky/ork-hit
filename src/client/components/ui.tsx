@@ -65,18 +65,33 @@ export const FIELD_CAPTION = "mb-1 block text-sm font-medium";
  */
 export const PANEL_CAPTION = `font-semibold tracking-wide uppercase ${TEXT_MUTED}`;
 
-/** A card's name, in the strip under its picture. Truncates rather than wraps. */
-export const CARD_NAME = "truncate font-medium";
+/**
+ * A card's name, in the strip under its picture. Truncates rather than wraps.
+ *
+ * `text-center` is for the truncated case alone: a name that fits is a shrink-to-
+ * fit box that `CARD_CAPTION` centres itself, but one that is cut short fills the
+ * strip, and without this its ellipsis would sit against the right edge with the
+ * text left-aligned under a centred neighbour.
+ */
+export const CARD_NAME = "truncate text-center font-medium";
 
 /**
  * The shape shared by every card in the library — the tile itself, without the
  * behaviour, which `HoverCard` around it supplies.
  *
  * daisyUI's `card` gives the rounding and the surface; the rest is this app's.
- * The picture is the square, not the card: the image well is a full-width square
- * and the caption sits under it at whatever height its name needs. Since every
- * caption is built the same way, a row of cards still lines up whatever the names
- * are.
+ *
+ * The card is a playing card: five wide by seven tall, with the top five of those
+ * seven the square picture and the bottom two the name under it. So the ratio is
+ * declared here, on the tile, and the two parts divide it between them — the well
+ * takes its own width as a square (`CardWell`) and the caption takes whatever is
+ * left (`CARD_CAPTION`), which is two fifths of the width by arithmetic rather
+ * than by a second number to keep in step. A row of cards therefore lines up
+ * whatever the names are, and a name too long for its strip is cut short rather
+ * than allowed to make one card taller than its neighbours.
+ *
+ * `aspect-[5/7]` measures the border box, so five by seven is the card including
+ * its frame; the picture inside is that less the hairline border on each side.
  *
  * Deliberately carries no `transform`, no `transition` and no hover shadow.
  * `hover-3d` sets all three on this element to tilt it, and a Tailwind utility
@@ -93,7 +108,7 @@ export const CARD_NAME = "truncate font-medium";
  * Callers supply the border and background colours, which vary with selection.
  */
 export const CARD_BASE =
-  "card flex flex-col overflow-hidden border-[length:var(--card-border)] shadow-sm group-hover:border-primary group-focus-within:border-primary";
+  "card flex aspect-[5/7] flex-col overflow-hidden border-[length:var(--card-border)] shadow-sm group-hover:border-primary group-focus-within:border-primary";
 
 /**
  * The strip under a card's picture, carrying its name.
@@ -106,8 +121,15 @@ export const CARD_BASE =
  *
  * `base-200` is the same token `body` carries in `styles.css`; the two are meant
  * to be the same colour and should move together.
+ *
+ * It takes the room the square picture leaves rather than sizing itself, which is
+ * what makes it the bottom two sevenths of the card — see `CARD_BASE`. That is
+ * also why the padding here is horizontal only and the name is centred in the
+ * strip instead: at the smallest card the deployment can ask for, a fixed 12px
+ * above and below would be taller than the strip itself.
  */
-export const CARD_CAPTION = "shrink-0 bg-base-200 p-3";
+export const CARD_CAPTION =
+  "flex min-h-0 flex-1 items-center justify-center bg-base-200 px-3";
 
 /**
  * The grid every card library sits in.
@@ -123,7 +145,9 @@ export const CARD_CAPTION = "shrink-0 bg-base-200 p-3";
  * The width itself is `--card-image-size`, which the deployment sets (see
  * `server/routes/appearance.ts`) — and it names the picture rather than the card
  * because that is what it measures: the image well is the full width of the
- * track, and the border and the name below it make the card taller.
+ * track, and the border and the name below it make the card taller. How much
+ * taller is fixed now rather than a matter of the caption's contents: the card is
+ * five by seven, so the track's width decides its height too (see `CARD_BASE`).
  */
 export const CARD_GRID =
   "grid grid-cols-1 gap-4 " +
