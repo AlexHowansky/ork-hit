@@ -289,6 +289,62 @@ body {
   opacity: 1;
 }
 
+/*
+  The card's corner controls, moving with the card.
+
+  They cannot simply be put on the tilting layer. That layer carries a transform —
+  an identity matrix at rest, but a transform all the same — so it establishes a
+  stacking context, and everything inside it is confined below the tile's own
+  level while `hover-3d`'s eight hover zones sit above at `z-index: 1`. No
+  `z-index` on a child lifts it past them, which is why daisyUI says buttons must
+  not go inside the wrapper at all. So the controls stay outside it, where they
+  are still clickable, and take the same transform instead.
+
+  Which means repeating two things daisyUI does internally, and that is the risk
+  worth naming: if an upgrade changes either, the controls drift away from the
+  card they are supposed to be printed on, and this is the place to look.
+
+  First, the mapping from "which zone is hovered" to a rotation. `hover-3d` sets
+  `--transform` on itself with eight `:has()` rules; these are the same eight,
+  hosted on the article, because the controls are outside the wrapper and a custom
+  property set on it does not reach them.
+
+  Second, `perspective`. The controls' containing block is the article, so without
+  it here their `rotate3d` would be drawn flat and disagree with the card. The
+  wrapper is `w-full` inside a flex article, so the two boxes coincide and the
+  perspective origin lands in the same place for both.
+*/
+.card-3d {
+  --transform: 0, 0;
+  perspective: 75rem;
+}
+
+.card-3d:has(.hover-3d > :nth-child(2):hover) { --transform: -1, 1; }
+.card-3d:has(.hover-3d > :nth-child(3):hover) { --transform: -1, 0; }
+.card-3d:has(.hover-3d > :nth-child(4):hover) { --transform: -1, -1; }
+.card-3d:has(.hover-3d > :nth-child(5):hover) { --transform: 0, 1; }
+.card-3d:has(.hover-3d > :nth-child(6):hover) { --transform: 0, -1; }
+.card-3d:has(.hover-3d > :nth-child(7):hover) { --transform: 1, 1; }
+.card-3d:has(.hover-3d > :nth-child(8):hover) { --transform: 1, 0; }
+.card-3d:has(.hover-3d > :nth-child(9):hover) { --transform: 1, -1; }
+
+/*
+  The same rotation, easing and hover scale `hover-3d` gives its first child. The
+  easing curves are daisyUI's own, one for settling back and a springier one while
+  hovered; without them the controls would arrive on a different schedule from the
+  card and read as sliding across it.
+*/
+.card-actions-3d {
+  --ease: linear(0, 0.931 13.8%, 1.196 21.4%, 1.343 29.8%, 1.378 36%, 1.365 43.2%, 1.059 78%, 1);
+  transform: rotate3d(var(--transform), 0, 10deg);
+  transition: transform var(--ease) 0.5s, scale var(--ease) 0.5s;
+}
+
+.card-3d:hover .card-actions-3d {
+  --ease: linear(0, 0.708 15.2%, 0.927 23.6%, 1.067 33%, 1.12 41%, 1.13 50.2%, 1.019 83.2%, 1);
+  scale: 1.05;
+}
+
 /* Respect a reader who has asked for less motion; the drag list animates a lot. */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -326,5 +382,16 @@ body {
   .card-sheen::before,
   .card-sheen::after {
     content: none;
+  }
+
+  /*
+    And the controls hold still with the card they ride on. Left moving they would
+    tilt over a card that does not, which is a stranger thing to put in front of
+    somebody than either state on its own.
+  */
+  .card-actions-3d,
+  .card-3d:hover .card-actions-3d {
+    transform: none;
+    scale: 1;
   }
 }

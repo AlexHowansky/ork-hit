@@ -878,6 +878,46 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     expect(centre).toBeCloseTo(0.82, 1);
   }, 60_000);
 
+  test("the corner controls tilt with the card, and still work while it is tilted", async () => {
+    if (!browser) return;
+    const gm = await signedInGm();
+
+    const campaignName = unique("Campaign");
+    await gm.getByRole("button", { name: "New", exact: true }).click();
+    await gm.getByLabel("Campaign name").fill(campaignName);
+    await gm.getByRole("button", { name: "Create campaign" }).click();
+    await gm.getByText(`Characters in ${campaignName}`).waitFor();
+
+    const card = gm.locator(`article:has(button[aria-label="Select ${campaignName}"])`);
+    await card.waitFor();
+    const transforms = () =>
+      card.evaluate((el) => ({
+        tile: getComputedStyle(el.querySelector(".card")!).transform,
+        actions: getComputedStyle(el.querySelector(".card-actions-3d")!).transform,
+      }));
+
+    // Untouched, both are flat.
+    const resting = await transforms();
+    expect(resting.tile).toBe("matrix(1, 0, 0, 1, 0, 0)");
+    expect(resting.actions).toBe(resting.tile);
+
+    // Hovered in a corner, the controls take the card's own rotation — exactly,
+    // which is what stops them sliding across the face they are printed on. The
+    // controls sit outside the tilting element (a transform makes it a stacking
+    // context, so nothing inside it can be clicked) and are moved to match.
+    await card.locator(".hover-3d > *").nth(1).hover();
+    await gm.waitForTimeout(800);
+    const tilted = await transforms();
+    expect(tilted.tile).toStartWith("matrix3d(");
+    expect(tilted.actions).toBe(tilted.tile);
+
+    // And the whole point: a control is still a control at that angle.
+    await card.getByRole("button", { name: `Edit ${campaignName}` }).click();
+    const dialog = gm.getByRole("dialog");
+    await dialog.waitFor();
+    expect(await dialog.isVisible()).toBe(true);
+  }, 60_000);
+
   test("the character form asks for the sheet first", async () => {
     if (!browser) return;
     const gm = await signedInGm();

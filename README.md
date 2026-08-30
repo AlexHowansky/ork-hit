@@ -393,15 +393,27 @@ so both of the ways out are in `HoverCard`:
   This is also what retired the two full-bleed buttons that used to cover a
   card's picture — selecting a campaign, and opening a character — since the card
   itself is now the control.
-* **The corner controls are a tenth child.** `hover-3d` only ever names
-  `:first-child` and `:nth-child(2)` through `:nth-child(9)`, so a tenth is
-  untouched by it and free to sit above the zones. It is laid out as a square over
-  the picture rather than pinned to the card's bottom, so it lands in the same
-  place whatever height the name below it needs, and the box passes the pointer
-  through with only the buttons taking it back — otherwise it would blank out the
-  tilt across the whole picture. The controls stay flat while the picture tilts
-  under them, which reads as chrome on top of the card rather than part of its
-  face.
+* **The corner controls live outside the wrapper**, and they have to. The tilting
+  tile carries a transform — an identity matrix at rest, but a transform all the
+  same — so it establishes a stacking context, and anything inside it is confined
+  below the zones however high its `z-index`. That is the real reason daisyUI says
+  buttons must not go in the wrapper: inside it they are not clickable, and no
+  amount of layering fixes it. So the controls sit in the `<article>`, above
+  everything, and pass the pointer through except at the buttons themselves —
+  otherwise they would blank out the tilt across the whole picture.
+
+  **They still move with the card**, rather than staying flat on top of it: they
+  take the same rotation the tile does, so they read as printed on the card's face
+  rather than stuck to the glass. Getting that costs a duplication worth knowing
+  about. `hover-3d` turns "which zone is hovered" into a `--transform` set on
+  itself, and a custom property set there does not reach a sibling of the wrapper —
+  so `styles.css` repeats those eight `:has()` mappings on the `<article>` under
+  `.card-3d`, along with the rotation, daisyUI's two easing curves and the hover
+  scale. If a daisyUI upgrade changes any of them, the controls drift away from
+  the card and that block is where to look. The transform is applied to a layer
+  that is the card's whole box rather than the controls' own smaller one: a
+  rotation about a shared centre maps a given point identically whatever the box's
+  size, which is what keeps them glued to a tile inset from it by the border.
 
 Two consequences worth knowing before editing `CARD_BASE`. It carries **no
 `transform`, `transition` or hover shadow** — `hover-3d` sets all three on that
@@ -439,7 +451,8 @@ arrives as `--card-sheen-strength` through `/appearance.css` exactly as the card
 size does. The two percentages stay in the stylesheet, so the balance between the
 hotspot and the band survives whatever the setting is.
 
-Under `prefers-reduced-motion`, the card does not move and does not shine.
+Under `prefers-reduced-motion`, the card does not move, does not shine, and nor
+do its controls — left moving, they would tilt over a card that does not.
 Zeroing transition durations is not enough — it would turn the tilt into a snap,
 which is worse than the slide — so `styles.css` neutralises the transform
 outright and drops the sheen's pseudo-elements, unlayered so it beats daisyUI's

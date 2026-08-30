@@ -165,10 +165,11 @@ export const CARD_CAPTION_FRAMED =
  * The frame a character card is printed in: `styles.css` holds the artwork and
  * decides which of the two themes' files to draw (see `--card-frame` there).
  *
- * `pointer-events-none` is load-bearing rather than tidiness. `hover-3d`'s eight
- * hover zones sit at `z-index: 1` and this paints above them at `z-10`, so
- * without it the frame would swallow every pointer event over the card and the
- * tilt would simply stop.
+ * `pointer-events-none` says what is meant rather than doing any work: the tile
+ * carries a transform and so establishes a stacking context, which confines this
+ * below `hover-3d`'s hover zones however high its `z-index` — it could not
+ * swallow a pointer event if it tried. Keep it anyway; the day the tile stops
+ * being transformed, it is what stops the frame killing the tilt.
  *
  * It goes between the picture and the name — after `CardWell` and before the
  * `CARD_CAPTION_FRAMED` box — so the picture shows through its window and the
@@ -449,8 +450,13 @@ const ZONES = [0, 1, 2, 3, 4, 5, 6, 7];
  *   the buttons take it back, or it would blank out the tilt across the whole
  *   picture.
  *
- * The controls therefore stay flat while the picture tilts under them, which is a
- * deliberate trade: they are the card's chrome rather than part of its face.
+ * The controls sit outside the tilting tile, then, but they do not sit still: they
+ * take the same rotation it does, so they read as printed on the card's face
+ * rather than stuck to the glass in front of it. They cannot simply be moved onto
+ * that layer — a transform makes it a stacking context, so anything inside it is
+ * confined below the zones and no `z-index` will lift it back out, which is the
+ * whole reason daisyUI says buttons must stay outside the wrapper. `styles.css`
+ * has the arrangement, under `.card-3d`.
  *
  * Anything else — a drag source, a drop target — goes on the outer `<article>`
  * through `...rest`, which is also what keeps `article:has(button[…])` working as
@@ -496,7 +502,7 @@ export function HoverCard({
     // `flex` rather than `block`: `hover-3d` is an `inline-grid`, and an inline
     // box would sit on the text baseline with a descender's worth of gap under it.
     // A flex item is blockified instead, and fills the grid track it was given.
-    <article {...rest} className={`relative flex ${className}`}>
+    <article {...rest} className={`card-3d relative flex ${className}`}>
       {onClick ? (
         <button
           type="button"
@@ -519,12 +525,21 @@ export function HoverCard({
       )}
       {actions ? (
         <div
-          className={`pointer-events-none absolute z-20 flex items-end justify-end p-1 ${
-            framed ? CARD_WINDOW : "inset-x-0 top-0 aspect-square"
-          }`}
+          className="card-actions-3d pointer-events-none absolute inset-0 z-20"
           aria-hidden={false}
         >
-          <div className="pointer-events-auto flex gap-1">{actions}</div>
+          {/* Two boxes, because they do two different jobs. The outer one is the
+              card's own box and carries the tilt: a rotation about a shared centre
+              maps a given point the same way whatever the box's size, so controls
+              transformed here stay glued to a tile that is inset from it by the
+              hairline border. The inner one is where the controls actually sit. */}
+          <div
+            className={`absolute flex items-end justify-end p-1 ${
+              framed ? CARD_WINDOW : "inset-x-0 top-0 aspect-square"
+            }`}
+          >
+            <div className="pointer-events-auto flex gap-1">{actions}</div>
+          </div>
         </div>
       ) : null}
     </article>
