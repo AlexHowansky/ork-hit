@@ -342,11 +342,37 @@ pointer is never over that element at all: the zones cover it and are its
 siblings, not its children, so its own `:hover` never fires. The group is the
 `hover-3d` wrapper, which the zones *are* inside.
 
-Under `prefers-reduced-motion`, the card does not move. Zeroing transition
-durations is not enough — it would turn the tilt into a snap, which is worse than
-the slide — so `styles.css` neutralises the transform outright, unlayered so it
-beats daisyUI's own rule. The hover border still says which card the pointer is
-on.
+**The card also catches the light as it tilts**, and that too is daisyUI's, only
+turned up. `hover-3d` sets a `--shine` beside the `--transform` it rotates by —
+`0% 0%` for the top left zone, `200% 200%` for the bottom right, `100% 100%` at
+rest — and draws a blurred pool of light there. At `#fff3` under an opacity fade
+it is invisible in practice, so `styles.css` restates it at a strength that
+reads, and adds the diagonal glare band daisyUI's hover rule already anticipates
+(`&:before, &:after`) but never defines. Both layers are one cell of the same
+three-by-three grid the zones form, so the light lands on the cell the pointer is
+in by construction, and moves in the same nine steps the tilt does.
+
+It lives on `CardWell` rather than on the tile, which is what clips it: the
+well's `overflow-hidden` keeps the highlight square to the picture, so no streak
+ever crosses the name below and its contrast is untouched. daisyUI's own
+tile-level `::before` is switched off with `content: none` so there are not two
+of them, and the hover state is restated locally because these rules are
+unlayered and would otherwise beat daisyUI's `opacity: 1`. The strength is two
+custom properties, `--card-sheen` and `--card-glare` — the one place in the app
+that names a colour, since a specular highlight is light falling on the card
+rather than a colour from the palette. How glossy a card should look depends on
+the artwork a table uses and the screen it is read on, so the deployment scales
+both with `CARD_SHEEN_PCT` (100 is the tuned strength, the default is a quarter
+of it, and 0 turns the highlight off), which
+arrives as `--card-sheen-strength` through `/appearance.css` exactly as the card
+size does. The two percentages stay in the stylesheet, so the balance between the
+hotspot and the band survives whatever the setting is.
+
+Under `prefers-reduced-motion`, the card does not move and does not shine.
+Zeroing transition durations is not enough — it would turn the tilt into a snap,
+which is worse than the slide — so `styles.css` neutralises the transform
+outright and drops the sheen's pseudo-elements, unlayered so it beats daisyUI's
+own rule. The hover border still says which card the pointer is on.
 
 **Colour belongs to daisyUI, not to the components.** `src/client/styles.css`
 enables two of its stock themes — `winter` for light and `night` for dark — and

@@ -1754,10 +1754,49 @@ describe("the deployment's card size reaches the browser", () => {
     const css = await response.text();
     expect(css).toContain(`--card-image-size: ${config.cardImagePx}px`);
     expect(css).toContain(`--sheet-size: ${config.sheetWidthPct}`);
+    // A multiplier, so the stylesheet keeps the strengths the sheen was tuned at.
+    expect(css).toContain(`--card-sheen-strength: ${config.cardSheenPct / 100}`);
   });
 
   test("and the stored pictures follow it, so bigger cards stay sharp", () => {
     expect(limits.storedImagePx).toBe(config.cardImagePx * 3);
+  });
+
+  /**
+   * `config` reads the environment once, when it is imported, so each of these
+   * needs a process of its own rather than a reassignment.
+   *
+   * `--env-file=/dev/null` because Bun would otherwise load the developer's own
+   * `.env`, and a value set there would answer for the case where nothing is set
+   * at all — quietly turning the default's test into a test of that file.
+   */
+  const sheenFor = async (value?: string): Promise<number> => {
+    const env: Record<string, string | undefined> = { ...process.env };
+    if (value === undefined) delete env.CARD_SHEEN_PCT;
+    else env.CARD_SHEEN_PCT = value;
+
+    const proc = Bun.spawn(
+      [
+        "bun",
+        "--env-file=/dev/null",
+        "-e",
+        'import("./src/lib/config.ts").then((m) => console.log(m.config.cardSheenPct))',
+      ],
+      { env, stdout: "pipe", stderr: "ignore" },
+    );
+    return Number((await new Response(proc.stdout).text()).trim());
+  };
+
+  test("and the sheen's strength is a setting, which zero turns off", async () => {
+    expect(await sheenFor()).toBe(25);
+    expect(await sheenFor("50")).toBe(50);
+    // Zero is the point of the separate helper: `whole` would read it as unset
+    // and hand back the default, leaving no way to switch the highlight off.
+    expect(await sheenFor("0")).toBe(0);
+    // Out of range is clamped, and nonsense falls back, as everywhere else here.
+    expect(await sheenFor("900")).toBe(300);
+    expect(await sheenFor("-10")).toBe(25);
+    expect(await sheenFor("shiny")).toBe(25);
   });
 });
 

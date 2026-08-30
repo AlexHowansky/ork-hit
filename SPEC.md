@@ -48,8 +48,13 @@ document explains the requirements that must be adhered to.
   they carry, and in every library. They must show a clear highlight when
   hovered, and give the same feedback to anyone arriving by keyboard rather than
   mouse. A card tilts towards the pointer as it is hovered, so it reads as an
-  object being handled rather than a picture on a page — but a reader who has
-  asked for less motion is not tilted at, and keeps the highlight on its own.
+  object being handled rather than a picture on a page, and its picture catches
+  the light where the pointer is, so the thing being handled reads as a glossy
+  object rather than a matte one. How brightly it does so is a deployment setting,
+  since it depends on the artwork a table uses, and it can be turned off. The
+  light stays on the picture and off the name, whose contrast must not be touched
+  by it. A reader who has asked for less motion is neither tilted at nor shone at,
+  and keeps the highlight on its own.
 
 * Pressing a card anywhere does the card's own thing: selecting a campaign,
   opening a character. Its corner controls stay reachable over the top of that,

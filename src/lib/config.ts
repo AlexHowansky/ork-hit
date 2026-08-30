@@ -29,6 +29,21 @@ function whole(value: string | undefined, fallback: number, min: number, max: nu
   return Math.min(Math.max(parsed, min), max);
 }
 
+/**
+ * A whole percentage that may legitimately be zero.
+ *
+ * `whole` reads zero as "unset" and hands back its fallback, which is right for
+ * the things it measures — a card or a sheet with no size is a misconfiguration
+ * rather than a choice. Turning an effect off *is* a choice, so it needs its own
+ * helper rather than a loosening of that one. Nonsense still falls back, and
+ * anything above the ceiling is clamped, as there.
+ */
+function scale(value: string | undefined, fallback: number, max: number): number {
+  const parsed = Math.round(Number(value));
+  if (!Number.isFinite(parsed) || parsed < 0) return fallback;
+  return Math.min(parsed, max);
+}
+
 const logLevels = ["debug", "info", "warn", "error"] as const;
 export type LogLevel = (typeof logLevels)[number];
 
@@ -74,6 +89,20 @@ export const config = {
    * same way the card size does (see routes/appearance.ts).
    */
   sheetWidthPct: whole(process.env.SHEET_WIDTH_PCT, 90, 10, 100),
+  /**
+   * How strongly a card's picture catches the light as it tilts, as a percentage
+   * of the strength the effect was tuned at.
+   *
+   * 100 is that tuning and the default is a quarter of it, which is a glint
+   * rather than a gloss — the full strength reads as varnish, and on a wall of
+   * cards that is a lot of varnish. 0 turns the highlight off altogether, and
+   * past about 165 the brightest part of it is already pure white and stops
+   * climbing. It scales the glare band and the hotspot together, so what was
+   * tuned — the balance between the two — is preserved whatever the number.
+   * Reaches the browser as a custom property the same way the card size does
+   * (see routes/appearance.ts).
+   */
+  cardSheenPct: scale(process.env.CARD_SHEEN_PCT, 25, 300),
   isProduction: process.env.NODE_ENV === "production",
 } as const;
 

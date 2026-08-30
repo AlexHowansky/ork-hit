@@ -588,10 +588,15 @@ export function CountBadge({
  * card's edit and delete controls, a full-bleed select button — are positioned
  * against it. It takes children rather than a prop for each, since the three
  * card libraries overlay different things.
+ *
+ * `card-sheen` is the light the card catches as it tilts, and it is on the well
+ * rather than on the tile because the well is what clips it: its `overflow-hidden`
+ * is what keeps the highlight square to the picture and off the name underneath.
+ * The rule itself is in `styles.css`, next to the tilt it moves with.
  */
 export function CardWell({ children }: { children: ReactNode }) {
   return (
-    <div className="relative aspect-square w-full shrink-0 overflow-hidden bg-base-300">
+    <div className="card-sheen relative aspect-square w-full shrink-0 overflow-hidden bg-base-300">
       {children}
     </div>
   );

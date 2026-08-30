@@ -111,6 +111,115 @@ body {
   @apply outline-2 outline-offset-2 outline-primary;
 }
 
+/*
+  The light a card catches as it tilts.
+
+  This is the one place in the app that names a colour, and it is not the
+  exception it looks like: a specular highlight is the light falling *on* the
+  card rather than a colour the card is painted, so there is no semantic token
+  that could stand in for it — `primary` light would be a tint, not a shine. The
+  same value serves both themes, because what the highlight lands on is a
+  photograph rather than a themed surface.
+
+  How glossy a card should look depends on the artwork a table uses and the
+  screen it is read on, so the deployment scales both of these with
+  `CARD_SHEEN_PCT`, which arrives as `--card-sheen-strength` from
+  /appearance.css exactly as the card size does. The two percentages here are
+  what the effect was tuned at, and the multiplier keeps the balance between them
+  whatever it is set to. The default below is the server's own, so a page whose
+  request for /appearance.css never lands looks the same as one whose does.
+
+  The `clamp()` is belt and braces: `color-mix` takes a percentage in 0-100, and
+  every engine tried clamps an overshoot rather than dropping the declaration —
+  but past about 165 the brightest part is pure white either way, which is the
+  honest ceiling for a highlight.
+*/
+:root {
+  --card-sheen-strength: 0.25;
+  --card-sheen: color-mix(
+    in oklab,
+    white clamp(0%, calc(60% * var(--card-sheen-strength)), 100%),
+    transparent
+  );
+  --card-glare: color-mix(
+    in oklab,
+    white clamp(0%, calc(38% * var(--card-sheen-strength)), 100%),
+    transparent
+  );
+}
+
+/*
+  daisyUI already does most of this. `hover-3d` sets a `--shine` beside the
+  `--transform` it tilts by — `0% 0%` for the top left zone, `200% 200%` for the
+  bottom right, `100% 100%` at rest — and draws a faint blurred pool of light at
+  that position. At `#fff3` under an opacity fade it is invisible in practice, so
+  what follows is that same mechanism turned up, with a second layer daisyUI's own
+  hover rule already anticipates but never defines.
+
+  Both layers are one cell of the same three-by-three grid the hover zones form:
+  a 33.33% box moved by `--shine`. The light therefore lands on the cell the
+  pointer is in by construction rather than by tuning, and moves in the nine steps
+  the tilt moves in, so the two read as one gesture.
+
+  Written unlayered on purpose, as the reduced-motion rules below are: daisyUI's
+  own rules sit in a sublayer of `@layer utilities`, and an unlayered author rule
+  beats every layered one whatever its specificity. That is also why the hover
+  state is restated here — daisyUI's own `opacity: 1` would lose to the
+  `opacity: 0` below it.
+*/
+
+/* daisyUI's sheen spans the whole tile, name strip included. Ours is clipped to
+   the picture, so this one is switched off rather than left to double up. */
+.hover-3d > :first-child::before {
+  content: none;
+}
+
+.card-sheen::before,
+.card-sheen::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 33.3333%;
+  height: 33.3333%;
+  /* Over the picture and the kind badge, which are both at `auto`. The corner
+     controls are outside the well entirely and stay above this. */
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0;
+  translate: var(--shine);
+  /* daisyUI's own timing, so the light and the tilt arrive together. */
+  transition: translate 0.4s ease-out, opacity 0.4s ease-out;
+}
+
+/* The hotspot: a small pool of light where the pointer is. Kept tight on
+   purpose — spread wide it stops reading as a highlight and starts reading as
+   fog over the picture. */
+.card-sheen::before {
+  scale: 2;
+  filter: blur(0.45rem);
+  background-image: radial-gradient(circle, var(--card-sheen) 5%, transparent 45%);
+}
+
+/* The glare band: a narrow diagonal streak, and the layer that actually reads as
+   varnish rather than as a bright patch. */
+.card-sheen::after {
+  scale: 3;
+  filter: blur(0.2rem);
+  background-image: linear-gradient(
+    115deg,
+    transparent 44%,
+    var(--card-glare) 49%,
+    var(--card-glare) 51%,
+    transparent 56%
+  );
+}
+
+.hover-3d:hover .card-sheen::before,
+.hover-3d:hover .card-sheen::after {
+  opacity: 1;
+}
+
 /* Respect a reader who has asked for less motion; the drag list animates a lot. */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -136,5 +245,17 @@ body {
   .hover-3d:hover > :first-child {
     transform: none;
     scale: 1;
+  }
+
+  /*
+    And the light goes with it. A highlight that slides across the picture on
+    hover is the same motion the tilt is, and zeroing its duration would turn the
+    slide into the snap the paragraph above refuses. Removed outright rather than
+    hidden: this sits after the rule that generates it, so no `!important` is
+    needed. The hover border still says which card the pointer is on.
+  */
+  .card-sheen::before,
+  .card-sheen::after {
+    content: none;
   }
 }
