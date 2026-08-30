@@ -41,7 +41,9 @@ document explains the requirements that must be adhered to.
 
 * A card in a library carries the proportions of a playing card: five wide by
   seven tall, the top five of those sevens its picture as a square and the bottom
-  two the strip carrying its name. A character card is printed in a frame — the
+  two the strip carrying its name, with a character's kind — player character or
+  not — named at that strip's upper right rather than over the picture. A
+  character card is printed in a frame — the
   same one wherever a character card appears, whether the game master is looking
   at their library or a player is choosing who to play — with its picture showing
   through the frame's window and its name drawn on the panel the frame paints. The

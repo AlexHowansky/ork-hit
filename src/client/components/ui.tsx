@@ -679,10 +679,12 @@ export function CountBadge({
 /**
  * The square picture well at the top of a card.
  *
- * `relative` because the things that sit over a picture — the kind badge, the
- * card's edit and delete controls, a full-bleed select button — are positioned
- * against it. It takes children rather than a prop for each, since the three
- * card libraries overlay different things.
+ * `relative` because what sits over a picture is positioned against it: the
+ * sheen's two layers, and whatever a caller overlays. It takes children rather
+ * than a prop for each, since the three card libraries overlay different things.
+ * The kind badge used to be one of them and is now on the name panel instead
+ * (`CharacterCard`), and the corner controls are `HoverCard`'s, laid over the
+ * card from outside the tile entirely.
  *
  * `card-sheen` is the light the card catches as it tilts, and it is on the well
  * rather than on the tile because the well is what clips it: its `overflow-hidden`

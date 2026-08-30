@@ -876,6 +876,21 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     const name = (await card.getByText("Framed", { exact: true }).boundingBox())!;
     const centre = (name.y + name.height / 2 - cardBox.y) / cardBox.height;
     expect(centre).toBeCloseTo(0.82, 1);
+
+    // The kind badge is on that panel too, tucked into its upper right — not over
+    // the picture, where it used to be and would now compete with the artwork.
+    // Both bounds matter: inside the panel's top edge (67.8%) and short of where
+    // the frame's border begins (96.3%), but close enough to both to read as being
+    // in the corner rather than floating near it. Note the panel carries a
+    // decorative outline about 90% across, which is not its edge — the badge is
+    // meant to sit outside that, against the border.
+    const badge = (await card.getByText("PC", { exact: true }).boundingBox())!;
+    const badgeTop = (badge.y - cardBox.y) / cardBox.height;
+    const badgeRight = (badge.x + badge.width - cardBox.x) / cardBox.width;
+    expect(badgeTop).toBeGreaterThan(0.679);
+    expect(badgeTop).toBeLessThan(0.70);
+    expect(badgeRight).toBeGreaterThan(0.92);
+    expect(badgeRight).toBeLessThan(0.96);
   }, 60_000);
 
   test("the corner controls tilt with the card, and still work while it is tilted", async () => {
