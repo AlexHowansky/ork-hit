@@ -1,8 +1,9 @@
 /**
- * The artwork a character card is printed in.
+ * The artwork a card is printed in.
  *
- * Two files, one per theme, laid over a card by `styles.css` — see `--card-frame`
- * there, which is what decides between them.
+ * Four files — a character frame and a campaign frame, each in a light and a dark
+ * cut — laid over a card by `styles.css`; see `--card-frame` and
+ * `--campaign-frame` there, which are what decide between them.
  *
  * They are served from here rather than imported by the stylesheet because Bun's
  * bundler inlines a `url()` it can resolve on disk: the two together turned a
@@ -30,8 +31,14 @@ async function load(name: string): Promise<{ bytes: ArrayBuffer; etag: string }>
 }
 
 const frames = {
-  light: await load("character-card-template-light.png"),
-  dark: await load("character-card-template-dark.png"),
+  character: {
+    light: await load("character-card-template-light.png"),
+    dark: await load("character-card-template-dark.png"),
+  },
+  campaign: {
+    light: await load("campaign-card-template-light.png"),
+    dark: await load("campaign-card-template-dark.png"),
+  },
 };
 
 /**
@@ -55,9 +62,15 @@ function serve(frame: { bytes: ArrayBuffer; etag: string }, request: Request): R
 
 export const frameRoutes = {
   "/frames/character-light.png": {
-    GET: handler(async (request: Request) => serve(frames.light, request)),
+    GET: handler(async (request: Request) => serve(frames.character.light, request)),
   },
   "/frames/character-dark.png": {
-    GET: handler(async (request: Request) => serve(frames.dark, request)),
+    GET: handler(async (request: Request) => serve(frames.character.dark, request)),
+  },
+  "/frames/campaign-light.png": {
+    GET: handler(async (request: Request) => serve(frames.campaign.light, request)),
+  },
+  "/frames/campaign-dark.png": {
+    GET: handler(async (request: Request) => serve(frames.campaign.dark, request)),
   },
 };

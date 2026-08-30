@@ -295,12 +295,15 @@ components, so their shape lives in one place — `CARD_BASE` in
 `src/client/components/ui.tsx` — and the player's character picker is built from
 the same two, so a player sees the shape the game master saw. The picture is the
 square, not the card: the image well is a full-width square, the card's controls
-ride on the picture as icons in its lower right corner (`IconButton`) — edit,
+ride on the picture as bare glyphs stacked into the top right corner of the
+frame's window (`IconButton bare`, positioned by `CARD_WINDOW_CONTROLS`) — edit,
 delete, and on a character card one that opens its sheet — and the name sits
-under it on its own. That keeps the card mostly picture, and since every caption
-is built the same way a row still lines up whatever the names are.
+under it, on the panel the frame paints. That keeps the card mostly picture, and
+since every caption is built the same way a row still lines up whatever the names
+are.
 
-**A character card is printed in a frame.** `assets/character-card-template-{light,dark}.png`
+**Every card is printed in a frame.** `assets/character-card-template-{light,dark}.png`
+and `assets/campaign-card-template-{light,dark}.png`
 are 300×420 — the same five by seven the card is — so the art lays over a card
 with nothing to crop or letterbox. Its window is transparent and the picture
 shows through it; its lower panel is what the name is drawn on. `CardFrame`
@@ -312,13 +315,18 @@ lower border. `CARD_WINDOW` does the same job for the corner controls, which are
 pinned to the square well otherwise and would sit across the gold divider the art
 draws at 64%. The card's own 1px border is deliberately left showing around the
 art: it is the hover and keyboard-focus highlight, and painting over it would
-take that away. **Campaign cards are not framed**, which is also how the two
-kinds tell themselves apart.
+take that away. Both kinds of card are framed, so both put their controls in the
+same corner and there is one arrangement in `HoverCard` rather than a choice.
+**A campaign card is framed in its own artwork** rather than the
+character one — `CardFrame kind="campaign"`, which adds `.card-frame-campaign` to
+the same overlay — so the two kinds still tell themselves apart at a glance,
+while every measurement above is shared because the two frames are cut to the
+same 300×420.
 
-Which of the two files applies is decided in CSS (`--card-frame` in
+Which cut applies is decided in CSS (`--card-frame` and `--campaign-frame` in
 `styles.css`), following the same three states the theme itself does, so
 switching theme neither re-renders a card nor threads the frame through as a
-prop. The two `url()`s are *not* written there, though: Bun's bundler resolves
+prop. The `url()`s are *not* written there, though: Bun's bundler resolves
 every url it can see, and pointed at the files it inlined both as base64 — taking
 the stylesheet from 60KB to 448KB, render-blocking and refetched whenever any
 unrelated rule changed — while pointed at a server path it refused to build at

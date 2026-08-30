@@ -824,9 +824,13 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     expect(card.height / card.width).toBeCloseTo(7 / 5, 2);
     expect((card.height - box.height) / card.width).toBeCloseTo(2 / 5, 1);
 
-    // A campaign card is a plain tile: no frame, which is how the two kinds of
-    // card tell themselves apart.
-    expect(await gm.locator(`${campaignCard} .card-frame`).count()).toBe(0);
+    // A campaign card is framed too, in its own artwork rather than the
+    // character frame — which is how the two kinds of card tell themselves apart.
+    const campaignFrame = gm.locator(`${campaignCard} .card-frame`);
+    await campaignFrame.waitFor();
+    expect(
+      await campaignFrame.evaluate((el) => getComputedStyle(el).backgroundImage),
+    ).toContain("/frames/campaign-light.png");
   }, 60_000);
 
   test("a character card is printed in the frame, with its name on the panel", async () => {

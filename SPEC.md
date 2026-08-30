@@ -42,21 +42,22 @@ document explains the requirements that must be adhered to.
 * A card in a library carries the proportions of a playing card: five wide by
   seven tall, the top five of those sevens its picture as a square and the bottom
   two the strip carrying its name, with a character's kind — player character or
-  not — named at that strip's upper right rather than over the picture. A
-  character card is printed in a frame — the
-  same one wherever a character card appears, whether the game master is looking
-  at their library or a player is choosing who to play — with its picture showing
+  not — named at that strip's upper right rather than over the picture. A card is
+  printed in a frame — the same one wherever a character card appears, whether the
+  game master is looking at their library or a player is choosing who to play —
+  with its picture showing
   through the frame's window and its name drawn on the panel the frame paints. The
   frame is drawn for the light and the dark theme alike, so the name is legible on
   it either way. The typeface a card's name is set in is a deployment setting,
   since a display face suits a card in a way the interface font does not; unset,
-  the name is drawn in the interface font like everything else. A campaign card is not framed, which is one of the ways the two
-  kinds tell themselves apart. Its controls are icons over the lower right of
-  the picture: edit and delete, and on a character card an icon that opens its
-  sheet. The strip carrying the name takes the page's own background rather than
-  the card's, so it reads as the ground the picture sits on, and a name too long
-  for it is cut short rather than allowed to make the card taller. The name is
-  centred in its strip, both ways.
+  the name is drawn in the interface font like everything else. A campaign card
+  is framed in artwork of its own rather than the character frame, which is one of
+  the ways the two
+  kinds tell themselves apart. A card's controls are icons stacked into the upper
+  right of its picture, inside the frame's window and drawn the same way on both
+  kinds of card: edit and delete, and on a character card an icon that opens its
+  sheet. A name too long for its panel is cut short rather than allowed to make
+  the card taller, and it is centred on the panel, both ways.
   Cards must come out the same size as each other whatever the length of the name
   they carry, and in every library. They must show a clear highlight when
   hovered, and give the same feedback to anyone arriving by keyboard rather than

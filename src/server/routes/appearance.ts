@@ -37,14 +37,17 @@ const css =
   // A multiplier rather than a percentage: the strengths the sheen was tuned at
   // stay in the stylesheet, and this only scales them.
   `  --card-sheen-strength: ${config.cardSheenPct / 100};\n` +
-  // Where the character card's artwork lives. Not a deployment choice like the
-  // rest of this — the files ship with the app — but it has to be written here
-  // all the same: Bun's bundler resolves every `url()` it can see in the
-  // stylesheet, inlining the two frames as base64 when pointed at the files and
-  // refusing to build when pointed at these paths. This response is the server's
-  // own, so nothing rewrites it. `styles.css` picks between the two by theme.
+  // Where the cards' artwork lives — the character frame and the campaign one,
+  // each in both themes. Not a deployment choice like the rest of this — the
+  // files ship with the app — but it has to be written here all the same: Bun's
+  // bundler resolves every `url()` it can see in the stylesheet, inlining the
+  // frames as base64 when pointed at the files and refusing to build when
+  // pointed at these paths. This response is the server's own, so nothing
+  // rewrites it. `styles.css` picks a theme's cut of each.
   `  --card-frame-light: url("/frames/character-light.png");\n` +
   `  --card-frame-dark: url("/frames/character-dark.png");\n` +
+  `  --campaign-frame-light: url("/frames/campaign-light.png");\n` +
+  `  --campaign-frame-dark: url("/frames/campaign-dark.png");\n` +
   // Only when there is one. Unset, `styles.css` falls back to `inherit` and a
   // card's name keeps the interface font.
   //

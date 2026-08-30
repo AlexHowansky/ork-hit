@@ -30,8 +30,9 @@ import {
   AppPage,
   Button,
   CardPicture,
+  CardFrame,
   CardWell,
-  CARD_CAPTION,
+  CARD_CAPTION_FRAMED,
   CARD_GRID,
   CARD_NAME,
   CHARACTER_DRAG,
@@ -385,8 +386,11 @@ function CampaignCard({
       cardClassName={`${inviting || selected ? "border-primary" : HAIRLINE} bg-base-100`}
       actions={
         <>
-          <IconButton label={`Edit ${campaign.name}`} icon={<EditIcon />} onClick={onEdit} />
+          {/* `bare` on both, exactly as the character cards below: glyphs alone,
+              so they can sit into the corner of the picture the frame leaves. */}
+          <IconButton bare label={`Edit ${campaign.name}`} icon={<EditIcon />} onClick={onEdit} />
           <IconButton
+            bare
             label={`Delete ${campaign.name}`}
             icon={<DeleteIcon />}
             danger
@@ -399,7 +403,11 @@ function CampaignCard({
         <CardPicture src={campaign.backgroundUrl} icon={faScroll} draggable={false} />
       </CardWell>
 
-      <div className={CARD_CAPTION}>
+      {/* Over the picture, under the name, exactly as on a character card — the
+          campaign art is cut to the same shape, so the same boxes fit it. */}
+      <CardFrame kind="campaign" />
+
+      <div className={CARD_CAPTION_FRAMED}>
         <h3 className={CARD_NAME}>{campaign.name}</h3>
       </div>
     </HoverCard>
@@ -725,8 +733,8 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
                     actions={
                       <>
                         {/* `bare` on all three: glyphs alone, so they can sit into
-                            the corner of the picture. The campaign cards above keep
-                            the pill. */}
+                            the corner of the picture. The campaign cards above are
+                            drawn the same way. */}
                         <IconButton
                           bare
                           label={`View ${character.name}'s sheet`}

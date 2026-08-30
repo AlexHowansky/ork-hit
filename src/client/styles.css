@@ -128,9 +128,10 @@ body {
 }
 
 /*
-  The frame a character card is printed in.
+  The frames a card is printed in.
 
-  `assets/character-card-template-{light,dark}.png` are 300x420 — five by seven,
+  `assets/character-card-template-{light,dark}.png` and
+  `assets/campaign-card-template-{light,dark}.png` are 300x420 — five by seven,
   the same shape the card is — so the art lays over a card with nothing to crop
   or letterbox. Its window is transparent and the picture shows through it; its
   lower panel is what the name is drawn on (see `CARD_CAPTION_FRAMED`).
@@ -140,8 +141,9 @@ body {
   stylesheet from 60KB to 448KB — render-blocking, and refetched in full whenever
   any unrelated rule changed — and pointed at a server path it refused to build at
   all. So the addresses arrive from /appearance.css, which the server writes and
-  the bundler never sees, as `--card-frame-light` and `--card-frame-dark`; the
-  images themselves come from `server/routes/frames.ts`. A page that never
+  the bundler never sees, as `--card-frame-light`, `--card-frame-dark` and the
+  `--campaign-frame-*` pair; the images themselves come from
+  `server/routes/frames.ts`. A page that never
   receives /appearance.css simply gets no frame, which is the same graceful
   nothing the other settings there fall back to.
 
@@ -152,21 +154,26 @@ body {
   preference unless `winter` is explicit, and an explicit `data-theme` wins over
   both.
 
-  Only character cards take it. A campaign card is a plain tile, which is also
-  how the two kinds tell themselves apart at a glance.
+  Both kinds of card take a frame, and they take a different one: `.card-frame`
+  alone is the character's, and `.card-frame-campaign` alongside it swaps in the
+  campaign art. Which of the two kinds a card is remains legible from the art
+  itself rather than from one tile being bare.
 */
 :root {
   --card-frame: var(--card-frame-light);
+  --campaign-frame: var(--campaign-frame-light);
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="winter"]) {
     --card-frame: var(--card-frame-dark);
+    --campaign-frame: var(--campaign-frame-dark);
   }
 }
 
 :root[data-theme="night"] {
   --card-frame: var(--card-frame-dark);
+  --campaign-frame: var(--campaign-frame-dark);
 }
 
 /*
@@ -178,6 +185,11 @@ body {
   background-image: var(--card-frame);
   background-size: 100% 100%;
   background-repeat: no-repeat;
+}
+
+/* The campaign cut of the same frame; everything else about it is identical. */
+.card-frame-campaign {
+  background-image: var(--campaign-frame);
 }
 
 /*

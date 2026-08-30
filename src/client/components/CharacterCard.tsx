@@ -36,7 +36,6 @@ export function CharacterCard({
       label={onOpen ? character.name : undefined}
       onClick={onOpen}
       actions={actions}
-      framed
       cardClassName="border-base-300 bg-base-100"
     >
       <CardWell>

@@ -1802,10 +1802,17 @@ describe("the deployment's card size reaches the browser", () => {
     // every url() it can see in the stylesheet itself.
     expect(css).toContain(`--card-frame-light: url("/frames/character-light.png")`);
     expect(css).toContain(`--card-frame-dark: url("/frames/character-dark.png")`);
+    expect(css).toContain(`--campaign-frame-light: url("/frames/campaign-light.png")`);
+    expect(css).toContain(`--campaign-frame-dark: url("/frames/campaign-dark.png")`);
   });
 
   test("and the frames themselves are served, cacheably, to anyone", async () => {
-    for (const path of ["/frames/character-light.png", "/frames/character-dark.png"]) {
+    for (const path of [
+      "/frames/character-light.png",
+      "/frames/character-dark.png",
+      "/frames/campaign-light.png",
+      "/frames/campaign-dark.png",
+    ]) {
       // No cookie: a frame is the same for everyone and gives nothing away.
       const response = await fetch(`${base}${path}`);
       expect(response.status).toBe(200);

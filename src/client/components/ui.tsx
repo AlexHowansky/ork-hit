@@ -71,10 +71,10 @@ export const PANEL_CAPTION = `font-semibold tracking-wide uppercase ${TEXT_MUTED
  * `card-name` is the hook for the deployment's own font, if it set one — see
  * `styles.css`, which falls back to `inherit` when it did not.
  *
- * `text-center` is for the truncated case alone: a name that fits is a shrink-to-
- * fit box that `CARD_CAPTION` centres itself, but one that is cut short fills the
- * strip, and without this its ellipsis would sit against the right edge with the
- * text left-aligned under a centred neighbour.
+ * `text-center` is for the truncated case alone: a name that fits is a shrink-
+ * to-fit box that `CARD_CAPTION_FRAMED` centres itself, but one that is cut short
+ * fills the strip, and without this its ellipsis would sit against the right edge
+ * with the text left-aligned under a centred neighbour.
  */
 export const CARD_NAME = "card-name truncate text-center font-medium";
 
@@ -86,12 +86,13 @@ export const CARD_NAME = "card-name truncate text-center font-medium";
  *
  * The card is a playing card: five wide by seven tall, with the top five of those
  * seven the square picture and the bottom two the name under it. So the ratio is
- * declared here, on the tile, and the two parts divide it between them — the well
- * takes its own width as a square (`CardWell`) and the caption takes whatever is
- * left (`CARD_CAPTION`), which is two fifths of the width by arithmetic rather
- * than by a second number to keep in step. A row of cards therefore lines up
- * whatever the names are, and a name too long for its strip is cut short rather
- * than allowed to make one card taller than its neighbours.
+ * declared here, on the tile: the well takes its own width as a square
+ * (`CardWell`) and what is left below it is two fifths of the width by arithmetic
+ * rather than by a second number to keep in step. The name is laid over that
+ * room rather than filling it (`CARD_CAPTION_FRAMED`), since it is drawn on the
+ * panel the frame paints. A row of cards therefore lines up whatever the names
+ * are, and a name too long for its strip is cut short rather than allowed to
+ * make one card taller than its neighbours.
  *
  * `aspect-[5/7]` measures the border box, so five by seven is the card including
  * its frame; the picture inside is that less the hairline border on each side.
@@ -112,27 +113,6 @@ export const CARD_NAME = "card-name truncate text-center font-medium";
  */
 export const CARD_BASE =
   "card flex aspect-[5/7] flex-col overflow-hidden border-[length:var(--card-border)] shadow-sm group-hover:border-primary group-focus-within:border-primary";
-
-/**
- * The strip under a card's picture, carrying its name.
- *
- * It takes the *page's* background rather than the card's, so the caption reads
- * as the ground the picture is sitting on rather than as part of the picture's
- * own tile. Kept here beside `CARD_BASE` because three libraries draw this strip
- * — campaigns, characters, and the player's pick-a-character grid — and a card
- * that matched in every respect but this one would be the odd one out.
- *
- * `base-200` is the same token `body` carries in `styles.css`; the two are meant
- * to be the same colour and should move together.
- *
- * It takes the room the square picture leaves rather than sizing itself, which is
- * what makes it the bottom two sevenths of the card — see `CARD_BASE`. That is
- * also why the padding here is horizontal only and the name is centred in the
- * strip instead: at the smallest card the deployment can ask for, a fixed 12px
- * above and below would be taller than the strip itself.
- */
-export const CARD_CAPTION =
-  "flex min-h-0 flex-1 items-center justify-center bg-base-200 px-3";
 
 /**
  * Where a control may sit inside the frame's window, which is not the window
@@ -167,7 +147,7 @@ export const CARD_WINDOW_CONTROLS =
 /**
  * The name's strip on a card that carries the frame, which is not the same box.
  *
- * `CARD_CAPTION` takes the bottom two sevenths, which is the card's own division.
+ * The card's own division puts the bottom two sevenths under the picture.
  * The artwork draws its panel somewhere slightly different — measured off the
  * asset, it runs from 67.8% to 96.2% of the card's height, with the gold divider
  * above it and the frame's outer border below — so this is positioned against the
@@ -183,8 +163,10 @@ export const CARD_CAPTION_FRAMED =
   "absolute inset-x-0 top-[67.8%] bottom-[3.8%] z-20 flex items-center justify-center px-[8%]";
 
 /**
- * The frame a character card is printed in: `styles.css` holds the artwork and
- * decides which of the two themes' files to draw (see `--card-frame` there).
+ * The frame a card is printed in: `styles.css` holds the artwork and decides
+ * which of the two themes' files to draw (see `--card-frame` there). `kind`
+ * picks between the character art and the campaign art, which are cut to the
+ * same 300x420 and so share every measurement here and in `CARD_CAPTION_FRAMED`.
  *
  * `pointer-events-none` says what is meant rather than doing any work: the tile
  * carries a transform and so establishes a stacking context, which confines this
@@ -196,8 +178,13 @@ export const CARD_CAPTION_FRAMED =
  * `CARD_CAPTION_FRAMED` box — so the picture shows through its window and the
  * name is drawn on top of its panel.
  */
-export function CardFrame() {
-  return <div className="card-frame pointer-events-none absolute inset-0 z-10" aria-hidden />;
+export function CardFrame({ kind = "character" }: { kind?: "character" | "campaign" }) {
+  return (
+    <div
+      className={`card-frame ${kind === "campaign" ? "card-frame-campaign " : ""}pointer-events-none absolute inset-0 z-10`}
+      aria-hidden
+    />
+  );
 }
 
 /**
@@ -489,7 +476,6 @@ export function HoverCard({
   pressed,
   disabled,
   actions,
-  framed = false,
   cardClassName = "",
   className = "",
   children,
@@ -501,14 +487,8 @@ export function HoverCard({
   onClick?: () => void;
   pressed?: boolean;
   disabled?: boolean;
-  /** Icon buttons laid over the bottom right of the picture, above the zones. */
+  /** Icon buttons laid into the top right of the picture, above the zones. */
   actions?: ReactNode;
-  /**
-   * Whether this card carries the frame (`CardFrame`). The only thing it changes
-   * is where `actions` sit: inside the artwork's window rather than over the
-   * square well, which the art's divider cuts across.
-   */
-  framed?: boolean;
   /** Border and background for the tile, which vary with selection. */
   cardClassName?: string;
   /** For the frame around the card: a drop target's ring, and nothing else. */
@@ -554,23 +534,14 @@ export function HoverCard({
               maps a given point the same way whatever the box's size, so controls
               transformed here stay glued to a tile that is inset from it by the
               hairline border. The inner one is where the controls actually sit. */}
-          <div
-            className={`absolute flex justify-end ${
-              framed
-                ? `${CARD_WINDOW_CONTROLS} items-start`
-                : "inset-x-0 top-0 aspect-square items-end p-1"
-            }`}
-          >
-            {/* A framed card stacks its controls down the picture's top right, in
-                the order they are given; no padding, because the box is already the
-                corner the artwork leaves, and a smaller gap because bare glyphs
-                need less room between them than pills do. A campaign card keeps the
-                row along the bottom, its padding and its gap, and does not move. */}
-            <div
-              className={`pointer-events-auto flex ${framed ? "flex-col gap-0.5" : "gap-1"}`}
-            >
-              {actions}
-            </div>
+          <div className={`absolute flex justify-end items-start ${CARD_WINDOW_CONTROLS}`}>
+            {/* The controls stack down the picture's top right, in the order they
+                are given; no padding, because the box is already the corner the
+                artwork leaves, and a tight gap because bare glyphs need less room
+                between them than pills would. Every card in a library is framed —
+                campaigns and characters alike — so there is one arrangement here
+                rather than a choice. */}
+            <div className="pointer-events-auto flex flex-col gap-0.5">{actions}</div>
           </div>
         </div>
       ) : null}
@@ -590,7 +561,7 @@ export function HoverCard({
  * defines, and a translucent pill of it with its own content colour reads over
  * any photograph in either theme.
  *
- * `bare` drops the pill for the glyph alone, which is what the character cards
+ * `bare` drops the pill for the glyph alone, which is what the library cards
  * want so their controls can sit into the corner of the picture. It does not drop
  * the problem the pill was solving: a white glyph on a pale photograph is
  * invisible. So the job moves from a fill to a drop shadow, which costs no box.
@@ -624,8 +595,8 @@ export function IconButton({
     // because FontAwesome's own stylesheet sizes the svg and wins over a utility —
     // `h-4 w-4` is already on it and is not what decides how big it is drawn. A
     // transform is also the one thing that cannot be argued with by the cascade.
-    // It is done here rather than by passing a smaller `Icon`, because the campaign
-    // cards and the sheet frame draw these same three at full size.
+    // It is done here rather than by passing a smaller `Icon`, because the sheet
+    // frame draws these same three at full size.
     ? `flex h-4 w-4 items-center justify-center text-neutral-content ` +
       // Two shadows, not one. The tight one is a halo that outlines the glyph, and
       // it is what keeps a pale icon legible on a pale picture — the case the pill
