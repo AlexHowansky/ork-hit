@@ -239,7 +239,10 @@ The app should have the following features:
   folded in half reads at a glance as two characters; where
   the screen is too narrow to hold the line, the numbers themselves draw a little
   tighter, and a name too long for the panel is cut short rather than wrapped —
-  the whole of it heads the page anyway.
+  the whole of it heads the page anyway. Narrower than even that will hold — a
+  reader may drag this column as narrow as they like — the line of numbers is
+  pushed sideways to read the end of, and stays inside its panel rather than
+  spilling over what is beside it.
 
 * The session code, the two ways of handing it out and the control that ends the
   session share a panel of their own, at the top of the column the players are
@@ -275,7 +278,11 @@ The app should have the following features:
   the turn, the player's own character and the list of players sit in the first
   column — so the turn is the width of the player list rather than of the page —
   and the scene sits in the second. Stacked, the order is the turn, their
-  character, the scene, then the players.
+  character, the scene, then the players. Where the two columns exist, the
+  boundary between them is draggable in exactly the way the console's and the
+  library's are, and under the same rules: neither column crushed away to
+  nothing, the choice lasting for the visit rather than being remembered, and
+  handing the boundary back restoring the share it began with.
 
 * Both session screens carry a **log**: what has happened at this table, one
   line per event, each with the time it happened on a twelve-hour clock, oldest

@@ -98,6 +98,19 @@
 }
 
 /*
+  The width of the left-hand column on the player's screen — the turn, their own
+  character and the players list — on the one layout it has more than one column.
+
+  The default is that column's natural share of the split, against the scene's
+  `1.4fr`, so an untouched player screen is the same `1 : 1.4` it has always been.
+  The handle between the two (`useColumnSplit`) replaces it with a pixel width,
+  and the scene, which has no handle of its own, absorbs the difference.
+*/
+:root {
+  --player-mine: minmax(0, 1fr);
+}
+
+/*
   How much of the window a character sheet is opened over, as a percentage.
 
   One number sets both dimensions, which is what puts the sheet in the window's

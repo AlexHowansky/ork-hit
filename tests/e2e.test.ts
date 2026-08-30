@@ -880,6 +880,73 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     expect(await handles.turn.isVisible()).toBe(false);
   }, 60_000);
 
+  test("the player screen's two columns can be dragged to a different balance", async () => {
+    if (!browser) return;
+    const { code } = await gmWithSession();
+    const player = await playerIn(code, "Vex");
+    await player.setViewportSize({ width: 1400, height: 1000 });
+    await player.waitForTimeout(200);
+
+    // The panels fill the columns they are in, so they are how the columns are
+    // measured: the players list is the first column, the scene the second.
+    const panelWith = (name: string | RegExp) =>
+      player.locator("section").filter({ has: player.getByRole("heading", { name }) });
+    const mine = panelWith(/^Players/);
+    const scene = panelWith(/^Segment /);
+    const widthOf = async (panel: Locator) => (await panel.boundingBox())!.width;
+    const handle = player.getByRole("separator", { name: "Resize your column" });
+
+    const drag = async (by: number) => {
+      const box = (await handle.boundingBox())!;
+      const y = box.y + box.height / 2;
+      await player.mouse.move(box.x + box.width / 2, y);
+      await player.mouse.down();
+      await player.mouse.move(box.x + box.width / 2 + by, y, { steps: 8 });
+      await player.mouse.up();
+      await player.waitForTimeout(100);
+    };
+
+    // The scene starts the wider of the two, which is the balance the screen has
+    // always drawn.
+    const wasMine = await widthOf(mine);
+    const wasScene = await widthOf(scene);
+    expect(wasScene).toBeGreaterThan(wasMine);
+    const total = wasMine + wasScene;
+
+    // Dragging the boundary gives the player's own column what the scene loses.
+    await drag(160);
+    expect(await widthOf(mine)).toBeCloseTo(wasMine + 160, -1);
+    expect((await widthOf(mine)) + (await widthOf(scene))).toBeCloseTo(total, -1);
+
+    // The other way, and the scene grows instead.
+    await drag(-260);
+    expect(await widthOf(mine)).toBeCloseTo(wasMine - 100, -1);
+
+    // Dragged to either edge neither column is crushed out of existence — a
+    // sixth of the split is as narrow as either may be squeezed — and the handle
+    // is still there to be taken hold of at both ends, which is only true while
+    // a squeezed column keeps its contents to itself.
+    await drag(-2000);
+    const squeezed = await widthOf(mine);
+    expect(squeezed).toBeGreaterThan(total / 6 - 2);
+    await drag(2000);
+    expect(await widthOf(mine)).toBeGreaterThan(squeezed);
+    expect(await widthOf(scene)).toBeGreaterThan(total / 6 - 2);
+
+    // A double-click hands the boundary back to the share it began with.
+    await handle.dblclick();
+    await player.waitForTimeout(150);
+    expect(await widthOf(mine)).toBeCloseTo(wasMine, -1);
+    expect(await widthOf(scene)).toBeCloseTo(wasScene, -1);
+
+    // Stacked, the panels are one column and there is no boundary to drag.
+    await player.setViewportSize({ width: 700, height: 1000 });
+    await player.waitForTimeout(200);
+    expect(await handle.isVisible()).toBe(false);
+
+    await player.close();
+  }, 60_000);
+
   test("the library's two columns can be dragged to a different balance", async () => {
     if (!browser) return;
     const gm = await signedInGm();

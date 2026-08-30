@@ -593,6 +593,21 @@ model it, `apply` puts the width on the page, reads back the narrowest column
 beyond, and hands room back if it fell under its floor. It settles in one pass
 except near the edge, because the first guess is only wrong there.
 
+**The player screen has one**, between the column holding the turn, their own
+character and the player list, and the scene beside it. It is the plainest use of
+the hook — one boundary, no `order` to see through, and no automatic width to take
+turns with, so the handle is the only writer of `--player-mine` and the scene's
+`1.4fr` absorbs whatever the first column gives up. It appears at `lg`, where the
+second column does; below that the panels stack and there is no boundary to drag.
+
+It did cost the panel above it one line. A column the reader can squeeze is a
+column whose contents have to stay inside it, and `My character` is the one panel
+on either session screen that does not scroll its body — so its deliberately
+unwrapping line of numbers simply overflowed, and at the narrow end it lay across
+the handle and put it out of reach exactly when a reader wanted their column back.
+That line now scrolls sideways within the panel, which is what the spec asked for
+anyway: pushed sideways to read the end of, rather than folded in half.
+
 **File fields take a drop, and still are file fields.** Adding a character means
 handing over an HTML sheet and often a picture, and dragging a file from a folder
 is the shorter path — so both fields on the character form are `FileDrop`

@@ -402,6 +402,7 @@ export function Panel({
  */
 const HANDLE_SHOWN = {
   sm: "hidden sm:flex sm:items-stretch sm:justify-center",
+  lg: "hidden lg:flex lg:items-stretch lg:justify-center",
   wide: "hidden wide:flex wide:items-stretch wide:justify-center",
 } as const;
 

@@ -17,6 +17,7 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "../api.ts";
 import { playDing } from "../ding.ts";
 import { useSessionSocket } from "../useSessionSocket.ts";
+import { useColumnSplit } from "../useColumnSplit.ts";
 import {
   AppPage,
   Button,
@@ -26,6 +27,7 @@ import {
   CardFrame,
   CardPicture,
   CardWell,
+  ColumnHandle,
   HoverCard,
   CharacterThumb,
   EmptyState,
@@ -92,6 +94,15 @@ export function PlayerSession({
   const [dropped, setDropped] = useState(false);
   const [showActingOnly, toggleSegmentFilter] = useSegmentFilter(sessionId);
   const [logOpen, toggleLog] = useLogDrawer(sessionId);
+
+  // The two columns start at the shares the screen has always used and can be
+  // dragged to any others. One boundary, so one split: it sizes the column to its
+  // left and the scene beside it takes what that column gives up.
+  const columnsRef = useRef<HTMLDivElement | null>(null);
+  const mineSplit = useColumnSplit<HTMLDivElement>({
+    containerRef: columnsRef,
+    variable: "--player-mine",
+  });
 
   /**
    * A player who is away long enough is removed from the session, and a removed
@@ -371,8 +382,21 @@ export function PlayerSession({
       <div className="flex flex-col lg:flex-row lg:items-start wide:min-h-0 wide:flex-1 wide:items-stretch">
         <LogDrawer events={snapshot.events} open={logOpen} onClose={toggleLog} />
 
-      <div className="flex min-w-0 flex-1 flex-col gap-2.5 lg:flex-row lg:items-start lg:gap-2.5 wide:min-h-0 wide:items-stretch">
-        <div className="contents lg:flex lg:min-w-0 lg:flex-1 lg:flex-col lg:gap-2.5 wide:min-h-0">
+      {/*
+        Two tracks with a handle standing in the gutter between them, which is why
+        there is no column gap any more: the handle is exactly as wide as the gap
+        it replaced. The left track's width is the custom property, defaulting to
+        the share it has always had against the scene's `1.4fr` (see `styles.css`),
+        so an untouched screen looks exactly as it did before it could be dragged.
+      */}
+      <div
+        ref={columnsRef}
+        className="flex min-w-0 flex-1 flex-col gap-2.5 lg:grid lg:grid-cols-[var(--player-mine)_auto_minmax(0,1.4fr)] lg:items-start lg:gap-x-0 wide:min-h-0 wide:items-stretch"
+      >
+        <div
+          ref={mineSplit.panelRef}
+          className="contents lg:flex lg:min-w-0 lg:flex-col lg:gap-2.5 wide:min-h-0"
+        >
           <TurnControls
             className="lg:shrink-0"
             turn={snapshot.session.turn}
@@ -412,7 +436,15 @@ export function PlayerSession({
                     <StatLine character={myCharacter} />
                   </div>
                 </div>
-                {/* Spent during a fight, and this player's own to spend. */}
+                {/*
+                  Spent during a fight, and this player's own to spend. The line
+                  does not wrap, and this column's width is the reader's to
+                  choose, so it is pushed sideways to see the end of rather than
+                  allowed to spill: without this it overflowed the panel and lay
+                  across the drag handle beside it, which put the handle out of
+                  reach exactly when a reader wanted their column back.
+                */}
+                <div className="overflow-x-auto">
                 <Vitals
                   character={myCharacter}
                   wrap={false}
@@ -420,6 +452,7 @@ export function PlayerSession({
                   onRecover={() => void recover(myCharacter.id)}
                   onRest={() => void rest(myCharacter.id)}
                 />
+                </div>
                 {/*
                   And what condition they are in, set here rather than in the
                   scene below for the same reason the numbers are: a player's own
@@ -481,7 +514,13 @@ export function PlayerSession({
           </Panel>
         </div>
 
-        <div className="contents lg:flex lg:min-w-0 lg:flex-[1.4] lg:flex-col wide:min-h-0">
+        <ColumnHandle
+          {...mineSplit.handleProps}
+          from="lg"
+          label="Resize your column"
+        />
+
+        <div className="contents lg:flex lg:min-w-0 lg:flex-col wide:min-h-0">
           <Panel
             scroll
             title={`Segment ${snapshot.session.segment}`}
