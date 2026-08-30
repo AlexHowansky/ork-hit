@@ -153,11 +153,16 @@ export const CARD_CAPTION =
  * Pull the right in much past this and the top icon is never clear at any height,
  * because the bevel has cut the corner away entirely by then.
  *
+ * These are fractions of the card while the icons are a fixed 16px, so the two
+ * scale against each other and the tight case is a *large* card, where the glyph
+ * is a small enough fraction to sit right in the bevel's path. 4.4% is the value
+ * that clears on both templates from a 112px card up to the 642px ceiling.
+ *
  * The bottom is generous on purpose: the stack is laid out from the top, so this
  * only has to be far enough down not to squash it.
  */
 export const CARD_WINDOW_CONTROLS =
-  "left-[3.3%] right-[4%] top-[5.5%] bottom-[37.5%]";
+  "left-[3.3%] right-[4.4%] top-[5.5%] bottom-[37.5%]";
 
 /**
  * The name's strip on a card that carries the frame, which is not the same box.
@@ -593,9 +598,11 @@ export function HoverCard({
  * brightens instead, and `danger` colours the glyph where the pill coloured
  * itself.
  *
- * The bare button is 20px around a 16px glyph rather than the pill's 24px. The
- * margin is invisible and deliberate: without it the target would shrink to the
- * glyph, which is well under what anyone can reliably hit.
+ * The bare button is 16px around a 12.8px glyph, against the pill's 24px around
+ * 16px. The margin is invisible and deliberate: without it the target would shrink
+ * to the glyph itself. It is a small target even so — under the 24px that target-
+ * size guidance asks for — which is the price of a control drawn as bare ink in
+ * the corner of a picture.
  */
 export function IconButton({
   label,
@@ -612,7 +619,14 @@ export function IconButton({
   bare?: boolean;
 }) {
   const look = bare
-    ? `flex h-5 w-5 items-center justify-center text-neutral-content ` +
+    // Four fifths of the size these were: a 16px box, and the glyph scaled to match.
+    // The glyph is shrunk with a transform rather than a smaller height and width,
+    // because FontAwesome's own stylesheet sizes the svg and wins over a utility —
+    // `h-4 w-4` is already on it and is not what decides how big it is drawn. A
+    // transform is also the one thing that cannot be argued with by the cascade.
+    // It is done here rather than by passing a smaller `Icon`, because the campaign
+    // cards and the sheet frame draw these same three at full size.
+    ? `flex h-4 w-4 items-center justify-center text-neutral-content ` +
       // Two shadows, not one. The tight one is a halo that outlines the glyph, and
       // it is what keeps a pale icon legible on a pale picture — the case the pill
       // used to cover. The soft one lifts it off a busy photograph. A single soft
@@ -630,7 +644,9 @@ export function IconButton({
 
   return (
     <button {...props} type="button" title={label} aria-label={label} className={`${look} ${className}`}>
-      <span aria-hidden="true">{icon}</span>
+      <span aria-hidden="true" className={bare ? "flex scale-[0.8]" : undefined}>
+        {icon}
+      </span>
     </button>
   );
 }
