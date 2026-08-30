@@ -327,6 +327,36 @@ the bundler never sees, and the images themselves are served by
 `server/routes/frames.ts`: read once at startup, public, and revalidated with an
 ETag of their own contents.
 
+**The names on cards can be set in a font of the deployment's choosing.**
+`CARD_FONT_URL` is a stylesheet carrying the font and `CARD_FONT_FAMILY` the
+family within it to draw with — both are needed, since such a stylesheet often
+names several families and a family name alone has nothing to load. The URL is
+`@import`ed at the top of `/appearance.css` and the family arrives beside it as
+`--card-font-family`, which `.card-name` reads; unset, that falls back to
+`inherit` and a card's name keeps the interface font. Only the name takes it, on
+all three libraries — not the PC/NPC badge, where a display face at that size is
+a puzzle rather than a label.
+
+Both values are validated in `config.ts` rather than trusted, because both are
+written into a stylesheet every page loads. The URL must be https on
+`fonts.googleapis.com`, which is the host the page CSP admits — a URL the browser
+would block is refused where it can be explained instead. The family is held to
+letters, digits, spaces and hyphens, which names every family a font service
+offers and cannot close a `font-family` value or open a rule of its own. A
+rejected value is logged at startup and ignored: `config.ts` cannot log for
+itself, since `log.ts` reads it for its level, so it collects the complaints in
+`configWarnings` and `server/index.ts` reports them.
+
+Two details worth knowing before changing the fallback. `--card-font-family` ends
+in a plain `sans-serif`, and neither of the two more obvious tails works:
+`inherit` is a CSS-wide keyword, legal only as an entire value and never as one
+item in a font list, so it makes the whole declaration invalid; and
+`var(--font-sans)` resolves to nothing, because Tailwind inlines its theme values
+in this build rather than emitting that property — and an unresolvable `var()`
+makes the custom property itself invalid. Both failures look identical from the
+outside: the name quietly keeps the interface font and the setting appears not to
+work.
+
 **A card is a playing card**: five wide by seven tall, the top five of those
 sevens the square picture and the bottom two the name under it. The ratio is
 declared once, as `aspect-[5/7]` on `CARD_BASE`, and the two parts divide it
@@ -889,6 +919,16 @@ it to escape a rate limit — and the socket address is used instead.
 Two response headers cannot be set by the app, because Bun's bundler serves the
 HTML document itself: **`Strict-Transport-Security` and `frame-ancestors`**. The
 page carries a `<meta>` CSP covering everything else; set these at the proxy:
+
+That policy is `'self'` throughout with two exceptions, both for `CARD_FONT_URL`:
+`fonts.googleapis.com` in `style-src` for the stylesheet, and
+`fonts.gstatic.com` in `font-src` for the font files it points at. They are
+allowed whether or not a font is configured, since the policy is static, and they
+mean a reader's browser contacts Google when one is. A deployment that wants a
+different provider — or none of this at all — edits the tag in
+`src/client/index.html` and the host list in `src/lib/config.ts` together; they
+are deliberately kept in step so a URL the policy would block is refused with a
+log line rather than failing silently in the browser.
 
 ```nginx
 location / {

@@ -44,6 +44,69 @@ function scale(value: string | undefined, fallback: number, max: number): number
   return Math.min(parsed, max);
 }
 
+/**
+ * Settings that were set but not usable, so startup can say so.
+ *
+ * This module cannot log: `log.ts` reads `config` for its level, and importing it
+ * back would be a cycle. So a rejected value is recorded here and
+ * `server/index.ts` reports the lot once the logger exists. Silence is the thing
+ * to avoid — a misspelled font that simply does nothing is a bad afternoon.
+ */
+export const configWarnings: string[] = [];
+
+/**
+ * The stylesheet a deployment wants the card names set in.
+ *
+ * Only `https://fonts.googleapis.com`, and that is not arbitrary strictness: the
+ * page's CSP names that host (see `client/index.html`), so a URL anywhere else
+ * would be blocked by the browser with nothing said. Refusing it here turns a
+ * silent failure into a line in the log. A deployment that wants another provider
+ * has to widen the CSP as well as this list.
+ */
+const FONT_STYLESHEET_HOSTS = ["fonts.googleapis.com"];
+
+function fontUrl(value: string | undefined): string | null {
+  if (value === undefined || value.trim() === "") return null;
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    configWarnings.push(`CARD_FONT_URL is not a URL and was ignored: ${value}`);
+    return null;
+  }
+  if (parsed.protocol !== "https:" || !FONT_STYLESHEET_HOSTS.includes(parsed.host)) {
+    configWarnings.push(
+      `CARD_FONT_URL must be an https URL on ${FONT_STYLESHEET_HOSTS.join(", ")} ` +
+        `— the page's CSP allows no other, so this was ignored: ${value}`,
+    );
+    return null;
+  }
+  return parsed.href;
+}
+
+/**
+ * The family name to actually draw with, which the stylesheet above cannot say —
+ * one of those URLs often carries several.
+ *
+ * The pattern is deliberately narrow. This value is interpolated into a
+ * stylesheet every page loads, so a quote or a brace in it would end the
+ * declaration and let the rest become CSS of the operator's choosing. Letters,
+ * digits, spaces and hyphens name every family a font service offers and cannot
+ * escape a `font-family` value.
+ */
+function fontFamily(value: string | undefined): string | null {
+  if (value === undefined || value.trim() === "") return null;
+  const name = value.trim();
+  if (!/^[A-Za-z0-9 -]{1,64}$/.test(name)) {
+    configWarnings.push(
+      `CARD_FONT_FAMILY may only contain letters, digits, spaces and hyphens, ` +
+        `and was ignored: ${value}`,
+    );
+    return null;
+  }
+  return name;
+}
+
 const logLevels = ["debug", "info", "warn", "error"] as const;
 export type LogLevel = (typeof logLevels)[number];
 
@@ -103,6 +166,19 @@ export const config = {
    * (see routes/appearance.ts).
    */
   cardSheenPct: scale(process.env.CARD_SHEEN_PCT, 25, 300),
+  /**
+   * The typeface a card's name is set in, as a stylesheet to load and the family
+   * within it to use. A display face suits a card in a way the interface sans
+   * does not, and which one is a matter of the table's taste.
+   *
+   * Both are needed for either to do anything: the stylesheet carries the font
+   * but often names several families, and the family name alone has nothing to
+   * load. Unset — or set to something unusable — the names keep the interface
+   * font. Reaches the browser through routes/appearance.ts, as the rest of the
+   * card's appearance does.
+   */
+  cardFontUrl: fontUrl(process.env.CARD_FONT_URL),
+  cardFontFamily: fontFamily(process.env.CARD_FONT_FAMILY),
   isProduction: process.env.NODE_ENV === "production",
 } as const;
 

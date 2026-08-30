@@ -46,7 +46,9 @@ document explains the requirements that must be adhered to.
   at their library or a player is choosing who to play — with its picture showing
   through the frame's window and its name drawn on the panel the frame paints. The
   frame is drawn for the light and the dark theme alike, so the name is legible on
-  it either way. A campaign card is not framed, which is one of the ways the two
+  it either way. The typeface a card's name is set in is a deployment setting,
+  since a display face suits a card in a way the interface font does not; unset,
+  the name is drawn in the interface font like everything else. A campaign card is not framed, which is one of the ways the two
   kinds tell themselves apart. Its controls are icons over the lower right of
   the picture: edit and delete, and on a character card an icon that opens its
   sheet. The strip carrying the name takes the page's own background rather than

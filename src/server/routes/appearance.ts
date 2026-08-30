@@ -15,7 +15,22 @@
 
 import { config } from "../../lib/config.ts";
 
+/**
+ * The font, when the deployment asked for one and both halves of it were usable.
+ *
+ * `@import` has to come before every other rule in a stylesheet, which is why
+ * this is prepended rather than written into the block below. Both values are
+ * safe to interpolate: `config` has already put the URL through `new URL()` and
+ * an https-plus-known-host check, and held the family to letters, digits, spaces
+ * and hyphens — which cannot close a `font-family` value or open a new rule.
+ */
+const font =
+  config.cardFontUrl && config.cardFontFamily
+    ? { atImport: `@import url("${config.cardFontUrl}");\n`, family: config.cardFontFamily }
+    : null;
+
 const css =
+  (font?.atImport ?? "") +
   `:root {\n` +
   `  --card-image-size: ${config.cardImagePx}px;\n` +
   `  --sheet-size: ${config.sheetWidthPct};\n` +
@@ -30,6 +45,19 @@ const css =
   // own, so nothing rewrites it. `styles.css` picks between the two by theme.
   `  --card-frame-light: url("/frames/character-light.png");\n` +
   `  --card-frame-dark: url("/frames/character-dark.png");\n` +
+  // Only when there is one. Unset, `styles.css` falls back to `inherit` and a
+  // card's name keeps the interface font.
+  //
+  // The tail is what the name falls back to if the font is configured but never
+  // arrives, and getting it wrong is silent, so it is worth being exact about.
+  // Not `inherit`: a CSS-wide keyword is only legal as a whole value, never as one
+  // item in a font list, and one here makes the whole declaration invalid. Not
+  // `var(--font-sans)` either: Tailwind inlines its theme values in this build
+  // rather than emitting that property, so at run time it resolves to nothing —
+  // and an unresolvable `var()` makes *this* custom property invalid in turn,
+  // which is the same silent nothing by a longer route. A plain generic always
+  // resolves, and the app's own stack ends in it anyway.
+  (font ? `  --card-font-family: "${font.family}", sans-serif;\n` : "") +
   `}\n`;
 
 export const appearanceRoutes = {

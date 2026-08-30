@@ -9,10 +9,17 @@
       The document itself is served by Bun's bundler, which does not let us attach
       response headers, so the policy is declared here. The header-only directives
       (frame-ancestors, HSTS) are set by the reverse proxy — see README.
+
+      The two Google hosts are the only third parties named, and they are here for
+      CARD_FONT_URL: the stylesheet comes from fonts.googleapis.com and the font
+      files it points at from fonts.gstatic.com. That is also why `lib/config.ts`
+      accepts a font URL on that host and no other — a URL this policy would block
+      is refused where it can be explained rather than failing silently in the
+      browser. A deployment wanting another provider must widen both.
     -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' ws: wss:; frame-src 'self'; form-action 'none'; object-src 'none'; base-uri 'none'"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' ws: wss:; frame-src 'self'; form-action 'none'; object-src 'none'; base-uri 'none'"
     />
     <title>TTRPG Synchronizer</title>
     <link rel="stylesheet" href="./styles.css" />

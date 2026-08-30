@@ -1743,6 +1743,48 @@ describe("pictures are stored at the size a card shows them", () => {
   });
 });
 
+/**
+ * Runs `expr` in a process of its own with `overrides` applied.
+ *
+ * `config` reads the environment once, when it is imported, so a setting cannot
+ * be tested by reassigning `process.env` here. `--env-file=/dev/null` because
+ * Bun would otherwise load the developer's own `.env`, and a value set there
+ * would answer for the case where nothing is set at all — quietly turning a
+ * test of the default into a test of that file.
+ */
+const inProcessWith = async (
+  overrides: Record<string, string | undefined>,
+  expr: string,
+): Promise<string> => {
+  const env: Record<string, string | undefined> = { ...process.env };
+  for (const [key, value] of Object.entries(overrides)) {
+    if (value === undefined) delete env[key];
+    else env[key] = value;
+  }
+  const proc = Bun.spawn(["bun", "--env-file=/dev/null", "-e", expr], {
+    env,
+    stdout: "pipe",
+    stderr: "ignore",
+  });
+  return (await new Response(proc.stdout).text()).trim();
+};
+
+const sheenFor = async (value?: string): Promise<number> =>
+  Number(
+    await inProcessWith(
+      { CARD_SHEEN_PCT: value },
+      'import("./src/lib/config.ts").then((m) => console.log(m.config.cardSheenPct))',
+    ),
+  );
+
+/** The stylesheet the route would serve, for a given font configuration. */
+const appearanceWith = (url?: string, family?: string): Promise<string> =>
+  inProcessWith(
+    { CARD_FONT_URL: url, CARD_FONT_FAMILY: family },
+    'import("./src/server/routes/appearance.ts").then(async (m) =>' +
+      ' console.log(JSON.stringify(await m.appearanceRoutes["/appearance.css"]().text())))',
+  ).then((out) => JSON.parse(out) as string);
+
 describe("the deployment's card size reaches the browser", () => {
   test("as a stylesheet anyone can load, before the first paint", async () => {
     // No cookie: the document has to be able to lay itself out before anyone has
@@ -1785,30 +1827,6 @@ describe("the deployment's card size reaches the browser", () => {
     expect(limits.storedImagePx).toBe(config.cardImagePx * 3);
   });
 
-  /**
-   * `config` reads the environment once, when it is imported, so each of these
-   * needs a process of its own rather than a reassignment.
-   *
-   * `--env-file=/dev/null` because Bun would otherwise load the developer's own
-   * `.env`, and a value set there would answer for the case where nothing is set
-   * at all — quietly turning the default's test into a test of that file.
-   */
-  const sheenFor = async (value?: string): Promise<number> => {
-    const env: Record<string, string | undefined> = { ...process.env };
-    if (value === undefined) delete env.CARD_SHEEN_PCT;
-    else env.CARD_SHEEN_PCT = value;
-
-    const proc = Bun.spawn(
-      [
-        "bun",
-        "--env-file=/dev/null",
-        "-e",
-        'import("./src/lib/config.ts").then((m) => console.log(m.config.cardSheenPct))',
-      ],
-      { env, stdout: "pipe", stderr: "ignore" },
-    );
-    return Number((await new Response(proc.stdout).text()).trim());
-  };
 
   test("and the sheen's strength is a setting, which zero turns off", async () => {
     expect(await sheenFor()).toBe(25);
@@ -1820,6 +1838,60 @@ describe("the deployment's card size reaches the browser", () => {
     expect(await sheenFor("900")).toBe(300);
     expect(await sheenFor("-10")).toBe(25);
     expect(await sheenFor("shiny")).toBe(25);
+  });
+});
+
+describe("the deployment's font for card names", () => {
+  const URL = "https://fonts.googleapis.com/css2?family=Rubik+Glitch&display=swap";
+
+  test("is imported and named when both halves are given", async () => {
+    const css = await appearanceWith(URL, "Rubik Glitch");
+    // `@import` is only valid before every other rule, so it has to lead.
+    expect(css.startsWith(`@import url("${URL}");`)).toBe(true);
+    // Not `inherit`, which is invalid in a font list and would take the whole
+    // declaration down with it, and not `var(--font-sans)`, which this build does
+    // not define at run time — either way the name silently keeps the UI font.
+    expect(css).toContain(`--card-font-family: "Rubik Glitch", sans-serif;`);
+  });
+
+  test("takes neither half on its own, since one without the other does nothing", async () => {
+    for (const css of [
+      await appearanceWith(undefined, undefined),
+      await appearanceWith(URL, undefined),
+      await appearanceWith(undefined, "Rubik Glitch"),
+    ]) {
+      expect(css).not.toContain("@import");
+      expect(css).not.toContain("--card-font-family");
+    }
+  });
+
+  test("refuses a URL the page's own CSP would block, rather than failing silently", async () => {
+    for (const bad of [
+      "http://fonts.googleapis.com/css2?family=Rubik+Glitch",
+      "https://fonts.example.com/css2?family=Rubik+Glitch",
+      "not a url at all",
+    ]) {
+      const css = await appearanceWith(bad, "Rubik Glitch");
+      expect(css).not.toContain("@import");
+      expect(css).not.toContain("--card-font-family");
+    }
+  });
+
+  test("refuses a family that could break out of the declaration", async () => {
+    // The value is written into a stylesheet every page loads, so a quote or a
+    // brace in it would end the declaration and let the rest become CSS.
+    for (const bad of ['Rubik";} body{display:none} .x{a:"', "Rubik;", "Rubik}"]) {
+      const css = await appearanceWith(URL, bad);
+      expect(css).not.toContain("--card-font-family");
+      expect(css).not.toContain("display:none");
+    }
+  });
+
+  test("and the page's CSP admits the hosts the font comes from", async () => {
+    const html = await (await fetch(`${base}/`)).text();
+    const csp = /content="([^"]*default-src[^"]*)"/.exec(html)?.[1] ?? "";
+    expect(csp).toContain("https://fonts.googleapis.com");
+    expect(csp).toContain("https://fonts.gstatic.com");
   });
 });
 

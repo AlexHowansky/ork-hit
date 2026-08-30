@@ -68,12 +68,15 @@ export const PANEL_CAPTION = `font-semibold tracking-wide uppercase ${TEXT_MUTED
 /**
  * A card's name, in the strip under its picture. Truncates rather than wraps.
  *
+ * `card-name` is the hook for the deployment's own font, if it set one — see
+ * `styles.css`, which falls back to `inherit` when it did not.
+ *
  * `text-center` is for the truncated case alone: a name that fits is a shrink-to-
  * fit box that `CARD_CAPTION` centres itself, but one that is cut short fills the
  * strip, and without this its ellipsis would sit against the right edge with the
  * text left-aligned under a centred neighbour.
  */
-export const CARD_NAME = "truncate text-center font-medium";
+export const CARD_NAME = "card-name truncate text-center font-medium";
 
 /**
  * The shape shared by every card in the library — the tile itself, without the

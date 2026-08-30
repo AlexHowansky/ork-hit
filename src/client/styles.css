@@ -112,6 +112,22 @@ body {
 }
 
 /*
+  The typeface a card's name is set in.
+
+  A deployment can ask for one with CARD_FONT_URL and CARD_FONT_FAMILY; the
+  stylesheet it names is pulled in by /appearance.css with an `@import`, and the
+  family arrives here as `--card-font-family`. Unset — or set to something the
+  server refused — the fallback is `inherit`, so the name simply keeps the
+  interface font and a card looks exactly as it does with no font configured.
+
+  Only the name takes it. The PC/NPC badge does not: a display face at that size
+  is a puzzle rather than a label.
+*/
+.card-name {
+  font-family: var(--card-font-family, inherit);
+}
+
+/*
   The frame a character card is printed in.
 
   `assets/character-card-template-{light,dark}.png` are 300x420 — five by seven,
