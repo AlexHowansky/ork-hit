@@ -1756,6 +1756,29 @@ describe("the deployment's card size reaches the browser", () => {
     expect(css).toContain(`--sheet-size: ${config.sheetWidthPct}`);
     // A multiplier, so the stylesheet keeps the strengths the sheen was tuned at.
     expect(css).toContain(`--card-sheen-strength: ${config.cardSheenPct / 100}`);
+    // The card frames' addresses ride along here because the bundler rewrites
+    // every url() it can see in the stylesheet itself.
+    expect(css).toContain(`--card-frame-light: url("/frames/character-light.png")`);
+    expect(css).toContain(`--card-frame-dark: url("/frames/character-dark.png")`);
+  });
+
+  test("and the frames themselves are served, cacheably, to anyone", async () => {
+    for (const path of ["/frames/character-light.png", "/frames/character-dark.png"]) {
+      // No cookie: a frame is the same for everyone and gives nothing away.
+      const response = await fetch(`${base}${path}`);
+      expect(response.status).toBe(200);
+      expect(response.headers.get("Content-Type")).toBe("image/png");
+
+      const etag = response.headers.get("ETag")!;
+      expect(etag).toMatch(/^"[0-9a-f]{16}"$/);
+      // PNG's magic bytes, so this is the file rather than an error page.
+      expect(new Uint8Array(await response.arrayBuffer()).slice(0, 4))
+        .toEqual(new Uint8Array([0x89, 0x50, 0x4e, 0x47]));
+
+      // A browser that already holds it is told so rather than sent it again.
+      const again = await fetch(`${base}${path}`, { headers: { "If-None-Match": etag } });
+      expect(again.status).toBe(304);
+    }
   });
 
   test("and the stored pictures follow it, so bigger cards stay sharp", () => {

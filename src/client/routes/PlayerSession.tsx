@@ -20,9 +20,10 @@ import { useSessionSocket } from "../useSessionSocket.ts";
 import {
   AppPage,
   Button,
-  CARD_CAPTION,
+  CARD_CAPTION_FRAMED,
   CARD_GRID,
   CARD_NAME,
+  CardFrame,
   CardPicture,
   CardWell,
   HoverCard,
@@ -295,7 +296,10 @@ export function PlayerSession({
                   <CardWell>
                     <CardPicture src={character.backgroundUrl} icon={faShieldHalved} />
                   </CardWell>
-                  <div className={CARD_CAPTION}>
+                  {/* The same frame the library draws, so a player picks from the
+                      cards the game master was looking at. */}
+                  <CardFrame />
+                  <div className={CARD_CAPTION_FRAMED}>
                     <p className={CARD_NAME}>
                       {character.name}
                     </p>

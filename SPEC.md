@@ -41,7 +41,13 @@ document explains the requirements that must be adhered to.
 
 * A card in a library carries the proportions of a playing card: five wide by
   seven tall, the top five of those sevens its picture as a square and the bottom
-  two the strip carrying its name. Its controls are icons over the lower right of
+  two the strip carrying its name. A character card is printed in a frame — the
+  same one wherever a character card appears, whether the game master is looking
+  at their library or a player is choosing who to play — with its picture showing
+  through the frame's window and its name drawn on the panel the frame paints. The
+  frame is drawn for the light and the dark theme alike, so the name is legible on
+  it either way. A campaign card is not framed, which is one of the ways the two
+  kinds tell themselves apart. Its controls are icons over the lower right of
   the picture: edit and delete, and on a character card an icon that opens its
   sheet. The strip carrying the name takes the page's own background rather than
   the card's, so it reads as the ground the picture sits on, and a name too long

@@ -112,6 +112,59 @@ body {
 }
 
 /*
+  The frame a character card is printed in.
+
+  `assets/character-card-template-{light,dark}.png` are 300x420 — five by seven,
+  the same shape the card is — so the art lays over a card with nothing to crop
+  or letterbox. Its window is transparent and the picture shows through it; its
+  lower panel is what the name is drawn on (see `CARD_CAPTION_FRAMED`).
+
+  The two `url()`s themselves are not written here. Bun's bundler resolves every
+  url it can see: pointed at the files it inlined both as base64, taking this
+  stylesheet from 60KB to 448KB — render-blocking, and refetched in full whenever
+  any unrelated rule changed — and pointed at a server path it refused to build at
+  all. So the addresses arrive from /appearance.css, which the server writes and
+  the bundler never sees, as `--card-frame-light` and `--card-frame-dark`; the
+  images themselves come from `server/routes/frames.ts`. A page that never
+  receives /appearance.css simply gets no frame, which is the same graceful
+  nothing the other settings there fall back to.
+
+  Which of the two applies is decided here rather than in the component, so
+  switching theme neither re-renders a card nor needs the frame threaded through
+  as a prop. The three states are the ones the top of this file describes:
+  `winter` is what an untouched page gets, `night` applies under a dark system
+  preference unless `winter` is explicit, and an explicit `data-theme` wins over
+  both.
+
+  Only character cards take it. A campaign card is a plain tile, which is also
+  how the two kinds tell themselves apart at a glance.
+*/
+:root {
+  --card-frame: var(--card-frame-light);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="winter"]) {
+    --card-frame: var(--card-frame-dark);
+  }
+}
+
+:root[data-theme="night"] {
+  --card-frame: var(--card-frame-dark);
+}
+
+/*
+  `100% 100%` rather than `cover`: the card and the art are the same 5:7, so this
+  is a straight fit, and if a rounding error ever makes them disagree by a
+  fraction of a pixel it should stretch the border rather than crop it off.
+*/
+.card-frame {
+  background-image: var(--card-frame);
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+}
+
+/*
   The light a card catches as it tilts.
 
   This is the one place in the app that names a colour, and it is not the

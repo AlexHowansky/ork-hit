@@ -4,8 +4,9 @@ import type { HTMLAttributes, ReactNode } from "react";
 import { faDragon, faShieldHalved } from "@fortawesome/free-solid-svg-icons";
 import type { Character } from "../types.ts";
 import {
-  CARD_CAPTION,
+  CARD_CAPTION_FRAMED,
   CARD_NAME,
+  CardFrame,
   CardPicture,
   CardWell,
   HoverCard,
@@ -35,6 +36,7 @@ export function CharacterCard({
       label={onOpen ? character.name : undefined}
       onClick={onOpen}
       actions={actions}
+      framed
       cardClassName="border-base-300 bg-base-100"
     >
       <CardWell>
@@ -48,7 +50,11 @@ export function CharacterCard({
         </div>
       </CardWell>
 
-      <div className={CARD_CAPTION}>
+      {/* Over the picture, under the name: the picture shows through the frame's
+          window and the name is drawn on the panel the frame paints. */}
+      <CardFrame />
+
+      <div className={CARD_CAPTION_FRAMED}>
         <h3 className={CARD_NAME}>{character.name}</h3>
       </div>
     </HoverCard>

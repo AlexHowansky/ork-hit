@@ -808,9 +808,8 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     // It used to hold a full-bleed select button whose box was the picture's box,
     // but the card tilts now (`HoverCard`) and the whole card is the select
     // control, so that button's box is the card's.
-    const well = gm
-      .locator(`article:has(button[aria-label="Select ${campaignName}"]) .aspect-square`)
-      .first();
+    const campaignCard = `article:has(button[aria-label="Select ${campaignName}"])`;
+    const well = gm.locator(`${campaignCard} .aspect-square`).first();
     const box = (await well.boundingBox())!;
 
     expect(Math.round(box.width)).toBe(config.cardImagePx);
@@ -824,6 +823,59 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     // picture the top five of those sevens and the name strip the bottom two.
     expect(card.height / card.width).toBeCloseTo(7 / 5, 2);
     expect((card.height - box.height) / card.width).toBeCloseTo(2 / 5, 1);
+
+    // A campaign card is a plain tile: no frame, which is how the two kinds of
+    // card tell themselves apart.
+    expect(await gm.locator(`${campaignCard} .card-frame`).count()).toBe(0);
+  }, 60_000);
+
+  test("a character card is printed in the frame, with its name on the panel", async () => {
+    if (!browser) return;
+    const gm = await signedInGm();
+
+    const campaignName = unique("Campaign");
+    await gm.getByRole("button", { name: "New", exact: true }).click();
+    await gm.getByLabel("Campaign name").fill(campaignName);
+    await gm.getByRole("button", { name: "Create campaign" }).click();
+    await gm.getByText(`Characters in ${campaignName}`).waitFor();
+
+    await gm.getByRole("button", { name: "Add", exact: true }).click();
+    await gm.getByLabel("Name").fill("Framed");
+    await gm.getByLabel(/Character sheet/).setInputFiles({
+      name: "sheet.html",
+      mimeType: "text/html",
+      buffer: Buffer.from("<h1>Framed</h1>"),
+    });
+    await gm.getByRole("button", { name: "Add character" }).last().click();
+    await gm.getByRole("button", { name: "Framed", exact: true }).waitFor();
+
+    const card = gm.locator(`article:has(button[aria-label="Framed"])`);
+    const frame = card.locator(".card-frame");
+    await frame.waitFor();
+
+    // The artwork is actually resolved rather than left as an unset variable —
+    // its address arrives from /appearance.css, so this fails if that is missing.
+    const image = await frame.evaluate((el) => getComputedStyle(el).backgroundImage);
+    expect(image).toContain("/frames/character-light.png");
+
+    // It covers the card but for its border, so its window lands where the art
+    // expects. The border is deliberately left showing: it is the hover and
+    // keyboard-focus highlight, and art painted over it would take that away.
+    const cardBox = (await card.boundingBox())!;
+    const frameBox = (await frame.boundingBox())!;
+    const border = await card
+      .locator(".card")
+      .evaluate((el) => Number.parseFloat(getComputedStyle(el).borderTopWidth));
+    expect(border).toBeGreaterThan(0);
+    expect(frameBox.width).toBeCloseTo(cardBox.width - 2 * border, 0);
+    expect(frameBox.height).toBeCloseTo(cardBox.height - 2 * border, 0);
+
+    // And the name sits on the panel the art paints, whose centre is 82% of the
+    // way down the card — not in the card's own bottom two sevenths, which would
+    // put it over the frame's lower border.
+    const name = (await card.getByText("Framed", { exact: true }).boundingBox())!;
+    const centre = (name.y + name.height / 2 - cardBox.y) / cardBox.height;
+    expect(centre).toBeCloseTo(0.82, 1);
   }, 60_000);
 
   test("the character form asks for the sheet first", async () => {

@@ -12,6 +12,7 @@ import { characterRoutes } from "./routes/characters.ts";
 import { sessionRoutes } from "./routes/sessions.ts";
 import { fileRoutes } from "./routes/files.ts";
 import { appearanceRoutes } from "./routes/appearance.ts";
+import { frameRoutes } from "./routes/frames.ts";
 import { websocket, wsRoute } from "./ws.ts";
 import { log } from "../lib/log.ts";
 
@@ -29,6 +30,7 @@ export const routes = {
   ...sessionRoutes,
   ...fileRoutes,
   ...appearanceRoutes,
+  ...frameRoutes,
   "/ws": wsRoute,
 };
 

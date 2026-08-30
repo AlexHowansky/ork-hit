@@ -132,6 +132,50 @@ export const CARD_CAPTION =
   "flex min-h-0 flex-1 items-center justify-center bg-base-200 px-3";
 
 /**
+ * The frame's window, as insets from the card's edge — measured off the asset:
+ * x 3.3%-96.7%, y 2.9%-64.3%. It is where the picture shows through, and so also
+ * where anything laid over the picture has to stay: the card's corner controls
+ * are pinned to the square well otherwise, which ends at 71.4% and would leave
+ * them sitting astride the gold divider the art draws at 64%.
+ */
+export const CARD_WINDOW = "left-[3.3%] right-[3.3%] top-[2.9%] h-[61.4%]";
+
+/**
+ * The name's strip on a card that carries the frame, which is not the same box.
+ *
+ * `CARD_CAPTION` takes the bottom two sevenths, which is the card's own division.
+ * The artwork draws its panel somewhere slightly different — measured off the
+ * asset, it runs from 67.8% to 96.2% of the card's height, with the gold divider
+ * above it and the frame's outer border below — so this is positioned against the
+ * art instead, and centred in the panel the art actually draws. Get this wrong
+ * and the name sits on the divider or over the border rather than on the panel.
+ *
+ * No background: the artwork is the background now. And no colour of its own —
+ * the light frame's panel is pale and the dark frame's is navy, so `base-content`
+ * is right on both, and the app's rule that nothing names a colour survives a
+ * card that is mostly picture.
+ */
+export const CARD_CAPTION_FRAMED =
+  "absolute inset-x-0 top-[67.8%] bottom-[3.8%] z-20 flex items-center justify-center px-[8%]";
+
+/**
+ * The frame a character card is printed in: `styles.css` holds the artwork and
+ * decides which of the two themes' files to draw (see `--card-frame` there).
+ *
+ * `pointer-events-none` is load-bearing rather than tidiness. `hover-3d`'s eight
+ * hover zones sit at `z-index: 1` and this paints above them at `z-10`, so
+ * without it the frame would swallow every pointer event over the card and the
+ * tilt would simply stop.
+ *
+ * It goes between the picture and the name — after `CardWell` and before the
+ * `CARD_CAPTION_FRAMED` box — so the picture shows through its window and the
+ * name is drawn on top of its panel.
+ */
+export function CardFrame() {
+  return <div className="card-frame pointer-events-none absolute inset-0 z-10" aria-hidden />;
+}
+
+/**
  * The grid every card library sits in.
  *
  * The track is a fixed width rather than a fraction, so a card is the same size
@@ -415,6 +459,7 @@ export function HoverCard({
   pressed,
   disabled,
   actions,
+  framed = false,
   cardClassName = "",
   className = "",
   children,
@@ -428,6 +473,12 @@ export function HoverCard({
   disabled?: boolean;
   /** Icon buttons laid over the bottom right of the picture, above the zones. */
   actions?: ReactNode;
+  /**
+   * Whether this card carries the frame (`CardFrame`). The only thing it changes
+   * is where `actions` sit: inside the artwork's window rather than over the
+   * square well, which the art's divider cuts across.
+   */
+  framed?: boolean;
   /** Border and background for the tile, which vary with selection. */
   cardClassName?: string;
   /** For the frame around the card: a drop target's ring, and nothing else. */
@@ -465,7 +516,9 @@ export function HoverCard({
       )}
       {actions ? (
         <div
-          className="pointer-events-none absolute inset-x-0 top-0 z-20 flex aspect-square items-end justify-end p-1"
+          className={`pointer-events-none absolute z-20 flex items-end justify-end p-1 ${
+            framed ? CARD_WINDOW : "inset-x-0 top-0 aspect-square"
+          }`}
           aria-hidden={false}
         >
           <div className="pointer-events-auto flex gap-1">{actions}</div>
