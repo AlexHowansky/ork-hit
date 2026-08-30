@@ -7,14 +7,16 @@
  * the same snapshot is broadcast to the players.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { api } from "../api.ts";
 import { useSessionSocket } from "../useSessionSocket.ts";
+import { useColumnSplit } from "../useColumnSplit.ts";
 import {
   AppPage,
   Button,
   CharacterThumb,
+  ColumnHandle,
   CopyButton,
   CountBadge,
   EmptyState,
@@ -68,6 +70,21 @@ export function GmSessionConsole({ onSignOut }: { onSignOut: () => void }) {
   const [busy, setBusy] = useState(false);
   const [showActingOnly, toggleSegmentFilter] = useSegmentFilter(sessionId);
   const [logOpen, toggleLog] = useLogDrawer(sessionId);
+
+  // The console's columns start as equal shares and can be dragged to any others.
+  // One split per boundary, each sizing the column to its left; the last column
+  // has no handle and absorbs what the others give up. The turn column's boundary
+  // exists on both multi-column layouts, the library's only on the dashboard —
+  // which is also the only layout where the library is a column of its own.
+  const consoleRef = useRef<HTMLDivElement | null>(null);
+  const turnSplit = useColumnSplit<HTMLDivElement>({
+    containerRef: consoleRef,
+    variable: "--console-turn",
+  });
+  const librarySplit = useColumnSplit<HTMLDivElement>({
+    containerRef: consoleRef,
+    variable: "--console-library",
+  });
 
   // Loaded once: the code and the campaign don't change while a session runs.
   useEffect(() => {
@@ -367,8 +384,21 @@ export function GmSessionConsole({ onSignOut }: { onSignOut: () => void }) {
       <div className="flex flex-col lg:flex-row lg:items-start wide:min-h-0 wide:flex-1 wide:items-stretch">
         <LogDrawer events={snapshot?.events ?? []} open={logOpen} onClose={toggleLog} />
 
-      <div className="flex min-w-0 flex-1 flex-col gap-2.5 sm:grid sm:grid-cols-2 sm:items-start sm:gap-2.5 wide:min-h-0 wide:grid-cols-3 wide:items-stretch">
-        <div className="contents sm:flex sm:min-w-0 sm:flex-col sm:gap-2.5 wide:order-1 wide:min-h-0">
+      {/*
+        Two columns here and three on the dashboard, with a handle standing in each
+        gutter — which is why there is no `gap` between the tracks any more: a
+        handle is exactly as wide as the gap it replaced. The widths are the two
+        custom properties, each defaulting to an equal share (see `styles.css`), so
+        an untouched console looks exactly as it did before it could be dragged.
+      */}
+      <div
+        ref={consoleRef}
+        className="flex min-w-0 flex-1 flex-col gap-2.5 sm:grid sm:grid-cols-[var(--console-turn)_auto_minmax(0,1fr)] sm:items-start sm:gap-x-0 wide:min-h-0 wide:grid-cols-[var(--console-turn)_auto_var(--console-library)_auto_minmax(0,1fr)] wide:items-stretch"
+      >
+        <div
+          ref={turnSplit.panelRef}
+          className="contents sm:flex sm:min-w-0 sm:flex-col sm:gap-2.5 wide:order-1 wide:min-h-0"
+        >
           <TurnControls
             className="sm:shrink-0"
             turn={snapshot?.session.turn ?? session.turn}
@@ -415,13 +445,23 @@ export function GmSessionConsole({ onSignOut }: { onSignOut: () => void }) {
           </Panel>
         </div>
 
+        {/* The turn column's own boundary, which both multi-column layouts have:
+            stacked there is nothing beside it, at `sm` the rest of the console is
+            on the other side of it, and on the dashboard the library is. */}
+        <ColumnHandle
+          {...turnSplit.handleProps}
+          from="sm"
+          className="wide:order-2"
+          label="Resize the turn column"
+        />
+
         {/*
           The other half: who is here, then who could be added. On a wide screen
           the two part company — the library belongs beside the order it feeds,
           which puts the players last — so each takes a column of its own.
         */}
         <div className="contents sm:flex sm:min-w-0 sm:flex-col sm:gap-2.5 wide:contents">
-          <div className="contents wide:order-3 wide:flex wide:min-h-0 wide:min-w-0 wide:flex-col wide:gap-2.5">
+          <div className="contents wide:order-5 wide:flex wide:min-h-0 wide:min-w-0 wide:flex-col wide:gap-2.5">
           {invite}
 
           <Panel title={`Players (${snapshot?.players.length ?? 0})`} scroll>
@@ -472,7 +512,10 @@ export function GmSessionConsole({ onSignOut }: { onSignOut: () => void }) {
           </Panel>
           </div>
 
-          <div className="contents wide:order-2 wide:flex wide:min-h-0 wide:min-w-0 wide:flex-col">
+          <div
+            ref={librarySplit.panelRef}
+            className="contents wide:order-3 wide:flex wide:min-h-0 wide:min-w-0 wide:flex-col"
+          >
           <Panel title="Library" scroll>
             {libraryOrder.length === 0 ? (
               <EmptyState>
@@ -568,6 +611,14 @@ export function GmSessionConsole({ onSignOut }: { onSignOut: () => void }) {
           </Panel>
           </div>
         </div>
+
+        {/* The library's own boundary. Only the dashboard splits the library from
+            the players, so this is the only layout with a second gutter. */}
+        <ColumnHandle
+          {...librarySplit.handleProps}
+          className="wide:order-4"
+          label="Resize the library column"
+        />
       </div>
       </div>
 

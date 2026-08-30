@@ -383,20 +383,38 @@ export function Panel({
  * `useColumnSplit`, whose `handleProps` this takes, rather than rendered here, so
  * a drag does not re-render the page it is resizing.
  *
- * `hidden wide:flex`, because there is nothing to resize where the panels are
- * stacked: below the wide layout the handle is not drawn and is not in the tab
- * order either.
+ * Hidden until the layout it divides exists — `from` is the breakpoint that lays
+ * the two columns side by side, which is `wide` for a dashboard-only boundary and
+ * `sm` for one the two-column layout has as well. Below it the handle is not drawn
+ * and is not in the tab order either, because there is nothing to resize where the
+ * panels are stacked. The two class strings are written out whole: Tailwind reads
+ * the source for class names, and a variant composed at run time is one it never
+ * sees.
  *
  * It is exactly as wide as the gap it replaces (`w-3` for the `gap-3` the split
- * used to carry), so adding it moved nothing. What is drawn is a rail down the
+ * used to carry), so adding it moved nothing. `self-stretch` is what gives it a
+ * height: the session console tops its columns out at their own content
+ * (`sm:items-start`), and without this the handle would be a twelve-pixel box with
+ * nothing in it — nothing to see and nothing to grab. What is drawn is a rail down the
  * middle of that gap rather than the whole box: the target is the full width, the
  * mark is a hairline, and the difference is the slack a pointer needs. `touch-none`
  * keeps a finger's drag from being read as a scroll of the page underneath.
  */
+const HANDLE_SHOWN = {
+  sm: "hidden sm:flex sm:items-stretch sm:justify-center",
+  wide: "hidden wide:flex wide:items-stretch wide:justify-center",
+} as const;
+
 export function ColumnHandle({
   label,
+  from = "wide",
+  className = "",
   ...props
-}: HTMLAttributes<HTMLDivElement> & { label: string }) {
+}: HTMLAttributes<HTMLDivElement> & {
+  label: string;
+  /** The breakpoint at which the two columns it divides appear. */
+  from?: keyof typeof HANDLE_SHOWN;
+}) {
   return (
     <div
       {...props}
@@ -404,7 +422,7 @@ export function ColumnHandle({
       aria-orientation="vertical"
       aria-label={label}
       tabIndex={0}
-      className="group hidden w-3 shrink-0 cursor-col-resize touch-none select-none wide:flex wide:items-stretch wide:justify-center"
+      className={`group w-3 shrink-0 cursor-col-resize touch-none select-none self-stretch ${HANDLE_SHOWN[from]} ${className}`}
     >
       <div
         aria-hidden

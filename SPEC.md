@@ -260,7 +260,12 @@ The app should have the following features:
   code over the players. Narrower, it is two equal halves: the turn over the
   segment panel on one side, the code, the players and the library on the
   other. Narrower still, one column, with the code first — it is the first thing
-  a game master needs.
+  a game master needs. Equal is where the columns start rather than where they
+  must stay: on both layouts that have more than one, the boundary between two
+  columns can be dragged to whatever balance the reader wants, as it can on the
+  library screen, and the same rules hold — no column crushed away to nothing, the
+  choice lasting for the visit rather than being remembered, and handing a
+  boundary back restoring the share it began with.
 
 * No panel on a player's session page is stretched to fill the screen: each is
   only as tall as what it holds. Where the screen is wide enough for two columns,

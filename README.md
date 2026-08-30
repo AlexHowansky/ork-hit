@@ -564,16 +564,34 @@ The choice lasts for the visit and is not stored: a reload is the other way back
 
 The drag writes the width straight to the container's inline style rather than
 through React state, because a pointer-move fires at the refresh rate and every one
-of them would otherwise re-render both libraries and every card in them; the only
-state is which writer is in charge, which changes twice per gesture. The same is
-true of `aria-valuenow` and its bounds, which the hook sets on the handle as
-attributes. How far a key-press moves the split, and how narrow a panel may be
-squeezed, both come from `measureTrack` — the card measurement `useCardFit` was
-already doing, now shared — so a panel can never be dragged narrower than one whole
-card, on either side, and a deployment drawing larger cards needs no change here
-either. The handle is exactly as wide as the `gap` it replaced, so adding it moved
-nothing, and it is `hidden` below the wide layout, where stacked panels have no
-boundary to drag and it stays out of the tab order.
+of them would otherwise re-render the whole screen; the only state is which writer
+is in charge, which changes twice per gesture. The same is true of `aria-valuenow`
+and its bounds, which the hook sets on the handle as attributes. How far a
+key-press moves the split, and how narrow a column may be squeezed, come from the
+caller where it can do better: the library passes `measureTrack` — the card
+measurement `useCardFit` was already doing, now shared — so a panel is never
+dragged narrower than one whole card and a deployment drawing larger cards needs no
+change here; a caller that passes nothing gets a floor of a sixth of the split and
+a step of a twentieth, fractions rather than pixels so they mean the same thing on
+a laptop and on a dashboard. The handle is exactly as wide as the `gap` it
+replaced, so adding it moved nothing, and it is `hidden` below the breakpoint that
+puts its two columns side by side, where there is no boundary to drag and it stays
+out of the tab order.
+
+**The session console has two of them**, between its three columns on a dashboard
+and its two halves at `sm` — one hook per boundary, each sizing the column to its
+left, and the column at the far end absorbing what the others give up. Two things
+there are worth knowing. First, the split is measured off the **handles**, not off
+a column count the hook is told: a column runs from one handle to the next, so
+their rects describe every column between them — and that matters because the
+console places its columns with `order`, which means position in the DOM is not
+position on the page, and because a column there can be a `display: contents`
+wrapper's child rather than a box of the grid's own. Second, how the columns beyond
+a handle share what it takes is the browser's business — one may be pinned by
+another handle and give up nothing, two fluid ones shrink together — so rather than
+model it, `apply` puts the width on the page, reads back the narrowest column
+beyond, and hands room back if it fell under its floor. It settles in one pass
+except near the edge, because the first guess is only wrong there.
 
 **File fields take a drop, and still are file fields.** Adding a character means
 handing over an HTML sheet and often a picture, and dragging a file from a folder

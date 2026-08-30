@@ -81,6 +81,23 @@
 }
 
 /*
+  The widths of the GM session console's columns, on both layouts that have more
+  than one: the turn and its segment panel, and — on the dashboard alone — the
+  library between them and the players.
+
+  Each defaults to an equal share, which is the console the app has always drawn:
+  two halves at `sm` and three thirds on a dashboard. `useColumnSplit` overwrites
+  one with a pixel width when its handle is dragged, and the last column, which
+  has no handle, is the `1fr` that absorbs the difference. `--console-library`
+  only appears in the dashboard's template, because that is the only layout where
+  the library is a column of its own rather than stacked under the players.
+*/
+:root {
+  --console-turn: minmax(0, 1fr);
+  --console-library: minmax(0, 1fr);
+}
+
+/*
   How much of the window a character sheet is opened over, as a percentage.
 
   One number sets both dimensions, which is what puts the sheet in the window's

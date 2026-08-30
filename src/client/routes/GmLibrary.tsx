@@ -24,6 +24,7 @@ import {
 import type { HeroStatField } from "../../lib/hero.ts";
 import { useSessionSocket } from "../useSessionSocket.ts";
 import { useLiveSessions } from "../useLiveSessions.ts";
+import { measureTrack, useCardFit } from "../useCardFit.ts";
 import { useColumnSplit } from "../useColumnSplit.ts";
 import { ThemeToggle } from "../components/ThemeToggle.tsx";
 import {
@@ -446,13 +447,38 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
    */
   const [dragging, setDragging] = useState<Character | null>(null);
 
-  // Trims the campaign panel to whole card columns, giving the leftover to the
-  // characters beside it.
-  // The campaigns column: trimmed to whole cards by default, and draggable to a
-  // width of the reader's own — see `useColumnSplit`, which composes the two.
-  const { containerRef, panelRef, gridRef, handleProps } = useColumnSplit({
-    count: campaigns.length,
+  // The campaigns column: trimmed to whole card columns by default, the leftover
+  // going to the characters beside it (`useCardFit`), and draggable to a width of
+  // the reader's own (`useColumnSplit`), which stands the fit down for as long as
+  // that width is in force.
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const gridRef = useRef<HTMLDivElement | null>(null);
+
+  // What the handle needs to know about cards: the panel may not be dragged
+  // narrower than one whole card, and a key-press moves it by one. Measured off
+  // the grid on screen rather than chosen here, which is what keeps both of them
+  // right at whatever size the deployment draws a card.
+  const measureCards = useCallback((panel: HTMLElement) => {
+    const grid = gridRef.current;
+    const measured = grid ? measureTrack(panel, grid) : null;
+    return (
+      measured && {
+        min: measured.track + measured.overhead,
+        step: measured.track + measured.gap,
+      }
+    );
+  }, []);
+
+  const { panelRef, manual, handleProps } = useColumnSplit({
+    containerRef,
     variable: "--campaign-col",
+    measure: measureCards,
+  });
+  useCardFit({
+    count: campaigns.length,
+    enabled: !manual,
+    variable: "--campaign-col",
+    refs: { containerRef, panelRef, gridRef },
   });
 
   const load = useCallback(async () => {

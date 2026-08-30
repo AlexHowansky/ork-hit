@@ -796,6 +796,90 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     expect(await namesIn(gm)).toEqual(["Elara", "Thorin", "Strahd"]);
   }, 60_000);
 
+  test("the session console's columns can be dragged to a different balance", async () => {
+    if (!browser) return;
+    const { page: gm } = await gmWithSession();
+    await gm.setViewportSize({ width: 1600, height: 900 });
+    await gm.waitForTimeout(150);
+
+    const panelWith = (name: string | RegExp) =>
+      gm.locator("section").filter({ has: gm.getByRole("heading", { name }) });
+    // Each panel fills the column it is in, so the panels are how the columns are
+    // measured: the segment panel is the turn column, and the other two name
+    // themselves.
+    const turn = panelWith(/^Segment /);
+    const library = panelWith("Library");
+    const players = panelWith(/^Players/);
+    const widthOf = async (panel: Locator) => (await panel.boundingBox())!.width;
+    const columns = async () =>
+      [await widthOf(turn), await widthOf(library), await widthOf(players)];
+
+    const handles = {
+      turn: gm.getByRole("separator", { name: "Resize the turn column" }),
+      library: gm.getByRole("separator", { name: "Resize the library column" }),
+    };
+    const drag = async (handle: Locator, by: number) => {
+      const box = (await handle.boundingBox())!;
+      const y = box.y + box.height / 2;
+      await gm.mouse.move(box.x + box.width / 2, y);
+      await gm.mouse.down();
+      await gm.mouse.move(box.x + box.width / 2 + by, y, { steps: 8 });
+      await gm.mouse.up();
+      await gm.waitForTimeout(100);
+    };
+
+    // Three columns, equal until somebody says otherwise.
+    const [wasTurn, wasLibrary, wasPlayers] = await columns();
+    expect(Math.abs(wasTurn! - wasLibrary!)).toBeLessThan(2);
+    expect(Math.abs(wasLibrary! - wasPlayers!)).toBeLessThan(2);
+    const total = wasTurn! + wasLibrary! + wasPlayers!;
+
+    // The turn's boundary takes from everything to its right, which is still
+    // sharing what is left equally, so the two beyond it give up half each.
+    await drag(handles.turn, 140);
+    let [nowTurn, nowLibrary, nowPlayers] = await columns();
+    expect(nowTurn!).toBeCloseTo(wasTurn! + 140, -1);
+    expect(nowTurn! + nowLibrary! + nowPlayers!).toBeCloseTo(total, -1);
+
+    // The library's boundary is between the last two and leaves the first alone.
+    const beforeSecond = nowTurn!;
+    await drag(handles.library, 90);
+    [nowTurn, nowLibrary, nowPlayers] = await columns();
+    expect(nowTurn!).toBeCloseTo(beforeSecond, -1);
+    expect(nowLibrary!).toBeCloseTo(total - beforeSecond - nowPlayers!, -1);
+    expect(nowPlayers!).toBeLessThan(wasPlayers!);
+
+    // Dragged to the edge, the columns beyond keep their floor — a sixth of the
+    // console each — rather than being crushed out of existence.
+    await drag(handles.turn, 2000);
+    [nowTurn, nowLibrary, nowPlayers] = await columns();
+    expect(nowLibrary!).toBeGreaterThan(total / 6 - 2);
+    expect(nowPlayers!).toBeGreaterThan(total / 6 - 2);
+
+    // And each boundary gives its column back on a double-click.
+    await handles.turn.dblclick();
+    await handles.library.dblclick();
+    await gm.waitForTimeout(150);
+    const [again, andAgain] = await columns();
+    expect(again!).toBeCloseTo(wasTurn!, -1);
+    expect(andAgain!).toBeCloseTo(wasLibrary!, -1);
+
+    // Two halves rather than a dashboard: the turn's boundary is still there and
+    // still drags, and the library's — which only splits two of three columns —
+    // is not.
+    await gm.setViewportSize({ width: 900, height: 1200 });
+    await gm.waitForTimeout(200);
+    expect(await handles.library.isVisible()).toBe(false);
+    const half = await widthOf(turn);
+    await drag(handles.turn, -80);
+    expect(await widthOf(turn)).toBeCloseTo(half - 80, -1);
+
+    // Stacked, there is nothing to resize at all.
+    await gm.setViewportSize({ width: 500, height: 900 });
+    await gm.waitForTimeout(200);
+    expect(await handles.turn.isVisible()).toBe(false);
+  }, 60_000);
+
   test("the library's two columns can be dragged to a different balance", async () => {
     if (!browser) return;
     const gm = await signedInGm();
