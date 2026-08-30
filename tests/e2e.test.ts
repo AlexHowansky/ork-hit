@@ -891,6 +891,39 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     expect(badgeTop).toBeLessThan(0.70);
     expect(badgeRight).toBeGreaterThan(0.92);
     expect(badgeRight).toBeLessThan(0.96);
+
+    // The corner controls are bare glyphs stacked down the picture's top right,
+    // inside the bevel that keeps the window's own corner out of reach: on the
+    // darker template the window does not begin until y=5% at x=95.5%.
+    const control = async (name: RegExp) =>
+      (await card.getByRole("button", { name }).boundingBox())!;
+    const view = await control(/^View /);
+    const edit = await control(/^Edit /);
+    const bin = await control(/^Delete /);
+
+    // The stack is right up against the frame — its right edge is 96% of the way
+    // across, which is as far as the bevelled corner allows the glyph to go.
+    for (const b of [view, edit, bin]) {
+      const right = (b.x + b.width - cardBox.x) / cardBox.width;
+      expect(right).toBeGreaterThan(0.94);
+      expect(right).toBeLessThan(0.965);
+    }
+    expect((view.y - cardBox.y) / cardBox.height).toBeGreaterThan(0.05);
+    expect((view.y - cardBox.y) / cardBox.height).toBeLessThan(0.10);
+    // In that order, top to bottom, in one column.
+    expect(view.y).toBeLessThan(edit.y);
+    expect(edit.y).toBeLessThan(bin.y);
+    expect(edit.x).toBe(view.x);
+    expect(bin.x).toBe(view.x);
+    // And the whole stack stays inside the window, clear of the divider at 64%.
+    expect((bin.y + bin.height - cardBox.y) / cardBox.height).toBeLessThan(0.63);
+
+    // No pill behind them. Without this the placement above would still pass with
+    // the old buttons, so this is what pins the look rather than the position.
+    const fill = await card
+      .getByRole("button", { name: /^Delete / })
+      .evaluate((el) => getComputedStyle(el).backgroundColor);
+    expect(fill).toBe("rgba(0, 0, 0, 0)");
   }, 60_000);
 
   test("the corner controls tilt with the card, and still work while it is tilted", async () => {

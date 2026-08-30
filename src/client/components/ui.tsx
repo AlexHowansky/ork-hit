@@ -135,13 +135,29 @@ export const CARD_CAPTION =
   "flex min-h-0 flex-1 items-center justify-center bg-base-200 px-3";
 
 /**
- * The frame's window, as insets from the card's edge — measured off the asset:
- * x 3.3%-96.7%, y 2.9%-64.3%. It is where the picture shows through, and so also
- * where anything laid over the picture has to stay: the card's corner controls
- * are pinned to the square well otherwise, which ends at 71.4% and would leave
- * them sitting astride the gold divider the art draws at 64%.
+ * Where a control may sit inside the frame's window, which is not the window
+ * itself.
+ *
+ * The window — where the picture shows through — runs x 3.3%-97.0%, y 2.9%-63.9%.
+ * Anything laid over the picture has to stay inside it: pinned to the square well
+ * instead, a control would sit astride the gold divider the art draws at 64%,
+ * since the well runs on to 71.4%.
+ *
+ * The controls stack down from the *top* right, and the right and top here are
+ * pulled in from the window's own edges because that corner is bevelled — put in
+ * the literal corner they would go under the frame. Measured on the dark template,
+ * which is the tighter of the two: at x=95.5% the window does not begin until
+ * y=5.0%, and its right edge only reaches 96.0% once past y=6.0%. Right 95.5% and
+ * top 5.5% is the corner the stack fits into, and it is genuinely the corner: the
+ * glyph clears the frame by about a pixel, and there is nowhere further to go.
+ * Pull the right in much past this and the top icon is never clear at any height,
+ * because the bevel has cut the corner away entirely by then.
+ *
+ * The bottom is generous on purpose: the stack is laid out from the top, so this
+ * only has to be far enough down not to squash it.
  */
-export const CARD_WINDOW = "left-[3.3%] right-[3.3%] top-[2.9%] h-[61.4%]";
+export const CARD_WINDOW_CONTROLS =
+  "left-[3.3%] right-[4%] top-[5.5%] bottom-[37.5%]";
 
 /**
  * The name's strip on a card that carries the frame, which is not the same box.
@@ -534,11 +550,22 @@ export function HoverCard({
               transformed here stay glued to a tile that is inset from it by the
               hairline border. The inner one is where the controls actually sit. */}
           <div
-            className={`absolute flex items-end justify-end p-1 ${
-              framed ? CARD_WINDOW : "inset-x-0 top-0 aspect-square"
+            className={`absolute flex justify-end ${
+              framed
+                ? `${CARD_WINDOW_CONTROLS} items-start`
+                : "inset-x-0 top-0 aspect-square items-end p-1"
             }`}
           >
-            <div className="pointer-events-auto flex gap-1">{actions}</div>
+            {/* A framed card stacks its controls down the picture's top right, in
+                the order they are given; no padding, because the box is already the
+                corner the artwork leaves, and a smaller gap because bare glyphs
+                need less room between them than pills do. A campaign card keeps the
+                row along the bottom, its padding and its gap, and does not move. */}
+            <div
+              className={`pointer-events-auto flex ${framed ? "flex-col gap-0.5" : "gap-1"}`}
+            >
+              {actions}
+            </div>
           </div>
         </div>
       ) : null}
@@ -557,28 +584,52 @@ export function HoverCard({
  * theme token and stay readable. `neutral` is the darkest thing every theme
  * defines, and a translucent pill of it with its own content colour reads over
  * any photograph in either theme.
+ *
+ * `bare` drops the pill for the glyph alone, which is what the character cards
+ * want so their controls can sit into the corner of the picture. It does not drop
+ * the problem the pill was solving: a white glyph on a pale photograph is
+ * invisible. So the job moves from a fill to a drop shadow, which costs no box.
+ * Hover has to move with it — there is no longer a fill to change, so the glyph
+ * brightens instead, and `danger` colours the glyph where the pill coloured
+ * itself.
+ *
+ * The bare button is 20px around a 16px glyph rather than the pill's 24px. The
+ * margin is invisible and deliberate: without it the target would shrink to the
+ * glyph, which is well under what anyone can reliably hit.
  */
 export function IconButton({
   label,
   icon,
   danger = false,
+  bare = false,
   className = "",
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & {
   label: string;
   icon: ReactNode;
   danger?: boolean;
+  /** Just the glyph, for a control that sits on a card's picture. */
+  bare?: boolean;
 }) {
-  return (
-    <button
-      {...props}
-      type="button"
-      title={label}
-      aria-label={label}
-      className={`btn btn-square btn-xs border-0 bg-neutral/60 text-neutral-content shadow-sm backdrop-blur-sm ${
+  const look = bare
+    ? `flex h-5 w-5 items-center justify-center text-neutral-content ` +
+      // Two shadows, not one. The tight one is a halo that outlines the glyph, and
+      // it is what keeps a pale icon legible on a pale picture — the case the pill
+      // used to cover. The soft one lifts it off a busy photograph. A single soft
+      // shadow reads well on a dark ground and almost disappears on a light one.
+      //
+      // Written as one arbitrary `filter` rather than two `drop-shadow-*`
+      // utilities: those both set the same variable, so the second silently
+      // replaces the first instead of composing with it.
+      `[filter:drop-shadow(0_0_1.5px_rgba(0,0,0,0.95))_drop-shadow(0_1px_2px_rgba(0,0,0,0.7))] ${
+        danger ? "hover:text-error" : "hover:brightness-125"
+      }`
+    : `btn btn-square btn-xs border-0 bg-neutral/60 text-neutral-content shadow-sm backdrop-blur-sm ${
         danger ? "hover:bg-error hover:text-error-content" : "hover:bg-neutral/90"
-      } ${className}`}
-    >
+      }`;
+
+  return (
+    <button {...props} type="button" title={label} aria-label={label} className={`${look} ${className}`}>
       <span aria-hidden="true">{icon}</span>
     </button>
   );

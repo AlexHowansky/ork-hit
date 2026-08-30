@@ -724,17 +724,23 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
                     }}
                     actions={
                       <>
+                        {/* `bare` on all three: glyphs alone, so they can sit into
+                            the corner of the picture. The campaign cards above keep
+                            the pill. */}
                         <IconButton
+                          bare
                           label={`View ${character.name}'s sheet`}
                           icon={<SheetIcon />}
                           onClick={() => setPreviewing(character)}
                         />
                         <IconButton
+                          bare
                           label={`Edit ${character.name}`}
                           icon={<EditIcon />}
                           onClick={() => setCharacterDialog({ open: true, editing: character, file: null })}
                         />
                         <IconButton
+                          bare
                           label={`Delete ${character.name}`}
                           icon={<DeleteIcon />}
                           danger
