@@ -366,6 +366,45 @@ export function Panel({
 }
 
 /**
+ * The boundary between two panels, as a control.
+ *
+ * A window splitter in the ARIA sense: `separator` with a tabindex, which is why
+ * it carries `aria-valuenow` and its two bounds — written to the DOM by
+ * `useColumnSplit`, whose `handleProps` this takes, rather than rendered here, so
+ * a drag does not re-render the page it is resizing.
+ *
+ * `hidden wide:flex`, because there is nothing to resize where the panels are
+ * stacked: below the wide layout the handle is not drawn and is not in the tab
+ * order either.
+ *
+ * It is exactly as wide as the gap it replaces (`w-3` for the `gap-3` the split
+ * used to carry), so adding it moved nothing. What is drawn is a rail down the
+ * middle of that gap rather than the whole box: the target is the full width, the
+ * mark is a hairline, and the difference is the slack a pointer needs. `touch-none`
+ * keeps a finger's drag from being read as a scroll of the page underneath.
+ */
+export function ColumnHandle({
+  label,
+  ...props
+}: HTMLAttributes<HTMLDivElement> & { label: string }) {
+  return (
+    <div
+      {...props}
+      role="separator"
+      aria-orientation="vertical"
+      aria-label={label}
+      tabIndex={0}
+      className="group hidden w-3 shrink-0 cursor-col-resize touch-none select-none wide:flex wide:items-stretch wide:justify-center"
+    >
+      <div
+        aria-hidden
+        className="my-2 w-0.5 rounded-full bg-base-300 transition-colors group-hover:bg-primary group-focus-visible:bg-primary"
+      />
+    </div>
+  );
+}
+
+/**
  * A panel opened over the page, with a title bar and a close control.
  *
  * The counterpart to `SheetOverlay`: that one is deliberately chrome-free because

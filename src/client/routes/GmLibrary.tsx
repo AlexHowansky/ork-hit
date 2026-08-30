@@ -24,7 +24,7 @@ import {
 import type { HeroStatField } from "../../lib/hero.ts";
 import { useSessionSocket } from "../useSessionSocket.ts";
 import { useLiveSessions } from "../useLiveSessions.ts";
-import { useCardFit } from "../useCardFit.ts";
+import { useColumnSplit } from "../useColumnSplit.ts";
 import { ThemeToggle } from "../components/ThemeToggle.tsx";
 import {
   AppPage,
@@ -32,6 +32,7 @@ import {
   CardPicture,
   CardFrame,
   CardWell,
+  ColumnHandle,
   CARD_CAPTION_FRAMED,
   CARD_GRID,
   CARD_NAME,
@@ -447,7 +448,12 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
 
   // Trims the campaign panel to whole card columns, giving the leftover to the
   // characters beside it.
-  const { containerRef, panelRef, gridRef } = useCardFit({ count: campaigns.length });
+  // The campaigns column: trimmed to whole cards by default, and draggable to a
+  // width of the reader's own — see `useColumnSplit`, which composes the two.
+  const { containerRef, panelRef, gridRef, handleProps } = useColumnSplit({
+    count: campaigns.length,
+    variable: "--campaign-col",
+  });
 
   const load = useCallback(async () => {
     try {
@@ -645,7 +651,10 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
 
       <div
         ref={containerRef}
-        className="space-y-3 wide:grid wide:min-h-0 wide:flex-1 wide:grid-cols-[var(--campaign-col)_minmax(0,1.4fr)] wide:gap-3 wide:space-y-0"
+        // Three tracks rather than two: the handle is the middle one, and it is the
+        // gutter as well as the control, which is why there is no `gap` any more —
+        // it is exactly as wide as the gap it replaced.
+        className="space-y-3 wide:grid wide:min-h-0 wide:flex-1 wide:grid-cols-[var(--campaign-col)_auto_minmax(0,1.4fr)] wide:space-y-0"
       >
         <Panel
           ref={panelRef}
@@ -679,6 +688,10 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
             </div>
           )}
         </Panel>
+
+        {/* Between the two panels whether or not one is chosen, so the split does
+            not move as campaigns are selected and deselected. */}
+        <ColumnHandle {...handleProps} label="Resize the campaigns column" />
 
         {selectedCampaign ? (
           <Panel

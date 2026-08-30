@@ -545,6 +545,31 @@ layout, so a deployment drawing larger cards needs no matching change. The
 scrolling panel body keeps a stable scrollbar gutter for the same reason: the
 measurement has to mean the same thing before and after the panel is trimmed.
 
+**And the reader can overrule it.** The gutter between the two panels is a drag
+handle (`ColumnHandle` in `ui.tsx`, driven by `useColumnSplit` in
+`src/client/useColumnSplit.ts`), so a table with twenty campaigns and three
+characters can have the balance the other way round. The handle and the automatic
+fit are two writers of one custom property, which is the whole design problem:
+they take turns rather than share. From the first drag the reader's width is in
+force and `useCardFit` stands down — its `enabled` check sits *before* the branch
+that clears the property, because the effect runs on every render and clearing it
+there would wipe the width mid-gesture — and a double-click or Enter on the handle
+removes the width and hands it back, whereupon the fit re-pins on the next render.
+The choice lasts for the visit and is not stored: a reload is the other way back.
+
+The drag writes the width straight to the container's inline style rather than
+through React state, because a pointer-move fires at the refresh rate and every one
+of them would otherwise re-render both libraries and every card in them; the only
+state is which writer is in charge, which changes twice per gesture. The same is
+true of `aria-valuenow` and its bounds, which the hook sets on the handle as
+attributes. How far a key-press moves the split, and how narrow a panel may be
+squeezed, both come from `measureTrack` — the card measurement `useCardFit` was
+already doing, now shared — so a panel can never be dragged narrower than one whole
+card, on either side, and a deployment drawing larger cards needs no change here
+either. The handle is exactly as wide as the `gap` it replaced, so adding it moved
+nothing, and it is `hidden` below the wide layout, where stacked panels have no
+boundary to drag and it stays out of the tab order.
+
 **File fields take a drop, and still are file fields.** Adding a character means
 handing over an HTML sheet and often a picture, and dragging a file from a folder
 is the shorter path — so both fields on the character form are `FileDrop`

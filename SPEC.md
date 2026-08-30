@@ -27,7 +27,13 @@ document explains the requirements that must be adhered to.
   scrolls as a whole. Narrow or tall screens keep the stacked layout. Where cards
   sit side by side with another panel, as the campaigns do, the panel holding
   them is no wider than the whole number of cards it can show — never part of a
-  further column — and the panel beside it takes the room that leaves.
+  further column — and the panel beside it takes the room that leaves. That is a
+  starting point rather than a rule: where panels sit side by side the boundary
+  between them can be dragged, with a pointer or from the keyboard, to whatever
+  balance the reader wants, and neither panel can be crushed narrower than one
+  whole card. The width they choose lasts for the visit rather than being
+  remembered, and handing the boundary back — a double-click on it — restores the
+  automatic fit.
 
 * How large a card's picture is drawn is a deployment setting, not a constant in
   the code. It measures the picture: the card comes out larger, since its border

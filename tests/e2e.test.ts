@@ -796,6 +796,67 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     expect(await namesIn(gm)).toEqual(["Elara", "Thorin", "Strahd"]);
   }, 60_000);
 
+  test("the library's two columns can be dragged to a different balance", async () => {
+    if (!browser) return;
+    const gm = await signedInGm();
+    await gm.setViewportSize({ width: 1600, height: 900 });
+
+    const campaignName = unique("Campaign");
+    await gm.getByRole("button", { name: "New", exact: true }).click();
+    await gm.getByLabel("Campaign name").fill(campaignName);
+    await gm.getByRole("button", { name: "Create campaign" }).click();
+    await gm.getByText(`Characters in ${campaignName}`).waitFor();
+
+    const panelWith = (name: string | RegExp) =>
+      gm.locator("section").filter({ has: gm.getByRole("heading", { name }) });
+    const campaigns = panelWith("Campaigns");
+    const characters = panelWith(/^Characters in /);
+    const handle = gm.getByRole("separator", { name: "Resize the campaigns column" });
+    const widthOf = async (panel: Locator) => (await panel.boundingBox())!.width;
+
+    await handle.waitFor();
+    // Where the automatic fit left it: the width that holds a whole number of
+    // card columns. Noted so the reset at the end can be checked against it.
+    const fitted = await widthOf(campaigns);
+    const together = fitted + (await widthOf(characters));
+
+    const drag = async (by: number) => {
+      const box = (await handle.boundingBox())!;
+      const y = box.y + box.height / 2;
+      await gm.mouse.move(box.x + box.width / 2, y);
+      await gm.mouse.down();
+      await gm.mouse.move(box.x + box.width / 2 + by, y, { steps: 8 });
+      await gm.mouse.up();
+      await gm.waitForTimeout(100);
+    };
+
+    // What the campaign panel takes, the character panel gives up: the two still
+    // fill the same room between them.
+    await drag(150);
+    expect(await widthOf(campaigns)).toBeCloseTo(fitted + 150, -1);
+    expect((await widthOf(campaigns)) + (await widthOf(characters))).toBeCloseTo(together, -1);
+
+    // Dragged off the left edge, the panel stops at one whole card rather than
+    // collapsing — the minimum is the card track, measured, not a number here.
+    const cardWidth = (await gm
+      .locator(`article:has(button[aria-label="Select ${campaignName}"])`)
+      .boundingBox())!.width;
+    await drag(-2000);
+    const squeezed = await widthOf(campaigns);
+    expect(squeezed).toBeGreaterThan(cardWidth);
+    expect(squeezed).toBeLessThan(cardWidth + 100);
+
+    // And the automatic fit takes the width back when the handle is given back.
+    await handle.dblclick();
+    await gm.waitForTimeout(100);
+    expect(await widthOf(campaigns)).toBeCloseTo(fitted, -1);
+
+    // Stacked, there is nothing to resize and no handle to reach.
+    await gm.setViewportSize({ width: 800, height: 1400 });
+    await gm.waitForTimeout(150);
+    expect(await handle.isVisible()).toBe(false);
+  }, 60_000);
+
   test("cards are drawn at the size the deployment asked for", async () => {
     if (!browser) return;
     const gm = await signedInGm();

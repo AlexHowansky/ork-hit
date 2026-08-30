@@ -68,8 +68,13 @@
   remaining `1.4fr` then takes everything left over, so the slack the fixed card
   track would have wasted goes to the character panel instead.
 
+  It has a second writer: the handle between the two panels (`useColumnSplit`),
+  which puts the reader's own width here instead. The two never write it at once —
+  from the first drag the automatic fit stands down, and a double-click on the
+  handle hands the width back to it.
+
   It lives here, rather than being written into the template inline, so the ratio
-  itself stays in the stylesheet and the hook only ever has to supply a number.
+  itself stays in the stylesheet and the hooks only ever have to supply a number.
 */
 :root {
   --campaign-col: minmax(0, 1fr);
