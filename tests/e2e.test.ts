@@ -857,6 +857,81 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     expect(await handle.isVisible()).toBe(false);
   }, 60_000);
 
+  test("a card leaves the row only once it no longer fits", async () => {
+    if (!browser) return;
+    const gm = await signedInGm();
+    await gm.setViewportSize({ width: 1600, height: 900 });
+
+    const names = [unique("Campaign"), unique("Campaign"), unique("Campaign")];
+    for (const name of names) {
+      await gm.getByRole("button", { name: "New", exact: true }).click();
+      await gm.getByLabel("Campaign name").fill(name);
+      await gm.getByRole("button", { name: "Create campaign" }).click();
+      await gm.getByText(`Characters in ${name}`).waitFor();
+    }
+
+    const campaigns = gm
+      .locator("section")
+      .filter({ has: gm.getByRole("heading", { name: "Campaigns" }) });
+    const cards = campaigns.locator("article");
+    const handle = gm.getByRole("separator", { name: "Resize the campaigns column" });
+    await handle.waitFor();
+
+    /** The margins the cards sit in, and how many of them share the top row. */
+    const layout = async () => {
+      const panel = (await campaigns.boundingBox())!;
+      const boxes = await cards.evaluateAll((nodes) =>
+        nodes.map((node) => {
+          const box = node.getBoundingClientRect();
+          return { left: box.left, right: box.right, top: box.top };
+        }),
+      );
+      const top = Math.min(...boxes.map((box) => box.top));
+      const row = boxes.filter((box) => Math.abs(box.top - top) < 1);
+      return {
+        columns: row.length,
+        before: Math.min(...row.map((box) => box.left)) - panel.x,
+        after: panel.x + panel.width - Math.max(...row.map((box) => box.right)),
+      };
+    };
+
+    // Flush against the last column, the cards sit in the same margin on both
+    // sides. A reserved-but-unused scrollbar gutter used to make the right one
+    // twice the left, and cost the next card the room it needed besides.
+    const fitted = await layout();
+    expect(fitted.columns).toBeGreaterThan(1);
+    expect(Math.abs(fitted.after - fitted.before)).toBeLessThan(2);
+
+    // What another column would cost: a card and the gap before it, measured off
+    // the two that are on screen rather than assumed, since the deployment picks
+    // how large a card is drawn.
+    const [first, second] = await cards.evaluateAll((nodes) =>
+      nodes.slice(0, 2).map((node) => node.getBoundingClientRect()),
+    );
+    const step = second!.left - first!.left;
+
+    const drag = async (by: number) => {
+      const box = (await handle.boundingBox())!;
+      const y = box.y + box.height / 2;
+      await gm.mouse.move(box.x + box.width / 2, y);
+      await gm.mouse.down();
+      await gm.mouse.move(box.x + box.width / 2 + by, y, { steps: 8 });
+      await gm.mouse.up();
+      await gm.waitForTimeout(100);
+    };
+
+    // Room for all but a sliver of another card is not room for another card, and
+    // giving nearly all of that room back does not cost the row a card either.
+    await drag(step - 24);
+    expect((await layout()).columns).toBe(fitted.columns);
+    await drag(-(step - 36));
+    expect((await layout()).columns).toBe(fitted.columns);
+
+    // Only once the drag passes the width the last card needs does the row lose it.
+    await drag(-24);
+    expect((await layout()).columns).toBe(fitted.columns - 1);
+  }, 60_000);
+
   test("cards are drawn at the size the deployment asked for", async () => {
     if (!browser) return;
     const gm = await signedInGm();

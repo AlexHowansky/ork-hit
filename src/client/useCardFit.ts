@@ -46,8 +46,8 @@ export type SplitRefs = {
  *
  * `track` is the width of one card column and `gap` the space between two of them;
  * `available` is the room the grid has for them, and `overhead` everything the
- * panel spends on itself around that room — its border, its body's padding and its
- * scrollbar gutter. So the panel width that holds exactly n columns is
+ * panel spends on itself around that room — its border, its body's padding and the
+ * scrollbar, when it has one. So the panel width that holds exactly n columns is
  * `n * track + (n - 1) * gap + overhead`, which is the one piece of arithmetic both
  * writers of the width need.
  *
@@ -67,8 +67,11 @@ export function measureTrack(
 
   const available = grid.getBoundingClientRect().width;
   // Stable whatever the panel is currently pinned to, because both rects move
-  // together, and stable as the list grows because the scrollbar keeps its gutter
-  // whether or not it is showing.
+  // together. It counts a scrollbar when the panel has one, which is the honest
+  // number: a panel that is scrolling really does have that much less room for
+  // cards. So a drag inwards can drop a column and, where that pushes the panel
+  // into scrolling, drop a second one in the same gesture — it cannot chatter
+  // between the two, because fewer columns only ever means more rows.
   const overhead = panel.getBoundingClientRect().width - available;
   return { track, gap, available, overhead };
 }

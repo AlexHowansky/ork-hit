@@ -542,8 +542,13 @@ unpinned it is the ordinary `1 : 1.4` split). It only ever narrows: what the
 campaign panel gives up, the `1.4fr` next to it absorbs. Nothing there assumes a
 card size, a gap or a padding — all of them are read back from the rendered
 layout, so a deployment drawing larger cards needs no matching change. The
-scrolling panel body keeps a stable scrollbar gutter for the same reason: the
-measurement has to mean the same thing before and after the panel is trimmed.
+scrolling panel body deliberately does *not* reserve a scrollbar gutter it is not
+using: that strip sits outside the grid's content box, so a panel had to be a
+scrollbar wider than it looked before another column fitted — a card dropped out
+of the row while there was still visibly room for it — and the cards sat in twice
+as much padding on that side as on the other three. Reserving it bought
+measurement stability that was never at risk, since pinning a panel to the columns
+it already holds changes neither the row count nor whether the body scrolls.
 
 **And the reader can overrule it.** The gutter between the two panels is a drag
 handle (`ColumnHandle` in `ui.tsx`, driven by `useColumnSplit` in

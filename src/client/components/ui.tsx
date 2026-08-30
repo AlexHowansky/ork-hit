@@ -322,6 +322,16 @@ export const SURFACE = "card border border-base-300 bg-base-100";
  * controls that says plainly what it is does not need a word above it repeating
  * the point.
  *
+ * The scrolling body once reserved a scrollbar gutter whether or not it had a
+ * scrollbar, so that its width never jumped. That reservation is gone. It cost a
+ * card panel real room: the strip sits outside the grid's content box, so the
+ * panel had to be a scrollbar wider than it looked before another card column
+ * fitted, and the cards sat in twice as much padding on that side as on the other
+ * three. What it bought was measurement stability for `useCardFit`, and that was
+ * never in danger — pinning the panel to the columns it already holds cannot
+ * change the column count, so it cannot change the row count, the body's height,
+ * or whether the body scrolls at all.
+ *
  * Always a `<section>` with an `<h2>` inside it, whatever daisyUI's card markup
  * would prefer: that is the shape `tests/e2e.test.ts` finds a panel by, and it
  * is the right outline for the page besides.
@@ -357,7 +367,7 @@ export function Panel({
         </header>
       ) : null}
       <div
-        className={`p-4 ${scroll ? "min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable]" : ""}`}
+        className={`p-4 ${scroll ? "min-h-0 flex-1 overflow-y-auto" : ""}`}
       >
         {children}
       </div>
