@@ -70,11 +70,16 @@ document explains the requirements that must be adhered to.
   mouse. A card tilts towards the pointer as it is hovered, so it reads as an
   object being handled rather than a picture on a page, and its picture catches
   the light where the pointer is, so the thing being handled reads as a glossy
-  object rather than a matte one. How brightly it does so is a deployment setting,
-  since it depends on the artwork a table uses, and it can be turned off. The
-  light stays on the picture and off the name, whose contrast must not be touched
-  by it. A reader who has asked for less motion is neither tilted at nor shone at,
-  and keeps the highlight on its own.
+  object rather than a matte one. The picture is printed on foil: a faint sheet of
+  rainbow lies over it at rest and drifts across it as the card turns, so the card
+  reads as a holographic one rather than as plain card stock. The foil bends the
+  picture's colour without flattening it — what is dark in the photograph stays
+  dark. How brightly a card does all of this is a single deployment setting, since
+  it depends on the artwork a table uses, and it can be turned off. The
+  light and the foil stay on the picture and off the name, whose contrast must not
+  be touched by them. A reader who has asked for less motion is neither tilted at
+  nor shone at, and keeps the hover highlight on its own, along with the foil,
+  held still.
 
 * Pressing a card anywhere does the card's own thing: selecting a campaign,
   opening a character. Its corner controls stay reachable over the top of that,

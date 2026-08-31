@@ -50,6 +50,9 @@ const css =
   `  --card-frame-npc-dark: url("/frames/character-npc-dark.webp");\n` +
   `  --campaign-frame-light: url("/frames/campaign-light.webp");\n` +
   `  --campaign-frame-dark: url("/frames/campaign-dark.webp");\n` +
+  // And the foil the well blends over a picture, which is one sheet for both
+  // themes and is written here for the same reason the frames are.
+  `  --card-foil: url("/frames/sheen.webp");\n` +
   // Only when there is one. Unset, `styles.css` falls back to `inherit` and a
   // card's name keeps the interface font.
   //

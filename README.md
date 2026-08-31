@@ -467,12 +467,33 @@ arrives as `--card-sheen-strength` through `/appearance.css` exactly as the card
 size does. The two percentages stay in the stylesheet, so the balance between the
 hotspot and the band survives whatever the setting is.
 
+**And it is printed on foil.** `assets/sheen.webp` is a sheet of soft rainbow —
+the pastel bloom a holographic card throws back — laid over the picture by
+`card-foil`, an empty `<span>` `CardWell` puts before its children. An element
+rather than a third pseudo-element, because `card-sheen` has only two and both
+are spoken for; first in the well, so it paints beneath them — the foil is what
+the picture is printed on, and the highlight is what lands on the foil. It blends
+with `mix-blend-mode: overlay`, which bends the photograph's hue while leaving
+its own darks and lights alone, so a card reads as printed on foil rather than as
+a picture behind coloured film; `isolation: isolate` on the well keeps that blend
+off the frame and the tile underneath. Its geometry is the highlight's one size
+up — the same 33.33% cell moved by `--shine`, at `scale: 5` so the sheet still
+covers the whole well from the far corner cells — so the colour drifts in the
+same nine steps the tilt does. Unlike the highlight it is there at rest, since a
+foil card catches colour standing still and only brightens as it turns; both
+strengths scale with `--card-sheen-strength`, so `CARD_SHEEN_PCT` turns
+everything the card does with light up and down together. The image is served by
+`server/routes/frames.ts` and its url arrives as `--card-foil` through
+`/appearance.css`, for exactly the bundler reason the frames do.
+
 Under `prefers-reduced-motion`, the card does not move, does not shine, and nor
 do its controls — left moving, they would tilt over a card that does not.
 Zeroing transition durations is not enough — it would turn the tilt into a snap,
 which is worse than the slide — so `styles.css` neutralises the transform
 outright and drops the sheen's pseudo-elements, unlayered so it beats daisyUI's
-own rule. The hover border still says which card the pointer is on.
+own rule. The hover border still says which card the pointer is on. The foil
+stays, pinned to its resting cell: held still it is a colour the card is printed
+in rather than a motion, which is nothing for that reader to object to.
 
 **Colour belongs to daisyUI, not to the components.** `src/client/styles.css`
 enables two of its stock themes — `winter` for light and `night` for dark — and

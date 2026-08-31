@@ -346,6 +346,63 @@ body {
 }
 
 /*
+  The foil the light falls on.
+
+  `assets/sheen.webp` is a sheet of soft rainbow — the pastel bloom a holographic
+  card throws back — and it is laid over the picture rather than mixed into it:
+  `mix-blend-mode: overlay` keeps the photograph's own darks and lights and only
+  bends their hue, so a card reads as printed on foil rather than as a picture
+  with a coloured film over it. One sheet serves both themes for the same reason
+  the highlight's white does — what it lands on is a photograph, not a themed
+  surface. The url arrives from /appearance.css as `--card-foil`, exactly as the
+  frames do and for the same bundler reason; a page that never receives it simply
+  gets no foil.
+
+  `isolation` on the well is what keeps the blend inside the picture. Without it
+  the layer would blend with whatever the well happens to sit over, which is the
+  frame and the tile beneath it.
+
+  The geometry is the highlight's, one size up: a 33.33% cell of the same
+  three-by-three grid, moved by `--shine`, so the sheet drifts across the picture
+  in the nine steps the tilt moves in and the two read as one gesture. `scale: 5`
+  rather than the 2 and 3 above because this one has to cover the whole well from
+  every cell it can be moved to — at 3 the far corner would slide off the
+  picture and leave a third of it bare.
+
+  Unlike the highlight, the foil is there at rest: a foil card catches colour
+  standing still, and only brightens as it turns. Both strengths scale with
+  `--card-sheen-strength`, so `CARD_SHEEN_PCT` still turns everything the card
+  does with light up and down together, 0 included.
+*/
+.card-sheen {
+  isolation: isolate;
+}
+
+.card-foil {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 33.3333%;
+  height: 33.3333%;
+  scale: 5;
+  background-image: var(--card-foil);
+  background-size: 100% 100%;
+  mix-blend-mode: overlay;
+  /* Over the picture, with the highlight's two layers; under the corner
+     controls, which are outside the well entirely. */
+  z-index: 1;
+  pointer-events: none;
+  opacity: clamp(0, calc(0.5 * var(--card-sheen-strength)), 1);
+  translate: var(--shine);
+  /* daisyUI's own timing, so the colour and the tilt arrive together. */
+  transition: translate 0.4s ease-out, opacity 0.4s ease-out;
+}
+
+.hover-3d:hover .card-foil {
+  opacity: clamp(0, calc(1.4 * var(--card-sheen-strength)), 1);
+}
+
+/*
   The card's corner controls, moving with the card.
 
   They cannot simply be put on the tilting layer. That layer carries a transform —
@@ -438,6 +495,16 @@ body {
   .card-sheen::before,
   .card-sheen::after {
     content: none;
+  }
+
+  /*
+    The foil stays, and stops moving. It is a colour the card is printed in
+    rather than a motion — held still at its resting cell it is simply what the
+    card looks like, so there is nothing here for a reader who asked for less
+    movement to object to.
+  */
+  .card-foil {
+    translate: 100% 100%;
   }
 
   /*

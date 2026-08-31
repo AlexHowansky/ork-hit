@@ -4,6 +4,10 @@
  * Six files — a PC frame, an NPC frame and a campaign frame, each in a light and
  * a dark cut — laid over a card by `styles.css`; see `--card-frame-pc`,
  * `--card-frame-npc` and `--campaign-frame` there, which decide between them.
+ * A seventh, `sheen.webp`, is the foil: a sheet of soft rainbow the well blends
+ * over a picture as the card tilts (`--card-foil`). It has no light and dark cut
+ * because it is not painted on the card — it is light caught by it, and the same
+ * light in either theme.
  *
  * WebP rather than PNG: the window has to stay transparent and WebP carries the
  * alpha, at roughly a third of the bytes the PNGs cost.
@@ -48,6 +52,9 @@ const frames = {
   },
 };
 
+/** The foil, which is one sheet rather than a pair. */
+const sheen = await load("sheen.webp");
+
 /**
  * Answers 304 when the browser already holds this exact image, and the bytes
  * otherwise. Public rather than private: a frame is the same for everyone and
@@ -85,5 +92,8 @@ export const frameRoutes = {
   },
   "/frames/campaign-dark.webp": {
     GET: handler(async (request: Request) => serve(frames.campaign.dark, request)),
+  },
+  "/frames/sheen.webp": {
+    GET: handler(async (request: Request) => serve(sheen, request)),
   },
 };

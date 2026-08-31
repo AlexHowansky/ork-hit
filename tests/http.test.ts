@@ -1806,6 +1806,8 @@ describe("the deployment's card size reaches the browser", () => {
     expect(css).toContain(`--card-frame-npc-dark: url("/frames/character-npc-dark.webp")`);
     expect(css).toContain(`--campaign-frame-light: url("/frames/campaign-light.webp")`);
     expect(css).toContain(`--campaign-frame-dark: url("/frames/campaign-dark.webp")`);
+    // And the foil, which is one sheet for both themes.
+    expect(css).toContain(`--card-foil: url("/frames/sheen.webp")`);
   });
 
   test("and the frames themselves are served, cacheably, to anyone", async () => {
@@ -1816,6 +1818,7 @@ describe("the deployment's card size reaches the browser", () => {
       "/frames/character-npc-dark.webp",
       "/frames/campaign-light.webp",
       "/frames/campaign-dark.webp",
+      "/frames/sheen.webp",
     ]) {
       // No cookie: a frame is the same for everyone and gives nothing away.
       const response = await fetch(`${base}${path}`);

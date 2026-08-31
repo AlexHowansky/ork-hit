@@ -809,10 +809,17 @@ export function CountBadge({
  * rather than on the tile because the well is what clips it: its `overflow-hidden`
  * is what keeps the highlight square to the picture and off the name underneath.
  * The rule itself is in `styles.css`, next to the tilt it moves with.
+ *
+ * `card-foil` is the sheet of rainbow that light falls on, and it is an element
+ * rather than a third pseudo — `card-sheen` has only the two, and both are spoken
+ * for. It comes first so it paints under them: the foil is what the picture is
+ * printed on, and the highlight is what lands on the foil. Empty and decorative,
+ * so it carries nothing and is hidden from anything reading the card aloud.
  */
 export function CardWell({ children }: { children: ReactNode }) {
   return (
     <div className="card-sheen relative aspect-square w-full shrink-0 overflow-hidden bg-base-300">
+      <span className="card-foil" aria-hidden="true" />
       {children}
     </div>
   );
