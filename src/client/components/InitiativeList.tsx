@@ -144,7 +144,7 @@ function Row({
         {index + 1}
       </span>
 
-      <CharacterThumb kind={character.kind} backgroundUrl={character.backgroundUrl} />
+      <CharacterThumb kind={character.kind} cardUrl={character.cardUrl} />
 
       <div className="min-w-0 flex-1 basis-40">
         {/* Badges wrap below the name rather than crowding it out: with a picture

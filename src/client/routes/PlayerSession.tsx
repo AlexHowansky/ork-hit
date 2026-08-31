@@ -305,7 +305,7 @@ export function PlayerSession({
                   cardClassName="border-base-300 bg-base-100 text-left"
                 >
                   <CardWell>
-                    <CardPicture src={character.backgroundUrl} icon={faShieldHalved} />
+                    <CardPicture src={character.cardUrl} icon={faShieldHalved} />
                   </CardWell>
                   {/* The same frame the library draws, so a player picks from the
                       cards the game master was looking at. */}
@@ -429,7 +429,7 @@ export function PlayerSession({
                 <div className="flex items-center gap-3">
                   <CharacterThumb
                     kind={myCharacter.kind}
-                    backgroundUrl={myCharacter.backgroundUrl}
+                    cardUrl={myCharacter.cardUrl}
                   />
                   <div className="min-w-0">
                     <p className="truncate font-medium">{myCharacter.name}</p>

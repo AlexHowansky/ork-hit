@@ -1292,7 +1292,7 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
       "END",
       "STUN",
       "BODY",
-      "Background image (optional)",
+      "Card image (optional)",
     ]);
   }, 60_000);
 

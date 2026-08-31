@@ -1,4 +1,4 @@
-/** A character in the library, presented as a card with its background image. */
+/** A character in the library, presented as a card with its card image. */
 
 import type { HTMLAttributes, ReactNode } from "react";
 import { faDragon, faShieldHalved } from "@fortawesome/free-solid-svg-icons";
@@ -40,7 +40,7 @@ export function CharacterCard({
     >
       <CardWell>
         <CardPicture
-          src={character.backgroundUrl}
+          src={character.cardUrl}
           icon={character.kind === "pc" ? faShieldHalved : faDragon}
           draggable={false}
         />

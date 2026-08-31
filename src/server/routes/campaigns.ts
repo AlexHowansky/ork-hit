@@ -29,13 +29,13 @@ export const campaignRoutes = {
         throw errors.conflict(`A campaign called “${name}” already exists.`);
       }
 
-      const image = fileField(form, "background");
-      const background = image ? await storeImage(image) : null;
+      const image = fileField(form, "card");
+      const card = image ? await storeImage(image) : null;
 
       const campaign = campaigns.create({
         gmId: gm.id,
         name,
-        backgroundUploadId: background?.id ?? null,
+        cardUploadId: card?.id ?? null,
       });
       logger.info("campaign created", { gmId: gm.id, campaignId: campaign.id });
 
@@ -48,7 +48,7 @@ export const campaignRoutes = {
       const { campaign } = requireOwnedCampaign(request, request.params.id);
       const form = await request.formData();
 
-      const changes: { name?: string; backgroundUploadId?: string | null } = {};
+      const changes: { name?: string; cardUploadId?: string | null } = {};
 
       const rawName = form.get("name");
       if (typeof rawName === "string") {
@@ -59,16 +59,16 @@ export const campaignRoutes = {
         changes.name = name;
       }
 
-      const image = fileField(form, "background");
+      const image = fileField(form, "card");
       if (image) {
-        changes.backgroundUploadId = (await storeImage(image)).id;
-      } else if (form.get("removeBackground") === "true") {
-        changes.backgroundUploadId = null;
+        changes.cardUploadId = (await storeImage(image)).id;
+      } else if (form.get("removeCard") === "true") {
+        changes.cardUploadId = null;
       }
 
       const updated = campaigns.update(campaign.id, changes);
-      // A replaced or removed background leaves its old file unreferenced.
-      if (changes.backgroundUploadId !== undefined) await collectOrphanedUploads();
+      // A replaced or removed card image leaves its old file unreferenced.
+      if (changes.cardUploadId !== undefined) await collectOrphanedUploads();
       logger.info("campaign updated", { campaignId: campaign.id });
 
       // A session is listed under its campaign's name, and sorted by it, so a

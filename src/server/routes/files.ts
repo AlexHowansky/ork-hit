@@ -83,9 +83,9 @@ export const fileRoutes = {
   },
 
   /**
-   * A background image for a campaign or character.
+   * A card image for a campaign or character.
    *
-   * Any authenticated user may read one: backgrounds are decoration shown on
+   * Any authenticated user may read one: card images are decoration shown on
    * cards that the viewer is already entitled to see.
    */
   "/uploads/images/:uploadId": {

@@ -70,7 +70,7 @@ describe("character sheets", () => {
   });
 });
 
-describe("background images", () => {
+describe("card images", () => {
   test("are identified by their magic bytes", async () => {
     expect((await storeImage(file("a.png", PNG))).mime).toBe("image/png");
     expect((await storeImage(file("b.gif", GIF))).mime).toBe("image/gif");

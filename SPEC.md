@@ -152,12 +152,12 @@ The app should have the following features:
   UI for account management.
 
 * A game master may create, edit, and delete campaigns. Each campaign must have
-  a unique name. Each campaign may have a background image. Present the campaign
+  a unique name. Each campaign may have a card image. Present the campaign
   library as cards.
 
 * A game master may add, edit, and delete PCs and NPCs. These are represented by
   HTML file uploads. Each PC and NPC must be categorized into one campaign. Each
-  PC and NPC may have a background image. Either file may be chosen with the file
+  PC and NPC may have a card image. Either file may be chosen with the file
   picker or dropped onto its field; a sheet may also be dropped anywhere on the
   character panel, which opens the add form holding it. The add and edit form
   asks for the sheet first, then the name, the type, the campaign, and the image. Uploading a sheet
@@ -406,7 +406,7 @@ The app should have the following features:
 
 * Each PC and NPC on a session page should be shown with a small picture of
   itself — in the scene, and in the list the game master adds them from —
-  falling back to a placeholder for a character that has no background image.
+  falling back to a placeholder for a character that has no card image.
 
 * Combat runs on the HERO System clock rather than on a flat list. A **Turn** is
   twelve **segments**; a character's SPEED decides which of those twelve they act

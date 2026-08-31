@@ -856,16 +856,16 @@ export function CardPicture({
  */
 export function CharacterThumb({
   kind,
-  backgroundUrl,
+  cardUrl,
 }: {
   kind: "pc" | "npc";
-  backgroundUrl: string | null;
+  cardUrl: string | null;
 }) {
   return (
     <div className="avatar shrink-0">
       <div className="h-10 w-10 overflow-hidden rounded-md bg-base-300">
-        {backgroundUrl ? (
-          <img src={backgroundUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
+        {cardUrl ? (
+          <img src={cardUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
         ) : (
           <span
             className="flex h-full w-full items-center justify-center opacity-40"

@@ -45,7 +45,7 @@ describe("one active session per campaign", () => {
     addActiveSession(target, "mid", "2026-01-01T11:00:00.000Z");
     addActiveSession(target, "new", "2026-01-01T12:00:00.000Z");
 
-    expect(migrate(target)).toBe(7);
+    expect(migrate(target)).toBe(8);
 
     const statuses = Object.fromEntries(
       target.query<{ id: string; status: string }, []>(
@@ -202,5 +202,41 @@ describe("HERO characteristics", () => {
       stun: 0,
       body: 0,
     });
+  });
+});
+
+describe("card images", () => {
+  test("the background column becomes a card, keeping what it pointed at", () => {
+    const target = atInitialSchema();
+    target.exec(`
+      INSERT INTO uploads
+        VALUES ('u1', 'image', '/tmp/u1', 'image/png', 10, 'sha', 'art.png', '2026-01-01T00:00:00.000Z');
+      UPDATE campaigns SET background_upload_id = 'u1' WHERE id = 'c1';
+      INSERT INTO characters
+        (id, campaign_id, kind, name, sheet_upload_id, background_upload_id, created_at, updated_at)
+        VALUES ('ch1', 'c1', 'pc', 'Hero', 'u1', 'u1', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z');
+    `);
+
+    migrate(target);
+
+    for (const table of ["campaigns", "characters"]) {
+      const columns = target.query<{ name: string }, []>(
+        `SELECT name FROM pragma_table_info('${table}')`,
+      ).all().map((row) => row.name);
+      expect(columns).toContain("card_upload_id");
+      expect(columns).not.toContain("background_upload_id");
+    }
+
+    // A rename, not a reset: the library keeps the artwork it already had.
+    expect(
+      target.query<{ card_upload_id: string | null }, []>(
+        "SELECT card_upload_id FROM campaigns WHERE id = 'c1'",
+      ).get()!.card_upload_id,
+    ).toBe("u1");
+    expect(
+      target.query<{ card_upload_id: string | null }, []>(
+        "SELECT card_upload_id FROM characters WHERE id = 'ch1'",
+      ).get()!.card_upload_id,
+    ).toBe("u1");
   });
 });

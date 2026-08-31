@@ -37,7 +37,7 @@ export interface CampaignRow {
   id: string;
   gm_id: string;
   name: string;
-  background_upload_id: string | null;
+  card_upload_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -48,7 +48,7 @@ export interface CharacterRow {
   kind: CharacterKind;
   name: string;
   sheet_upload_id: string;
-  background_upload_id: string | null;
+  card_upload_id: string | null;
   /** HERO System characteristics. `endurance`, `stun` and `body` are the full totals. */
   speed: number;
   dexterity: number;

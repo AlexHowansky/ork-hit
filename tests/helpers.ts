@@ -25,7 +25,7 @@ export function makeGm() {
 
 export function makeCampaign(gmId?: string) {
   const gm = gmId ?? makeGm().id;
-  return campaigns.create({ gmId: gm, name: unique("Campaign"), backgroundUploadId: null });
+  return campaigns.create({ gmId: gm, name: unique("Campaign"), cardUploadId: null });
 }
 
 export function makeCharacter(
@@ -41,7 +41,7 @@ export function makeCharacter(
     kind,
     name: name ?? unique(kind === "pc" ? "Hero" : "Villain"),
     sheetUploadId: uploadId,
-    backgroundUploadId: null,
+    cardUploadId: null,
     stats,
   });
 }

@@ -565,7 +565,7 @@ export function GmSessionConsole({ onSignOut }: { onSignOut: () => void }) {
                     >
                       <CharacterThumb
                         kind={character.kind}
-                        backgroundUrl={character.backgroundUrl}
+                        cardUrl={character.cardUrl}
                       />
                       <span className="flex-1 truncate text-sm">
                         {character.name}

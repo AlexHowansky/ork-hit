@@ -1627,8 +1627,8 @@ describe("a sheet's own picture becomes the character's", () => {
     form.set("sheet", sheetWithPortrait());
     const character = await addCharacter(cookie, campaign.id, form);
 
-    expect(character.backgroundUrl).not.toBeNull();
-    expect(await pictureType(cookie, character.backgroundUrl)).toBe("image/png");
+    expect(character.cardUrl).not.toBeNull();
+    expect(await pictureType(cookie, character.cardUrl)).toBe("image/png");
   });
 
   test("a sheet with no picture in it leaves the character without one", async () => {
@@ -1639,7 +1639,7 @@ describe("a sheet's own picture becomes the character's", () => {
     form.set("sheet", new File(["<h1>Hero</h1>"], "hero.html"));
     const character = await addCharacter(cookie, campaign.id, form);
 
-    expect(character.backgroundUrl).toBeNull();
+    expect(character.cardUrl).toBeNull();
   });
 
   test("an image the game master chose is not overruled by the sheet", async () => {
@@ -1648,11 +1648,11 @@ describe("a sheet's own picture becomes the character's", () => {
 
     const form = new FormData();
     form.set("sheet", sheetWithPortrait());
-    form.set("background", new File([image(GIF_HEADER, 3000)], "chosen.gif"));
+    form.set("card", new File([image(GIF_HEADER, 3000)], "chosen.gif"));
     const character = await addCharacter(cookie, campaign.id, form);
 
     // The GIF they picked, not the PNG in the sheet.
-    expect(await pictureType(cookie, character.backgroundUrl)).toBe("image/gif");
+    expect(await pictureType(cookie, character.cardUrl)).toBe("image/gif");
   });
 
   test("replacing the sheet fills an empty picture, and only an empty one", async () => {
@@ -1662,7 +1662,7 @@ describe("a sheet's own picture becomes the character's", () => {
     const bare = new FormData();
     bare.set("sheet", new File(["<h1>Hero</h1>"], "hero.html"));
     const character = await addCharacter(cookie, campaign.id, bare);
-    expect(character.backgroundUrl).toBeNull();
+    expect(character.cardUrl).toBeNull();
 
     const patch = async (body: FormData) =>
       (await (
@@ -1676,8 +1676,8 @@ describe("a sheet's own picture becomes the character's", () => {
     const withPortrait = new FormData();
     withPortrait.set("sheet", sheetWithPortrait());
     const filled = await patch(withPortrait);
-    expect(filled.backgroundUrl).not.toBeNull();
-    expect(await pictureType(cookie, filled.backgroundUrl)).toBe("image/png");
+    expect(filled.cardUrl).not.toBeNull();
+    expect(await pictureType(cookie, filled.cardUrl)).toBe("image/png");
 
     // Now there is a picture, a later sheet must not replace it.
     const gifSheet = new FormData();
@@ -1687,7 +1687,7 @@ describe("a sheet's own picture becomes the character's", () => {
       new File([`<img src="data:image/gif;base64,${gif}">`], "hero2.html"),
     );
     const kept = await patch(gifSheet);
-    expect(kept.backgroundUrl).toBe(filled.backgroundUrl);
+    expect(kept.cardUrl).toBe(filled.cardUrl);
   });
 });
 
@@ -1716,13 +1716,13 @@ describe("pictures are stored at the size a card shows them", () => {
     form.set("kind", "pc");
     form.set("name", unique("Hero"));
     form.set("sheet", new File(["<h1>sheet</h1>"], "sheet.html"));
-    form.set("background", new File([await picture(2400, 1800)], "huge.png"));
+    form.set("card", new File([await picture(2400, 1800)], "huge.png"));
 
     const character = (await (
       await fetch(`${base}/api/characters`, authed(cookie, { method: "POST", body: form }))
     ).json()).character;
 
-    const { width, height } = await served(cookie, character.backgroundUrl);
+    const { width, height } = await served(cookie, character.cardUrl);
     expect(height).toBe(limits.storedImagePx);
     expect(width! / height!).toBeCloseTo(2400 / 1800, 2);
   });
@@ -1732,13 +1732,13 @@ describe("pictures are stored at the size a card shows them", () => {
 
     const form = new FormData();
     form.set("name", unique("Campaign"));
-    form.set("background", new File([await picture(3000, 3000)], "square.png"));
+    form.set("card", new File([await picture(3000, 3000)], "square.png"));
 
     const created = (await (
       await fetch(`${base}/api/campaigns`, authed(cookie, { method: "POST", body: form }))
     ).json()).campaign;
 
-    const { width, height } = await served(cookie, created.backgroundUrl);
+    const { width, height } = await served(cookie, created.cardUrl);
     expect([width, height]).toEqual([limits.storedImagePx, limits.storedImagePx]);
   });
 });

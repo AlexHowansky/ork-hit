@@ -344,7 +344,7 @@ describe("the session list", () => {
   test("comes back by campaign name, ignoring case", () => {
     const gm = makeGm();
     for (const name of ["ravenloft", "Avernus", "Waterdeep", "barovia"]) {
-      const campaign = campaigns.create({ gmId: gm.id, name, backgroundUploadId: null });
+      const campaign = campaigns.create({ gmId: gm.id, name, cardUploadId: null });
       gameSessions.create({ campaignId: campaign.id, gmId: gm.id, code: generateSessionCode() });
     }
 
@@ -359,7 +359,7 @@ describe("the session list", () => {
     const campaign = campaigns.create({
       gmId: gm.id,
       name: unique("Campaign"),
-      backgroundUploadId: null,
+      cardUploadId: null,
     });
     // Only one session may be active at a time, so the older one is ended first.
     const older = gameSessions.create({

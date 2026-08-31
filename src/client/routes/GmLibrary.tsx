@@ -105,18 +105,18 @@ function CampaignForm({
         hint="Campaign names are unique."
       />
       <label className="block">
-        <span className={FIELD_CAPTION}>Background image (optional)</span>
+        <span className={FIELD_CAPTION}>Card image (optional)</span>
         <input
           type="file"
-          name="background"
+          name="card"
           accept="image/png,image/jpeg,image/gif,image/webp"
           className="file-input file-input-sm w-full"
         />
       </label>
-      {campaign?.backgroundUrl ? (
+      {campaign?.cardUrl ? (
         <label className={`flex items-center gap-2 text-sm ${TEXT_MUTED}`}>
-          <input type="checkbox" name="removeBackground" value="true" />
-          Remove the current background
+          <input type="checkbox" name="removeCard" value="true" />
+          Remove the current card
         </label>
       ) : null}
       <Button variant="primary" type="submit" disabled={busy} className="w-full">
@@ -273,8 +273,8 @@ function CharacterForm({
       </fieldset>
 
       <FileDrop
-        label="Background image (optional)"
-        name="background"
+        label="Card image (optional)"
+        name="card"
         accept="image/png,image/jpeg,image/gif,image/webp"
       />
 
@@ -402,7 +402,7 @@ function CampaignCard({
       }
     >
       <CardWell>
-        <CardPicture src={campaign.backgroundUrl} icon={faScroll} draggable={false} />
+        <CardPicture src={campaign.cardUrl} icon={faScroll} draggable={false} />
       </CardWell>
 
       {/* Over the picture, under the name, exactly as on a character card — the

@@ -5,7 +5,7 @@ export type CharacterKind = "pc" | "npc";
 export interface Campaign {
   id: string;
   name: string;
-  backgroundUrl: string | null;
+  cardUrl: string | null;
   createdAt: string;
 }
 
@@ -15,7 +15,7 @@ export interface Character {
   kind: CharacterKind;
   name: string;
   sheetUrl: string;
-  backgroundUrl: string | null;
+  cardUrl: string | null;
   /**
    * The HERO System characteristics. `endurance`, `stun` and `body` are the
    * character's full totals; what one copy of them has left in a session is on

@@ -1,7 +1,7 @@
 /**
  * Upload intake.
  *
- * Two kinds of file arrive: character sheets (HTML) and background images.
+ * Two kinds of file arrive: character sheets (HTML) and card images.
  *
  * Sheets keep whatever JavaScript the game master authored — a sheet with dice
  * buttons or auto-calculating fields is expected to keep working — so they are
@@ -177,7 +177,7 @@ async function persistImage(bytes: Uint8Array, originalName: string): Promise<Up
   return await persist(await fitToCard(bytes, mime), IMAGE_DIR, "image", mime, originalName);
 }
 
-/** Stores a background image, verifying the format by its magic bytes. */
+/** Stores a card image, verifying the format by its magic bytes. */
 export async function storeImage(file: File): Promise<UploadRow> {
   const bytes = await readWithLimit(file, limits.imageBytes, "image");
   const stored = await persistImage(bytes, file.name ?? "image");

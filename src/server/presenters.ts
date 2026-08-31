@@ -12,8 +12,8 @@ export function presentCampaign(campaign: CampaignRow) {
   return {
     id: campaign.id,
     name: campaign.name,
-    backgroundUrl: campaign.background_upload_id
-      ? `/uploads/images/${campaign.background_upload_id}`
+    cardUrl: campaign.card_upload_id
+      ? `/uploads/images/${campaign.card_upload_id}`
       : null,
     createdAt: campaign.created_at,
   };
@@ -26,8 +26,8 @@ export function presentCharacter(character: CharacterRow) {
     kind: character.kind,
     name: character.name,
     sheetUrl: `/sheets/${character.id}`,
-    backgroundUrl: character.background_upload_id
-      ? `/uploads/images/${character.background_upload_id}`
+    cardUrl: character.card_upload_id
+      ? `/uploads/images/${character.card_upload_id}`
       : null,
     // The HERO characteristics. `endurance`, `stun` and `body` are the full
     // totals; what a copy of this character has left in a session is a separate

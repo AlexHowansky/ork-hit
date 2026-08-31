@@ -160,8 +160,8 @@ export const uploads = {
   orphaned(): UploadRow[] {
     return db.query<UploadRow, []>(`
       SELECT * FROM uploads
-      WHERE id NOT IN (SELECT background_upload_id FROM campaigns WHERE background_upload_id IS NOT NULL)
-        AND id NOT IN (SELECT background_upload_id FROM characters WHERE background_upload_id IS NOT NULL)
+      WHERE id NOT IN (SELECT card_upload_id FROM campaigns WHERE card_upload_id IS NOT NULL)
+        AND id NOT IN (SELECT card_upload_id FROM characters WHERE card_upload_id IS NOT NULL)
         AND id NOT IN (SELECT sheet_upload_id FROM characters)
     `).all();
   },
@@ -181,28 +181,28 @@ export const campaigns = {
       .get({ id });
   },
 
-  create(input: { gmId: string; name: string; backgroundUploadId: string | null }): CampaignRow {
+  create(input: { gmId: string; name: string; cardUploadId: string | null }): CampaignRow {
     const id = newId();
     const timestamp = now();
     db.query(`
-      INSERT INTO campaigns (id, gm_id, name, background_upload_id, created_at, updated_at)
-      VALUES ($id, $gmId, $name, $backgroundUploadId, $timestamp, $timestamp)
+      INSERT INTO campaigns (id, gm_id, name, card_upload_id, created_at, updated_at)
+      VALUES ($id, $gmId, $name, $cardUploadId, $timestamp, $timestamp)
     `).run({ ...input, id, timestamp });
     return campaigns.byId(id)!;
   },
 
   update(
     id: string,
-    changes: { name?: string; backgroundUploadId?: string | null },
+    changes: { name?: string; cardUploadId?: string | null },
   ): CampaignRow | null {
     if (changes.name !== undefined) {
       db.query("UPDATE campaigns SET name = $name, updated_at = $ts WHERE id = $id")
         .run({ id, name: changes.name, ts: now() });
     }
-    if (changes.backgroundUploadId !== undefined) {
+    if (changes.cardUploadId !== undefined) {
       db.query(
-        "UPDATE campaigns SET background_upload_id = $upload, updated_at = $ts WHERE id = $id",
-      ).run({ id, upload: changes.backgroundUploadId, ts: now() });
+        "UPDATE campaigns SET card_upload_id = $upload, updated_at = $ts WHERE id = $id",
+      ).run({ id, upload: changes.cardUploadId, ts: now() });
     }
     return campaigns.byId(id);
   },
@@ -286,7 +286,7 @@ export const characters = {
     kind: CharacterKind;
     name: string;
     sheetUploadId: string;
-    backgroundUploadId: string | null;
+    cardUploadId: string | null;
     /** The HERO characteristics, each defaulting to the zero the column carries. */
     stats?: Partial<HeroStats>;
   }): CharacterRow {
@@ -295,10 +295,10 @@ export const characters = {
     const { stats, ...rest } = input;
     db.query(`
       INSERT INTO characters
-        (id, campaign_id, kind, name, sheet_upload_id, background_upload_id,
+        (id, campaign_id, kind, name, sheet_upload_id, card_upload_id,
          speed, dexterity, initiative, recovery, endurance, stun, body,
          created_at, updated_at)
-      VALUES ($id, $campaignId, $kind, $name, $sheetUploadId, $backgroundUploadId,
+      VALUES ($id, $campaignId, $kind, $name, $sheetUploadId, $cardUploadId,
          $speed, $dexterity, $initiative, $recovery, $endurance, $stun, $body,
          $timestamp, $timestamp)
     `).run({ ...rest, ...zeroedStats(stats), id, timestamp });
@@ -312,7 +312,7 @@ export const characters = {
       kind?: CharacterKind;
       name?: string;
       sheetUploadId?: string;
-      backgroundUploadId?: string | null;
+      cardUploadId?: string | null;
     } & Partial<HeroStats>,
   ): CharacterRow | null {
     // One fixed statement per column, rather than assembling a SET clause. It is
@@ -335,9 +335,9 @@ export const characters = {
       db.query("UPDATE characters SET sheet_upload_id = $value, updated_at = $ts WHERE id = $id")
         .run({ id, ts, value: changes.sheetUploadId });
     }
-    if (changes.backgroundUploadId !== undefined) {
-      db.query("UPDATE characters SET background_upload_id = $value, updated_at = $ts WHERE id = $id")
-        .run({ id, ts, value: changes.backgroundUploadId });
+    if (changes.cardUploadId !== undefined) {
+      db.query("UPDATE characters SET card_upload_id = $value, updated_at = $ts WHERE id = $id")
+        .run({ id, ts, value: changes.cardUploadId });
     }
     // The characteristics take the same one-statement-per-column shape, written
     // out rather than looped so the SQL above stays literal top to bottom.

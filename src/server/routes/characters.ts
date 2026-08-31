@@ -109,8 +109,8 @@ export const characterRoutes = {
       const sheet = await storeSheet(sheetFile);
 
       // An image the game master chose wins; otherwise the sheet may carry one.
-      const imageFile = fileField(form, "background");
-      const background = imageFile
+      const imageFile = fileField(form, "card");
+      const card = imageFile
         ? await storeImage(imageFile)
         : await portraitOrNone(sheet, logger);
 
@@ -119,13 +119,13 @@ export const characterRoutes = {
         kind: input.kind,
         name: input.name,
         sheetUploadId: sheet.id,
-        backgroundUploadId: background?.id ?? null,
+        cardUploadId: card?.id ?? null,
         stats: statsFromForm(form),
       });
       logger.info("character created", {
         characterId: character.id,
         kind: character.kind,
-        portraitFromSheet: !imageFile && background !== null,
+        portraitFromSheet: !imageFile && card !== null,
       });
 
       return json({ character: presentCharacter(character) }, { status: 201 });
@@ -183,20 +183,20 @@ export const characterRoutes = {
         const sheet = sheetFile ? await storeSheet(sheetFile) : null;
         if (sheet) changes.sheetUploadId = sheet.id;
 
-        const imageFile = fileField(form, "background");
+        const imageFile = fileField(form, "card");
         if (imageFile) {
-          changes.backgroundUploadId = (await storeImage(imageFile)).id;
-        } else if (form.get("removeBackground") === "true") {
-          changes.backgroundUploadId = null;
-        } else if (sheet && !character.background_upload_id) {
+          changes.cardUploadId = (await storeImage(imageFile)).id;
+        } else if (form.get("removeCard") === "true") {
+          changes.cardUploadId = null;
+        } else if (sheet && !character.card_upload_id) {
           // A new sheet fills an empty picture, and only an empty one: a portrait
           // found in a file must not displace the image a game master chose.
           const portrait = await portraitOrNone(sheet, logger);
-          if (portrait) changes.backgroundUploadId = portrait.id;
+          if (portrait) changes.cardUploadId = portrait.id;
         }
 
         const updated = characters.update(character.id, changes);
-        if (changes.sheetUploadId || changes.backgroundUploadId !== undefined) {
+        if (changes.sheetUploadId || changes.cardUploadId !== undefined) {
           await collectOrphanedUploads();
         }
         logger.info("character updated", { characterId: character.id });
