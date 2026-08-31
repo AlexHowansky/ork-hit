@@ -304,7 +304,9 @@ export function PlayerSession({
                   disabled={claiming}
                   cardClassName="border-base-300 bg-base-100 text-left"
                 >
-                  <CardWell>
+                  {/* Everything in this list is a PC — see `available` above —
+                      so every card here is printed on foil. */}
+                  <CardWell foil>
                     <CardPicture src={character.cardUrl} icon={faShieldHalved} />
                   </CardWell>
                   {/* The same frame the library draws, so a player picks from the

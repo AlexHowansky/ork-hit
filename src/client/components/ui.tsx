@@ -815,11 +815,21 @@ export function CountBadge({
  * for. It comes first so it paints under them: the foil is what the picture is
  * printed on, and the highlight is what lands on the foil. Empty and decorative,
  * so it carries nothing and is hidden from anything reading the card aloud.
+ *
+ * Only a player character's card is printed on it. A holographic card is the
+ * special one in the pack, and a library where every tile shimmers says nothing
+ * about which is which — so an NPC's card and a campaign's are plain stock, and
+ * the foil joins the frame artwork as a way the kinds tell themselves apart. They
+ * still tilt and still catch the highlight; it is the rainbow they go without.
+ *
+ * Hence the default: off. A card is ordinary stock unless it says otherwise, so a
+ * library added later that never thinks about this gets the plain card rather
+ * than the special one.
  */
-export function CardWell({ children }: { children: ReactNode }) {
+export function CardWell({ foil = false, children }: { foil?: boolean; children: ReactNode }) {
   return (
     <div className="card-sheen relative aspect-square w-full shrink-0 overflow-hidden bg-base-300">
-      <span className="card-foil" aria-hidden="true" />
+      {foil ? <span className="card-foil" aria-hidden="true" /> : null}
       {children}
     </div>
   );

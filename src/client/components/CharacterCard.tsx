@@ -37,7 +37,8 @@ export function CharacterCard({
       actions={actions}
       cardClassName="border-base-300 bg-base-100"
     >
-      <CardWell>
+      {/* Foil is a player character's; an NPC's card is plain stock. */}
+      <CardWell foil={character.kind === "pc"}>
         <CardPicture
           src={character.cardUrl}
           icon={character.kind === "pc" ? faShieldHalved : faDragon}

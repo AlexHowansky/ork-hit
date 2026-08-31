@@ -467,9 +467,10 @@ arrives as `--card-sheen-strength` through `/appearance.css` exactly as the card
 size does. The two percentages stay in the stylesheet, so the balance between the
 hotspot and the band survives whatever the setting is.
 
-**And it is printed on foil.** `assets/sheen.webp` is a sheet of soft rainbow —
-the pastel bloom a holographic card throws back — laid over the picture by
-`card-foil`, an empty `<span>` `CardWell` puts before its children. An element
+**And a player character's card is printed on foil.** `assets/sheen.webp` is a
+sheet of soft rainbow — the pastel bloom a holographic card throws back — laid
+over the picture by `card-foil`, an empty `<span>` `CardWell` puts before its
+children when it is asked for. An element
 rather than a third pseudo-element, because `card-sheen` has only two and both
 are spoken for; first in the well, so it paints beneath them — the foil is what
 the picture is printed on, and the highlight is what lands on the foil. It blends
@@ -485,6 +486,18 @@ strengths scale with `--card-sheen-strength`, so `CARD_SHEEN_PCT` turns
 everything the card does with light up and down together. The image is served by
 `server/routes/frames.ts` and its url arrives as `--card-foil` through
 `/appearance.css`, for exactly the bundler reason the frames do.
+
+**Which cards get one** is `CardWell`'s `foil` prop, and it defaults to **false**:
+a card is ordinary stock unless it says otherwise, so a library added later that
+never thinks about this gets the plain card rather than the special one. Only
+`CharacterCard` asks for it, and only for a PC; the player's character-picking
+list asks unconditionally because it is filtered to PCs before it renders; the
+campaign card does not ask at all. A holographic card is the special one in the
+pack, and a library where every tile shimmers says nothing about which is which —
+so the foil joins the frame artwork as a way the kinds tell themselves apart. An
+NPC's card and a campaign's still tilt and still catch the white highlight; it is
+the rainbow they go without, and `tests/e2e.test.ts` pins both halves of that by
+counting `.card-foil` on a card of each kind.
 
 Under `prefers-reduced-motion`, the card does not move, does not shine, and nor
 do its controls — left moving, they would tilt over a card that does not.

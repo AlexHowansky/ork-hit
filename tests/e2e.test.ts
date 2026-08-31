@@ -1145,7 +1145,8 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     await gm.getByRole("button", { name: "Add character" }).last().click();
     await gm.getByRole("button", { name: "Goblin", exact: true }).waitFor();
 
-    const frame = gm.locator(`article:has(button[aria-label="Goblin"]) .card-frame`);
+    const card = gm.locator(`article:has(button[aria-label="Goblin"])`);
+    const frame = card.locator(".card-frame");
     await frame.waitFor();
 
     // Asserted on the URL rather than on pixels: which file the card asks for is
@@ -1153,6 +1154,10 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     const image = await frame.evaluate((el) => getComputedStyle(el).backgroundImage);
     expect(image).toContain("/frames/character-npc-light.webp");
     expect(image).not.toContain("/frames/character-pc-light.webp");
+
+    // And it is plain stock: the foil is a player character's card alone, which
+    // is the other way the two kinds tell themselves apart.
+    expect(await card.locator(".card-foil").count()).toBe(0);
   }, 60_000);
 
   test("a character card is printed in the frame, with its name on the panel", async () => {
@@ -1183,6 +1188,9 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     // its address arrives from /appearance.css, so this fails if that is missing.
     const image = await frame.evaluate((el) => getComputedStyle(el).backgroundImage);
     expect(image).toContain("/frames/character-pc-light.webp");
+
+    // A player character's card, and so the one card that is printed on foil.
+    expect(await card.locator(".card-foil").count()).toBe(1);
 
     // It covers the card but for its border, so its window lands where the art
     // expects. The border is deliberately left showing: it is the hover and
