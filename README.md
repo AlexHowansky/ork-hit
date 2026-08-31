@@ -302,9 +302,9 @@ under it, on the panel the frame paints. That keeps the card mostly picture, and
 since every caption is built the same way a row still lines up whatever the names
 are.
 
-**Every card is printed in a frame.** `assets/character-pc-card-template-{light,dark}.png`,
-`assets/character-npc-card-template-{light,dark}.png`
-and `assets/campaign-card-template-{light,dark}.png`
+**Every card is printed in a frame.** `assets/character-pc-card-template-{light,dark}.webp`,
+`assets/character-npc-card-template-{light,dark}.webp`
+and `assets/campaign-card-template-{light,dark}.webp`
 are 300×420 — the same five by seven the card is — so the art lays over a card
 with nothing to crop or letterbox. Its window is transparent and the picture
 shows through it; its lower panel is what the name is drawn on. `CardFrame`
@@ -322,10 +322,14 @@ the same corner and there is one arrangement in `HoverCard` rather than a choice
 kind (`"pc"`, `"npc"` or `"campaign"`) and adds `.card-frame-npc` or
 `.card-frame-campaign` to the same overlay, a PC being the bare `.card-frame` —
 so the kinds still tell themselves apart at a glance, while every measurement
-above is shared because all three frames are cut to the same 300×420. The PC and
-NPC cuts ship as the same artwork for now; they are separate files, routes and
-variables all the way down, so giving NPCs their own art is a file swap rather
-than a code change.
+above is shared because all three frames are cut to the same 300×420. They are
+separate files, routes and variables all the way down, so redrawing any one cut
+is a file swap rather than a code change.
+
+They are WebP rather than PNG. The window has to stay transparent, so the format
+has to carry alpha, and WebP does it in roughly a third of the bytes — about
+20KB a frame against 70KB, which is most of a cold load's image budget for
+artwork that every card on the page draws.
 
 Which cut applies is decided in CSS (`--card-frame-pc`, `--card-frame-npc` and
 `--campaign-frame` in `styles.css`), following the same three states the theme

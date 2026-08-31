@@ -5,9 +5,8 @@
  * a dark cut — laid over a card by `styles.css`; see `--card-frame-pc`,
  * `--card-frame-npc` and `--campaign-frame` there, which decide between them.
  *
- * The PC and NPC cuts ship as the same artwork for now. They are separate files
- * all the way down so that giving NPCs their own art is a file swap, not a code
- * change.
+ * WebP rather than PNG: the window has to stay transparent and WebP carries the
+ * alpha, at roughly a third of the bytes the PNGs cost.
  *
  * They are served from here rather than imported by the stylesheet because Bun's
  * bundler inlines a `url()` it can resolve on disk: the two together turned a
@@ -36,16 +35,16 @@ async function load(name: string): Promise<{ bytes: ArrayBuffer; etag: string }>
 
 const frames = {
   pc: {
-    light: await load("character-pc-card-template-light.png"),
-    dark: await load("character-pc-card-template-dark.png"),
+    light: await load("character-pc-card-template-light.webp"),
+    dark: await load("character-pc-card-template-dark.webp"),
   },
   npc: {
-    light: await load("character-npc-card-template-light.png"),
-    dark: await load("character-npc-card-template-dark.png"),
+    light: await load("character-npc-card-template-light.webp"),
+    dark: await load("character-npc-card-template-dark.webp"),
   },
   campaign: {
-    light: await load("campaign-card-template-light.png"),
-    dark: await load("campaign-card-template-dark.png"),
+    light: await load("campaign-card-template-light.webp"),
+    dark: await load("campaign-card-template-dark.webp"),
   },
 };
 
@@ -60,7 +59,7 @@ function serve(frame: { bytes: ArrayBuffer; etag: string }, request: Request): R
   }
   return new Response(frame.bytes, {
     headers: {
-      "Content-Type": "image/png",
+      "Content-Type": "image/webp",
       ETag: frame.etag,
       "Cache-Control": "public, max-age=3600",
       "X-Content-Type-Options": "nosniff",
@@ -69,22 +68,22 @@ function serve(frame: { bytes: ArrayBuffer; etag: string }, request: Request): R
 }
 
 export const frameRoutes = {
-  "/frames/character-pc-light.png": {
+  "/frames/character-pc-light.webp": {
     GET: handler(async (request: Request) => serve(frames.pc.light, request)),
   },
-  "/frames/character-pc-dark.png": {
+  "/frames/character-pc-dark.webp": {
     GET: handler(async (request: Request) => serve(frames.pc.dark, request)),
   },
-  "/frames/character-npc-light.png": {
+  "/frames/character-npc-light.webp": {
     GET: handler(async (request: Request) => serve(frames.npc.light, request)),
   },
-  "/frames/character-npc-dark.png": {
+  "/frames/character-npc-dark.webp": {
     GET: handler(async (request: Request) => serve(frames.npc.dark, request)),
   },
-  "/frames/campaign-light.png": {
+  "/frames/campaign-light.webp": {
     GET: handler(async (request: Request) => serve(frames.campaign.light, request)),
   },
-  "/frames/campaign-dark.png": {
+  "/frames/campaign-dark.webp": {
     GET: handler(async (request: Request) => serve(frames.campaign.dark, request)),
   },
 };

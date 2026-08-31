@@ -1800,33 +1800,37 @@ describe("the deployment's card size reaches the browser", () => {
     expect(css).toContain(`--card-sheen-strength: ${config.cardSheenPct / 100}`);
     // The card frames' addresses ride along here because the bundler rewrites
     // every url() it can see in the stylesheet itself.
-    expect(css).toContain(`--card-frame-pc-light: url("/frames/character-pc-light.png")`);
-    expect(css).toContain(`--card-frame-pc-dark: url("/frames/character-pc-dark.png")`);
-    expect(css).toContain(`--card-frame-npc-light: url("/frames/character-npc-light.png")`);
-    expect(css).toContain(`--card-frame-npc-dark: url("/frames/character-npc-dark.png")`);
-    expect(css).toContain(`--campaign-frame-light: url("/frames/campaign-light.png")`);
-    expect(css).toContain(`--campaign-frame-dark: url("/frames/campaign-dark.png")`);
+    expect(css).toContain(`--card-frame-pc-light: url("/frames/character-pc-light.webp")`);
+    expect(css).toContain(`--card-frame-pc-dark: url("/frames/character-pc-dark.webp")`);
+    expect(css).toContain(`--card-frame-npc-light: url("/frames/character-npc-light.webp")`);
+    expect(css).toContain(`--card-frame-npc-dark: url("/frames/character-npc-dark.webp")`);
+    expect(css).toContain(`--campaign-frame-light: url("/frames/campaign-light.webp")`);
+    expect(css).toContain(`--campaign-frame-dark: url("/frames/campaign-dark.webp")`);
   });
 
   test("and the frames themselves are served, cacheably, to anyone", async () => {
     for (const path of [
-      "/frames/character-pc-light.png",
-      "/frames/character-pc-dark.png",
-      "/frames/character-npc-light.png",
-      "/frames/character-npc-dark.png",
-      "/frames/campaign-light.png",
-      "/frames/campaign-dark.png",
+      "/frames/character-pc-light.webp",
+      "/frames/character-pc-dark.webp",
+      "/frames/character-npc-light.webp",
+      "/frames/character-npc-dark.webp",
+      "/frames/campaign-light.webp",
+      "/frames/campaign-dark.webp",
     ]) {
       // No cookie: a frame is the same for everyone and gives nothing away.
       const response = await fetch(`${base}${path}`);
       expect(response.status).toBe(200);
-      expect(response.headers.get("Content-Type")).toBe("image/png");
+      expect(response.headers.get("Content-Type")).toBe("image/webp");
 
       const etag = response.headers.get("ETag")!;
       expect(etag).toMatch(/^"[0-9a-f]{16}"$/);
-      // PNG's magic bytes, so this is the file rather than an error page.
-      expect(new Uint8Array(await response.arrayBuffer()).slice(0, 4))
-        .toEqual(new Uint8Array([0x89, 0x50, 0x4e, 0x47]));
+      // WebP's magic bytes, so this is the file rather than an error page. WebP is
+      // a RIFF container, so the marker is in two pieces: "RIFF" at 0, then the
+      // file size, then "WEBP" at 8.
+      const head = new Uint8Array(await response.arrayBuffer()).slice(0, 12);
+      const ascii = String.fromCharCode(...head);
+      expect(ascii.slice(0, 4)).toBe("RIFF");
+      expect(ascii.slice(8, 12)).toBe("WEBP");
 
       // A browser that already holds it is told so rather than sent it again.
       const again = await fetch(`${base}${path}`, { headers: { "If-None-Match": etag } });

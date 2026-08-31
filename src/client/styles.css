@@ -166,9 +166,9 @@ body {
 /*
   The frames a card is printed in.
 
-  `assets/character-pc-card-template-{light,dark}.png`,
-  `assets/character-npc-card-template-{light,dark}.png` and
-  `assets/campaign-card-template-{light,dark}.png` are 300x420 — five by seven,
+  `assets/character-pc-card-template-{light,dark}.webp`,
+  `assets/character-npc-card-template-{light,dark}.webp` and
+  `assets/campaign-card-template-{light,dark}.webp` are 300x420 — five by seven,
   the same shape the card is — so the art lays over a card with nothing to crop
   or letterbox. Its window is transparent and the picture shows through it; its
   lower panel is what the name is drawn on (see `CARD_CAPTION_FRAMED`).
@@ -195,10 +195,6 @@ body {
   alone is the PC's, and `.card-frame-npc` or `.card-frame-campaign` alongside it
   swaps in the other art. Which kind a card is remains legible from the art itself
   rather than from one tile being bare.
-
-  The PC and NPC cuts are the same artwork for now, so they are not yet telling
-  themselves apart by eye — but they are separate all the way down to the file, so
-  giving NPCs their own art needs nothing here.
 */
 :root {
   --card-frame-pc: var(--card-frame-pc-light);

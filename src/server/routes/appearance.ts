@@ -44,12 +44,12 @@ const css =
   // frames as base64 when pointed at the files and refusing to build when
   // pointed at these paths. This response is the server's own, so nothing
   // rewrites it. `styles.css` picks a theme's cut of each.
-  `  --card-frame-pc-light: url("/frames/character-pc-light.png");\n` +
-  `  --card-frame-pc-dark: url("/frames/character-pc-dark.png");\n` +
-  `  --card-frame-npc-light: url("/frames/character-npc-light.png");\n` +
-  `  --card-frame-npc-dark: url("/frames/character-npc-dark.png");\n` +
-  `  --campaign-frame-light: url("/frames/campaign-light.png");\n` +
-  `  --campaign-frame-dark: url("/frames/campaign-dark.png");\n` +
+  `  --card-frame-pc-light: url("/frames/character-pc-light.webp");\n` +
+  `  --card-frame-pc-dark: url("/frames/character-pc-dark.webp");\n` +
+  `  --card-frame-npc-light: url("/frames/character-npc-light.webp");\n` +
+  `  --card-frame-npc-dark: url("/frames/character-npc-dark.webp");\n` +
+  `  --campaign-frame-light: url("/frames/campaign-light.webp");\n` +
+  `  --campaign-frame-dark: url("/frames/campaign-dark.webp");\n` +
   // Only when there is one. Unset, `styles.css` falls back to `inherit` and a
   // card's name keeps the interface font.
   //

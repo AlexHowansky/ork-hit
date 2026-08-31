@@ -1121,7 +1121,7 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     await campaignFrame.waitFor();
     expect(
       await campaignFrame.evaluate((el) => getComputedStyle(el).backgroundImage),
-    ).toContain("/frames/campaign-light.png");
+    ).toContain("/frames/campaign-light.webp");
   }, 60_000);
 
   test("an NPC card is printed in the NPC cut of the frame", async () => {
@@ -1148,12 +1148,11 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     const frame = gm.locator(`article:has(button[aria-label="Goblin"]) .card-frame`);
     await frame.waitFor();
 
-    // The PC and NPC cuts are the same artwork for now, so the only thing that
-    // can tell them apart — and the only thing that would catch the NPC frame
-    // being wired to the PC art — is which file the card actually asks for.
+    // Asserted on the URL rather than on pixels: which file the card asks for is
+    // what pins the wiring, and it stays true however the artwork is redrawn.
     const image = await frame.evaluate((el) => getComputedStyle(el).backgroundImage);
-    expect(image).toContain("/frames/character-npc-light.png");
-    expect(image).not.toContain("/frames/character-pc-light.png");
+    expect(image).toContain("/frames/character-npc-light.webp");
+    expect(image).not.toContain("/frames/character-pc-light.webp");
   }, 60_000);
 
   test("a character card is printed in the frame, with its name on the panel", async () => {
@@ -1183,7 +1182,7 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     // The artwork is actually resolved rather than left as an unset variable —
     // its address arrives from /appearance.css, so this fails if that is missing.
     const image = await frame.evaluate((el) => getComputedStyle(el).backgroundImage);
-    expect(image).toContain("/frames/character-pc-light.png");
+    expect(image).toContain("/frames/character-pc-light.webp");
 
     // It covers the card but for its border, so its window lands where the art
     // expects. The border is deliberately left showing: it is the hover and
