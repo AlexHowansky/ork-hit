@@ -1,9 +1,13 @@
 /**
  * The artwork a card is printed in.
  *
- * Four files — a character frame and a campaign frame, each in a light and a dark
- * cut — laid over a card by `styles.css`; see `--card-frame` and
- * `--campaign-frame` there, which are what decide between them.
+ * Six files — a PC frame, an NPC frame and a campaign frame, each in a light and
+ * a dark cut — laid over a card by `styles.css`; see `--card-frame-pc`,
+ * `--card-frame-npc` and `--campaign-frame` there, which decide between them.
+ *
+ * The PC and NPC cuts ship as the same artwork for now. They are separate files
+ * all the way down so that giving NPCs their own art is a file swap, not a code
+ * change.
  *
  * They are served from here rather than imported by the stylesheet because Bun's
  * bundler inlines a `url()` it can resolve on disk: the two together turned a
@@ -31,9 +35,13 @@ async function load(name: string): Promise<{ bytes: ArrayBuffer; etag: string }>
 }
 
 const frames = {
-  character: {
-    light: await load("character-card-template-light.png"),
-    dark: await load("character-card-template-dark.png"),
+  pc: {
+    light: await load("character-pc-card-template-light.png"),
+    dark: await load("character-pc-card-template-dark.png"),
+  },
+  npc: {
+    light: await load("character-npc-card-template-light.png"),
+    dark: await load("character-npc-card-template-dark.png"),
   },
   campaign: {
     light: await load("campaign-card-template-light.png"),
@@ -61,11 +69,17 @@ function serve(frame: { bytes: ArrayBuffer; etag: string }, request: Request): R
 }
 
 export const frameRoutes = {
-  "/frames/character-light.png": {
-    GET: handler(async (request: Request) => serve(frames.character.light, request)),
+  "/frames/character-pc-light.png": {
+    GET: handler(async (request: Request) => serve(frames.pc.light, request)),
   },
-  "/frames/character-dark.png": {
-    GET: handler(async (request: Request) => serve(frames.character.dark, request)),
+  "/frames/character-pc-dark.png": {
+    GET: handler(async (request: Request) => serve(frames.pc.dark, request)),
+  },
+  "/frames/character-npc-light.png": {
+    GET: handler(async (request: Request) => serve(frames.npc.light, request)),
+  },
+  "/frames/character-npc-dark.png": {
+    GET: handler(async (request: Request) => serve(frames.npc.dark, request)),
   },
   "/frames/campaign-light.png": {
     GET: handler(async (request: Request) => serve(frames.campaign.light, request)),

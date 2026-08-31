@@ -309,7 +309,7 @@ export function PlayerSession({
                   </CardWell>
                   {/* The same frame the library draws, so a player picks from the
                       cards the game master was looking at. */}
-                  <CardFrame />
+                  <CardFrame kind={character.kind} />
                   <div className={CARD_CAPTION_FRAMED}>
                     <p className={CARD_NAME}>
                       {character.name}

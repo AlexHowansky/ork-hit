@@ -1,6 +1,7 @@
 /** Small shared primitives, so the pages stay about behaviour rather than classes. */
 
 import { useEffect, useRef, useState } from "react";
+import type { CharacterKind } from "../types.ts";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import {
@@ -162,11 +163,21 @@ export const CARD_WINDOW_CONTROLS =
 export const CARD_CAPTION_FRAMED =
   "absolute inset-x-0 top-[67.8%] bottom-[3.8%] z-20 flex items-center justify-center px-[8%]";
 
+/** The modifier each kind adds to `.card-frame`; a PC is the bare class. */
+const CARD_FRAME_KIND: Record<CharacterKind | "campaign", string> = {
+  pc: "",
+  npc: "card-frame-npc ",
+  campaign: "card-frame-campaign ",
+};
+
 /**
  * The frame a card is printed in: `styles.css` holds the artwork and decides
- * which of the two themes' files to draw (see `--card-frame` there). `kind`
- * picks between the character art and the campaign art, which are cut to the
- * same 300x420 and so share every measurement here and in `CARD_CAPTION_FRAMED`.
+ * which of the two themes' files to draw (see `--card-frame-pc` there). `kind`
+ * picks between the PC, NPC and campaign art, all three cut to the same 300x420
+ * and so sharing every measurement here and in `CARD_CAPTION_FRAMED`.
+ *
+ * A PC is the default because it is the common card and the bare `.card-frame`
+ * draws it; the other two add a modifier alongside.
  *
  * `pointer-events-none` says what is meant rather than doing any work: the tile
  * carries a transform and so establishes a stacking context, which confines this
@@ -178,10 +189,10 @@ export const CARD_CAPTION_FRAMED =
  * `CARD_CAPTION_FRAMED` box — so the picture shows through its window and the
  * name is drawn on top of its panel.
  */
-export function CardFrame({ kind = "character" }: { kind?: "character" | "campaign" }) {
+export function CardFrame({ kind = "pc" }: { kind?: CharacterKind | "campaign" }) {
   return (
     <div
-      className={`card-frame ${kind === "campaign" ? "card-frame-campaign " : ""}pointer-events-none absolute inset-0 z-10`}
+      className={`card-frame ${CARD_FRAME_KIND[kind]}pointer-events-none absolute inset-0 z-10`}
       aria-hidden
     />
   );
@@ -788,9 +799,11 @@ export function CountBadge({
  * `relative` because what sits over a picture is positioned against it: the
  * sheen's two layers, and whatever a caller overlays. It takes children rather
  * than a prop for each, since the three card libraries overlay different things.
- * The kind badge used to be one of them and is now on the name panel instead
- * (`CharacterCard`), and the corner controls are `HoverCard`'s, laid over the
- * card from outside the tile entirely.
+ * The kind badge used to be one of them, then moved to the name panel, and is
+ * now gone from a library card altogether — the PC and NPC frames say which kind
+ * it is (`CardFrame`), so a pill would only repeat the artwork over the top of
+ * it. It survives in the session lists, which are not framed. The corner
+ * controls are `HoverCard`'s, laid over the card from outside the tile entirely.
  *
  * `card-sheen` is the light the card catches as it tilts, and it is on the well
  * rather than on the tile because the well is what clips it: its `overflow-hidden`

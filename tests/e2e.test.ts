@@ -1124,6 +1124,38 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     ).toContain("/frames/campaign-light.png");
   }, 60_000);
 
+  test("an NPC card is printed in the NPC cut of the frame", async () => {
+    if (!browser) return;
+    const gm = await signedInGm();
+
+    const campaignName = unique("Campaign");
+    await gm.getByRole("button", { name: "New", exact: true }).click();
+    await gm.getByLabel("Campaign name").fill(campaignName);
+    await gm.getByRole("button", { name: "Create campaign" }).click();
+    await gm.getByText(`Characters in ${campaignName}`).waitFor();
+
+    await gm.getByRole("button", { name: "Add", exact: true }).click();
+    await gm.getByLabel("Name").fill("Goblin");
+    await gm.getByLabel("Type").selectOption("npc");
+    await gm.getByLabel(/Character sheet/).setInputFiles({
+      name: "sheet.html",
+      mimeType: "text/html",
+      buffer: Buffer.from("<h1>Goblin</h1>"),
+    });
+    await gm.getByRole("button", { name: "Add character" }).last().click();
+    await gm.getByRole("button", { name: "Goblin", exact: true }).waitFor();
+
+    const frame = gm.locator(`article:has(button[aria-label="Goblin"]) .card-frame`);
+    await frame.waitFor();
+
+    // The PC and NPC cuts are the same artwork for now, so the only thing that
+    // can tell them apart — and the only thing that would catch the NPC frame
+    // being wired to the PC art — is which file the card actually asks for.
+    const image = await frame.evaluate((el) => getComputedStyle(el).backgroundImage);
+    expect(image).toContain("/frames/character-npc-light.png");
+    expect(image).not.toContain("/frames/character-pc-light.png");
+  }, 60_000);
+
   test("a character card is printed in the frame, with its name on the panel", async () => {
     if (!browser) return;
     const gm = await signedInGm();
@@ -1151,7 +1183,7 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     // The artwork is actually resolved rather than left as an unset variable —
     // its address arrives from /appearance.css, so this fails if that is missing.
     const image = await frame.evaluate((el) => getComputedStyle(el).backgroundImage);
-    expect(image).toContain("/frames/character-light.png");
+    expect(image).toContain("/frames/character-pc-light.png");
 
     // It covers the card but for its border, so its window lands where the art
     // expects. The border is deliberately left showing: it is the hover and
@@ -1172,20 +1204,9 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     const centre = (name.y + name.height / 2 - cardBox.y) / cardBox.height;
     expect(centre).toBeCloseTo(0.82, 1);
 
-    // The kind badge is on that panel too, tucked into its upper right — not over
-    // the picture, where it used to be and would now compete with the artwork.
-    // Both bounds matter: inside the panel's top edge (67.8%) and short of where
-    // the frame's border begins (96.3%), but close enough to both to read as being
-    // in the corner rather than floating near it. Note the panel carries a
-    // decorative outline about 90% across, which is not its edge — the badge is
-    // meant to sit outside that, against the border.
-    const badge = (await card.getByText("PC", { exact: true }).boundingBox())!;
-    const badgeTop = (badge.y - cardBox.y) / cardBox.height;
-    const badgeRight = (badge.x + badge.width - cardBox.x) / cardBox.width;
-    expect(badgeTop).toBeGreaterThan(0.679);
-    expect(badgeTop).toBeLessThan(0.70);
-    expect(badgeRight).toBeGreaterThan(0.92);
-    expect(badgeRight).toBeLessThan(0.96);
+    // No kind badge on a library card: the frame says which kind it is, so the
+    // pill would only repeat the artwork over the top of it.
+    expect(await card.getByText("PC", { exact: true }).count()).toBe(0);
 
     // The corner controls are bare glyphs stacked down the picture's top right,
     // inside the bevel that keeps the window's own corner out of reach: on the

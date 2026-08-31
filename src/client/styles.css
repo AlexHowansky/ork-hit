@@ -160,12 +160,14 @@ body {
 */
 .card-name {
   font-family: var(--card-font-family, inherit);
+  padding-top: 0.75em;
 }
 
 /*
   The frames a card is printed in.
 
-  `assets/character-card-template-{light,dark}.png` and
+  `assets/character-pc-card-template-{light,dark}.png`,
+  `assets/character-npc-card-template-{light,dark}.png` and
   `assets/campaign-card-template-{light,dark}.png` are 300x420 — five by seven,
   the same shape the card is — so the art lays over a card with nothing to crop
   or letterbox. Its window is transparent and the picture shows through it; its
@@ -176,8 +178,8 @@ body {
   stylesheet from 60KB to 448KB — render-blocking, and refetched in full whenever
   any unrelated rule changed — and pointed at a server path it refused to build at
   all. So the addresses arrive from /appearance.css, which the server writes and
-  the bundler never sees, as `--card-frame-light`, `--card-frame-dark` and the
-  `--campaign-frame-*` pair; the images themselves come from
+  the bundler never sees, as the `--card-frame-pc-*`, `--card-frame-npc-*` and
+  `--campaign-frame-*` pairs; the images themselves come from
   `server/routes/frames.ts`. A page that never
   receives /appearance.css simply gets no frame, which is the same graceful
   nothing the other settings there fall back to.
@@ -189,25 +191,32 @@ body {
   preference unless `winter` is explicit, and an explicit `data-theme` wins over
   both.
 
-  Both kinds of card take a frame, and they take a different one: `.card-frame`
-  alone is the character's, and `.card-frame-campaign` alongside it swaps in the
-  campaign art. Which of the two kinds a card is remains legible from the art
-  itself rather than from one tile being bare.
+  All three kinds of card take a frame, and each takes its own: `.card-frame`
+  alone is the PC's, and `.card-frame-npc` or `.card-frame-campaign` alongside it
+  swaps in the other art. Which kind a card is remains legible from the art itself
+  rather than from one tile being bare.
+
+  The PC and NPC cuts are the same artwork for now, so they are not yet telling
+  themselves apart by eye — but they are separate all the way down to the file, so
+  giving NPCs their own art needs nothing here.
 */
 :root {
-  --card-frame: var(--card-frame-light);
+  --card-frame-pc: var(--card-frame-pc-light);
+  --card-frame-npc: var(--card-frame-npc-light);
   --campaign-frame: var(--campaign-frame-light);
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="winter"]) {
-    --card-frame: var(--card-frame-dark);
+    --card-frame-pc: var(--card-frame-pc-dark);
+    --card-frame-npc: var(--card-frame-npc-dark);
     --campaign-frame: var(--campaign-frame-dark);
   }
 }
 
 :root[data-theme="night"] {
-  --card-frame: var(--card-frame-dark);
+  --card-frame-pc: var(--card-frame-pc-dark);
+  --card-frame-npc: var(--card-frame-npc-dark);
   --campaign-frame: var(--campaign-frame-dark);
 }
 
@@ -217,12 +226,16 @@ body {
   fraction of a pixel it should stretch the border rather than crop it off.
 */
 .card-frame {
-  background-image: var(--card-frame);
+  background-image: var(--card-frame-pc);
   background-size: 100% 100%;
   background-repeat: no-repeat;
 }
 
-/* The campaign cut of the same frame; everything else about it is identical. */
+/* The other cuts of the same frame; everything else about them is identical. */
+.card-frame-npc {
+  background-image: var(--card-frame-npc);
+}
+
 .card-frame-campaign {
   background-image: var(--campaign-frame);
 }

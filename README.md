@@ -302,7 +302,8 @@ under it, on the panel the frame paints. That keeps the card mostly picture, and
 since every caption is built the same way a row still lines up whatever the names
 are.
 
-**Every card is printed in a frame.** `assets/character-card-template-{light,dark}.png`
+**Every card is printed in a frame.** `assets/character-pc-card-template-{light,dark}.png`,
+`assets/character-npc-card-template-{light,dark}.png`
 and `assets/campaign-card-template-{light,dark}.png`
 are 300×420 — the same five by seven the card is — so the art lays over a card
 with nothing to crop or letterbox. Its window is transparent and the picture
@@ -315,18 +316,21 @@ lower border. `CARD_WINDOW` does the same job for the corner controls, which are
 pinned to the square well otherwise and would sit across the gold divider the art
 draws at 64%. The card's own 1px border is deliberately left showing around the
 art: it is the hover and keyboard-focus highlight, and painting over it would
-take that away. Both kinds of card are framed, so both put their controls in the
-same corner and there is one arrangement in `HoverCard` rather than a choice.
-**A campaign card is framed in its own artwork** rather than the
-character one — `CardFrame kind="campaign"`, which adds `.card-frame-campaign` to
-the same overlay — so the two kinds still tell themselves apart at a glance,
-while every measurement above is shared because the two frames are cut to the
-same 300×420.
+take that away. Every kind of card is framed, so they all put their controls in
+the same corner and there is one arrangement in `HoverCard` rather than a choice.
+**Each kind of card is framed in its own artwork** — `CardFrame` takes the
+kind (`"pc"`, `"npc"` or `"campaign"`) and adds `.card-frame-npc` or
+`.card-frame-campaign` to the same overlay, a PC being the bare `.card-frame` —
+so the kinds still tell themselves apart at a glance, while every measurement
+above is shared because all three frames are cut to the same 300×420. The PC and
+NPC cuts ship as the same artwork for now; they are separate files, routes and
+variables all the way down, so giving NPCs their own art is a file swap rather
+than a code change.
 
-Which cut applies is decided in CSS (`--card-frame` and `--campaign-frame` in
-`styles.css`), following the same three states the theme itself does, so
-switching theme neither re-renders a card nor threads the frame through as a
-prop. The `url()`s are *not* written there, though: Bun's bundler resolves
+Which cut applies is decided in CSS (`--card-frame-pc`, `--card-frame-npc` and
+`--campaign-frame` in `styles.css`), following the same three states the theme
+itself does, so switching theme neither re-renders a card nor threads the frame
+through as a prop. The `url()`s are *not* written there, though: Bun's bundler resolves
 every url it can see, and pointed at the files it inlined both as base64 — taking
 the stylesheet from 60KB to 448KB, render-blocking and refetched whenever any
 unrelated rule changed — while pointed at a server path it refused to build at
@@ -342,8 +346,8 @@ names several families and a family name alone has nothing to load. The URL is
 `@import`ed at the top of `/appearance.css` and the family arrives beside it as
 `--card-font-family`, which `.card-name` reads; unset, that falls back to
 `inherit` and a card's name keeps the interface font. Only the name takes it, on
-all three libraries — not the PC/NPC badge, where a display face at that size is
-a puzzle rather than a label.
+all three libraries — not the session lists' PC/NPC badge, where a display face
+at that size is a puzzle rather than a label.
 
 Both values are validated in `config.ts` rather than trusted, because both are
 written into a stylesheet every page loads. The URL must be https on
@@ -396,8 +400,8 @@ so both of the ways out are in `HoverCard`:
   the `<button>` containing it, so the whole card is pressable while the zones
   keep working — daisyUI's own advice, "wrap the entire component in a link". It
   is why `label` is required beside `onClick`: left to compute its own name, the
-  button would be called after everything printed on the tile, kind badge
-  included, and `tests/e2e.test.ts` looks a character up by its name exactly.
+  button would be called after everything printed on the tile, and
+  `tests/e2e.test.ts` looks a character up by its name exactly.
   This is also what retired the two full-bleed buttons that used to cover a
   card's picture — selecting a campaign, and opening a character — since the card
   itself is now the control.

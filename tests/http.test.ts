@@ -1800,16 +1800,20 @@ describe("the deployment's card size reaches the browser", () => {
     expect(css).toContain(`--card-sheen-strength: ${config.cardSheenPct / 100}`);
     // The card frames' addresses ride along here because the bundler rewrites
     // every url() it can see in the stylesheet itself.
-    expect(css).toContain(`--card-frame-light: url("/frames/character-light.png")`);
-    expect(css).toContain(`--card-frame-dark: url("/frames/character-dark.png")`);
+    expect(css).toContain(`--card-frame-pc-light: url("/frames/character-pc-light.png")`);
+    expect(css).toContain(`--card-frame-pc-dark: url("/frames/character-pc-dark.png")`);
+    expect(css).toContain(`--card-frame-npc-light: url("/frames/character-npc-light.png")`);
+    expect(css).toContain(`--card-frame-npc-dark: url("/frames/character-npc-dark.png")`);
     expect(css).toContain(`--campaign-frame-light: url("/frames/campaign-light.png")`);
     expect(css).toContain(`--campaign-frame-dark: url("/frames/campaign-dark.png")`);
   });
 
   test("and the frames themselves are served, cacheably, to anyone", async () => {
     for (const path of [
-      "/frames/character-light.png",
-      "/frames/character-dark.png",
+      "/frames/character-pc-light.png",
+      "/frames/character-pc-dark.png",
+      "/frames/character-npc-light.png",
+      "/frames/character-npc-dark.png",
       "/frames/campaign-light.png",
       "/frames/campaign-dark.png",
     ]) {
