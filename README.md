@@ -772,6 +772,25 @@ an empty picture but never replaces an existing one, and a failed scan is logged
 and forgotten rather than failing the upload, since a portrait nobody asked for
 is not worth an error.
 
+**A picture can be filed by dropping it on the card itself**, in the library, on
+either kind of card: the `PATCH` that goes up carries only the picture, so the
+server applies it exactly as it would from the dialog, and the card is redrawn
+from what comes back. It is the one edit worth doing without a dialog at all —
+the card is right there, and what it should look like is the whole of the
+decision. The invitation is drawn *inside the well*, over the picture, rather
+than as a ring around the card: a campaign card already wears one ring for a
+character being refiled onto it and another for being selected, and a third would
+read as one of those. The well says what a drop would actually replace. A card
+also sits inside the panel that files a dropped sheet as a new character, so
+`useDropTarget` stops a drop it has claimed from travelling any further — the
+innermost target that wants a file is the one that gets it, and one drop never
+means two things.
+
+Emptying the picture deliberately is what `Remove the current card image` is for — on both edit dialogs, and offered only when there is
+one to remove. It outranks a portrait found in a sheet uploaded alongside it, and
+loses to a picture chosen in the same submission, so neither box nor file has to
+be undone by the other.
+
 **How big a card is, is a deployment setting.** `CARD_IMAGE_PX` (default 176)
 measures the *picture* on a card; the frame around it and the name underneath
 make the card itself larger — by a fixed amount, since the card is five by seven

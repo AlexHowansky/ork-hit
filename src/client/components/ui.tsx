@@ -826,11 +826,33 @@ export function CountBadge({
  * library added later that never thinks about this gets the plain card rather
  * than the special one.
  */
-export function CardWell({ foil = false, children }: { foil?: boolean; children: ReactNode }) {
+export function CardWell({
+  foil = false,
+  inviting = false,
+  children,
+}: {
+  foil?: boolean;
+  /** A picture is being dragged over this card and would land here. */
+  inviting?: boolean;
+  children: ReactNode;
+}) {
   return (
     <div className="card-sheen relative aspect-square w-full shrink-0 overflow-hidden bg-base-300">
       {foil ? <span className="card-foil" aria-hidden="true" /> : null}
       {children}
+      {/*
+        Drawn on the picture rather than around the card, because the picture is
+        what a dropped image replaces. A ring would not say that — the campaign
+        cards already wear one for a character being refiled and another for
+        being selected, and a third would read as one of those. Above the frame
+        and the sheen, so it is visible whatever the card is printed on.
+      */}
+      {inviting ? (
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-2 z-10 rounded-lg border-2 border-dashed border-primary bg-primary/20"
+        />
+      ) : null}
     </div>
   );
 }
@@ -986,10 +1008,14 @@ export const CHARACTER_DRAG = "application/x-ttrpg-character";
 export function useDropTarget(type: string, onDrop: (transfer: DataTransfer) => void) {
   const [over, setOver] = useState(false);
 
-  const dropProps = {
+  const dropProps: DropProps = {
     onDragOver: (event: DragEvent<HTMLElement>) => {
       if (!event.dataTransfer.types.includes(type)) return;
       event.preventDefault();
+      // Claimed here, so a target further out does not light up as well. A card
+      // sits inside the panel that takes dropped sheets, and both offering to
+      // take the same file says the drop will do two things when it does one.
+      event.stopPropagation();
       setOver(true);
     },
     // Moving onto a child counts as leaving the element it bubbles from, which
@@ -1003,12 +1029,45 @@ export function useDropTarget(type: string, onDrop: (transfer: DataTransfer) => 
     onDrop: (event: DragEvent<HTMLElement>) => {
       if (!event.dataTransfer.types.includes(type)) return;
       event.preventDefault();
+      // The innermost target that wants this drop is the one that gets it: a
+      // picture dropped on a card must not also reach the panel behind it and
+      // be filed as a new character.
+      event.stopPropagation();
       setOver(false);
       onDrop(event.dataTransfer);
     },
   };
 
   return { over, dropProps };
+}
+
+/** The handlers `useDropTarget` hands back, for anything passing them around. */
+export interface DropProps {
+  onDragOver: (event: DragEvent<HTMLElement>) => void;
+  onDragLeave: (event: DragEvent<HTMLElement>) => void;
+  onDrop: (event: DragEvent<HTMLElement>) => void;
+}
+
+/**
+ * One element, two things that can be dropped on it.
+ *
+ * A campaign card takes both a character being refiled and a picture being set,
+ * and each is a `useDropTarget` of its own. Since a target ignores every drag
+ * that is not carrying its type, running both handlers on every event is enough
+ * — whichever one the drag belongs to acts and the other returns immediately.
+ *
+ * A `null` target is one that is switched off for now, and is skipped: the card
+ * of the campaign a character already belongs to takes files but not that
+ * character, and an unclaimed drag has to stay unclaimed so the browser shows a
+ * no-drop cursor rather than inviting a move that would do nothing.
+ */
+export function mergeDropProps(...targets: (DropProps | null)[]): DropProps {
+  const live = targets.filter((target): target is DropProps => target !== null);
+  return {
+    onDragOver: (event) => live.forEach((target) => target.onDragOver(event)),
+    onDragLeave: (event) => live.forEach((target) => target.onDragLeave(event)),
+    onDrop: (event) => live.forEach((target) => target.onDrop(event)),
+  };
 }
 
 /** A drop target for files, which is what most of them are. */

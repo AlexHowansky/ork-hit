@@ -3,6 +3,7 @@
  * presented as cards, plus the controls for starting a session.
  */
 
+import type { HTMLAttributes, ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { api } from "../api.ts";
@@ -49,6 +50,7 @@ import {
   Icon,
   IconButton,
   LoadingNote,
+  mergeDropProps,
   Modal,
   Panel,
   SheetIcon,
@@ -104,19 +106,15 @@ function CampaignForm({
         required
         hint="Campaign names are unique."
       />
-      <label className="block">
-        <span className={FIELD_CAPTION}>Card image (optional)</span>
-        <input
-          type="file"
-          name="card"
-          accept="image/png,image/jpeg,image/gif,image/webp"
-          className="file-input w-full"
-        />
-      </label>
+      <FileDrop
+        label="Card image (optional)"
+        name="card"
+        accept="image/png,image/jpeg,image/gif,image/webp"
+      />
       {campaign?.cardUrl ? (
         <label className={`flex items-center gap-2 text-sm ${TEXT_MUTED}`}>
           <input type="checkbox" name="removeCard" value="true" />
-          Remove the current card
+          Remove the current card image
         </label>
       ) : null}
       <Button variant="primary" type="submit" disabled={busy} className="w-full">
@@ -278,10 +276,62 @@ function CharacterForm({
         accept="image/png,image/jpeg,image/gif,image/webp"
       />
 
+      {/*
+        Offered only when there is one to remove, as the campaign form does it.
+        A picture uploaded in the same submission wins over the box being ticked,
+        and so does the box over a portrait found in a new sheet — the server
+        settles both, in that order.
+      */}
+      {character?.cardUrl ? (
+        <label className={`flex items-center gap-2 text-sm ${TEXT_MUTED}`}>
+          <input type="checkbox" name="removeCard" value="true" />
+          Remove the current card image
+        </label>
+      ) : null}
+
       <Button variant="primary" type="submit" disabled={busy} className="w-full">
         {busy ? "Saving…" : character ? "Save changes" : "Add character"}
       </Button>
     </form>
+  );
+}
+
+/**
+ * A character in the library: the card, plus the picture drop the campaign cards
+ * beside it also take.
+ *
+ * A component of its own for the same reason `CampaignCard` is — the drop target
+ * is a hook, and the cards are drawn in a map. Everything else about the card
+ * belongs to `CharacterCard`, which the session screens use too; only the library
+ * lets a picture be dropped on one.
+ */
+function LibraryCharacterCard({
+  character,
+  onOpen,
+  onPicture,
+  dragProps,
+  actions,
+}: {
+  character: Character;
+  onOpen: () => void;
+  onPicture: (file: File) => void;
+  dragProps: HTMLAttributes<HTMLElement> & { draggable?: boolean };
+  actions: ReactNode;
+}) {
+  const { over, dropProps } = useFileDropTarget((files) => {
+    const file = files.item(0);
+    if (file) onPicture(file);
+  });
+
+  return (
+    <CharacterCard
+      character={character}
+      onOpen={onOpen}
+      dragProps={dragProps}
+      dropProps={dropProps}
+      inviting={over}
+      actions={actions}
+    />
   );
 }
 
@@ -354,6 +404,7 @@ function CampaignCard({
   onDelete,
   takes,
   onTake,
+  onPicture,
 }: {
   campaign: Campaign;
   selected: boolean;
@@ -362,8 +413,13 @@ function CampaignCard({
   onDelete: () => void;
   takes: Character | null;
   onTake: (character: Character) => void;
+  onPicture: (file: File) => void;
 }) {
   const { over, dropProps } = useDropTarget(CHARACTER_DRAG, () => takes && onTake(takes));
+  const { over: fileOver, dropProps: fileDrop } = useFileDropTarget((files) => {
+    const file = files.item(0);
+    if (file) onPicture(file);
+  });
   const inviting = over && takes !== null;
 
   return (
@@ -374,7 +430,7 @@ function CampaignCard({
     // card sits in rather than about the card, and `tests/e2e.test.ts` reads it
     // off the `<article>`.
     <HoverCard
-      {...(takes ? dropProps : {})}
+      {...mergeDropProps(takes ? dropProps : null, fileDrop)}
       label={`Select ${campaign.name}`}
       onClick={onSelect}
       pressed={selected}
@@ -401,7 +457,7 @@ function CampaignCard({
         </>
       }
     >
-      <CardWell>
+      <CardWell inviting={fileOver}>
         <CardPicture src={campaign.cardUrl} icon={faScroll} draggable={false} />
       </CardWell>
 
@@ -628,6 +684,47 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
     }
   };
 
+  /**
+   * Sets a card's picture from a file dropped straight onto it.
+   *
+   * The same `PATCH` the edit dialog sends, with only the picture in it, so the
+   * server applies it exactly as it would from the form — and answers with the
+   * updated record, which is what goes back into the list. Filing a picture is
+   * the one edit worth doing without opening a dialog at all: the card is right
+   * there, and what it should look like is the whole of the decision.
+   *
+   * Nothing checks the file first. `accept` filters the picker, and the server
+   * identifies an image by its content rather than its name, so a sheet dropped
+   * on a card is refused there and the refusal is what the toast shows.
+   */
+  const setCardImage = async (file: File, target: Campaign | Character) => {
+    const form = new FormData();
+    form.set("card", file);
+    const character = "campaignId" in target;
+    try {
+      if (character) {
+        const { character: updated } = await api.patchForm<{ character: Character }>(
+          `/api/characters/${target.id}`,
+          form,
+        );
+        setCharacters((current) =>
+          current.map((entry) => (entry.id === updated.id ? updated : entry))
+        );
+      } else {
+        const { campaign: updated } = await api.patchForm<{ campaign: Campaign }>(
+          `/api/campaigns/${target.id}`,
+          form,
+        );
+        setCampaigns((current) =>
+          current.map((entry) => (entry.id === updated.id ? updated : entry))
+        );
+      }
+      toast.show(`Updated the picture for “${target.name}”.`, "success");
+    } catch (error) {
+      toast.showError(error);
+    }
+  };
+
   const startSession = async () => {
     if (!selectedCampaign) return;
     try {
@@ -709,6 +806,7 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
                   onDelete={() => void deleteCampaign(campaign)}
                   takes={dragging && dragging.campaignId !== campaign.id ? dragging : null}
                   onTake={(character) => void moveCharacter(character, campaign)}
+                  onPicture={(file) => void setCardImage(file, campaign)}
                 />
               ))}
             </div>
@@ -756,10 +854,11 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
             ) : (
               <div className={CARD_GRID}>
                 {visibleCharacters.map((character) => (
-                  <CharacterCard
+                  <LibraryCharacterCard
                     key={character.id}
                     character={character}
                     onOpen={() => setPreviewing(character)}
+                    onPicture={(file) => void setCardImage(file, character)}
                     dragProps={{
                       draggable: true,
                       onDragStart: (event) => {

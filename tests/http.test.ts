@@ -1689,6 +1689,36 @@ describe("a sheet's own picture becomes the character's", () => {
     const kept = await patch(gifSheet);
     expect(kept.cardUrl).toBe(filled.cardUrl);
   });
+
+  test("a character's picture can be taken away, and an upload outranks doing so", async () => {
+    const { cookie } = await signIn();
+    const { campaign } = await makeTable(cookie);
+
+    const form = new FormData();
+    form.set("sheet", sheetWithPortrait());
+    const character = await addCharacter(cookie, campaign.id, form);
+    expect(character.cardUrl).not.toBeNull();
+
+    const patch = async (body: FormData) =>
+      (await (
+        await fetch(
+          `${base}/api/characters/${character.id}`,
+          authed(cookie, { method: "PATCH", body }),
+        )
+      ).json()).character;
+
+    // The checkbox on the edit dialog, and a new picture in the same submission:
+    // choosing one is not a way to lose it.
+    const replaced = new FormData();
+    replaced.set("removeCard", "true");
+    replaced.set("card", new File([image(GIF_HEADER, 3000)], "chosen.gif"));
+    expect(await pictureType(cookie, (await patch(replaced)).cardUrl)).toBe("image/gif");
+
+    // On its own, it empties the picture.
+    const removal = new FormData();
+    removal.set("removeCard", "true");
+    expect((await patch(removal)).cardUrl).toBeNull();
+  });
 });
 
 describe("pictures are stored at the size a card shows them", () => {

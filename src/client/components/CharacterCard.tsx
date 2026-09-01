@@ -9,6 +9,7 @@ import {
   CardFrame,
   CardPicture,
   CardWell,
+  type DropProps,
   HoverCard,
 } from "./ui.tsx";
 
@@ -17,12 +18,18 @@ export function CharacterCard({
   actions,
   onOpen,
   dragProps,
+  dropProps,
+  inviting = false,
 }: {
   character: Character;
   actions?: ReactNode;
   onOpen?: () => void;
   /** Makes the card something that can be picked up — see `GmLibrary`. */
   dragProps?: HTMLAttributes<HTMLElement> & { draggable?: boolean };
+  /** Makes it something a picture can be dropped on — also `GmLibrary`. */
+  dropProps?: DropProps;
+  /** A picture is over the card now, so the well says where it would land. */
+  inviting?: boolean;
 }) {
   return (
     // The whole card opens the character, rather than the name under it doing so:
@@ -32,13 +39,14 @@ export function CharacterCard({
     // the tile.
     <HoverCard
       {...dragProps}
+      {...dropProps}
       label={onOpen ? character.name : undefined}
       onClick={onOpen}
       actions={actions}
       cardClassName="border-base-300 bg-base-100"
     >
       {/* Foil is a player character's; an NPC's card is plain stock. */}
-      <CardWell foil={character.kind === "pc"}>
+      <CardWell foil={character.kind === "pc"} inviting={inviting}>
         <CardPicture
           src={character.cardUrl}
           icon={character.kind === "pc" ? faShieldHalved : faDragon}

@@ -167,7 +167,9 @@ The app should have the following features:
   HTML file uploads. Each PC and NPC must be categorized into one campaign. Each
   PC and NPC may have a card image. Either file may be chosen with the file
   picker or dropped onto its field; a sheet may also be dropped anywhere on the
-  character panel, which opens the add form holding it. The add and edit form
+  character panel, which opens the add form holding it, and an image may be
+  dropped straight onto a card — a campaign's or a character's — which becomes
+  that card's picture at once, without a dialog. The add and edit form
   asks for the sheet first, then the name, the type, the campaign, and the image. Uploading a sheet
   fills the name in from the file's name, minus its extension, unless the game
   master has typed a name of their own. Pictures — a campaign's, a character's,
@@ -175,7 +177,9 @@ The app should have the following features:
   the cards show them at, in proportion and without cropping. An uploaded sheet
   is also scanned for a portrait: if it carries one, and the character has no picture of its own, that
   becomes the character's image. A picture the game master chose is never
-  replaced by one found in a file. Present the character library as cards,
+  replaced by one found in a file. Both edit forms offer `Remove the current card
+  image` when there is one, which empties the picture; uploading an image in the
+  same submission wins over ticking it. Present the character library as cards,
   ordered by name whatever their kind.
   A character may be refiled into another campaign by dragging its card onto that
   campaign's card. A character playing in a session that is still running may not

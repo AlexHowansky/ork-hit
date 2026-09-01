@@ -219,6 +219,23 @@ async function dragCard(page: Page, from: string, to: string | "the character pa
   }, [from, to] as [string, string]);
 }
 
+/**
+ * Drops a picture on an element, as dragging one in from the desktop would.
+ *
+ * The bytes are a PNG header and nothing else: the server identifies an image by
+ * its magic bytes, and stores one it cannot decode exactly as it arrived, so this
+ * is a real image as far as every rule on the way in is concerned.
+ */
+async function dropImage(target: Locator) {
+  await target.evaluate((element) => {
+    const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0x0d]);
+    const transfer = new DataTransfer();
+    transfer.items.add(new File([png], "card.png", { type: "image/png" }));
+    element.dispatchEvent(new DragEvent("dragover", { bubbles: true, dataTransfer: transfer }));
+    element.dispatchEvent(new DragEvent("drop", { bubbles: true, dataTransfer: transfer }));
+  });
+}
+
 describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => {
   test("a player's screen follows the game master with no refresh", async () => {
     if (!browser) return;
@@ -1411,6 +1428,61 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
       buffer: Buffer.from("<h1>Pippin</h1>"),
     });
     expect(await gm.getByLabel("Name").inputValue()).toBe("Samwise");
+  }, 60_000);
+
+  test("a picture dropped on a campaign card becomes that campaign's", async () => {
+    if (!browser) return;
+    const gm = await signedInGm();
+
+    const campaignName = unique("Campaign");
+    await gm.getByRole("button", { name: "New", exact: true }).click();
+    await gm.getByLabel("Campaign name").fill(campaignName);
+    await gm.getByRole("button", { name: "Create campaign" }).click();
+    await gm.getByText(`Characters in ${campaignName}`).waitFor();
+
+    const card = gm.getByRole("button", { name: `Select ${campaignName}` });
+    // A card with no picture draws its stand-in icon instead, so there is no
+    // image on it to begin with.
+    expect(await card.locator("img").count()).toBe(0);
+
+    await dropImage(card);
+
+    await gm.getByText(`Updated the picture for “${campaignName}”.`).waitFor();
+    await card.locator("img").waitFor();
+  }, 60_000);
+
+  test("a picture dropped on a character card becomes that character's, and nothing else", async () => {
+    if (!browser) return;
+    const gm = await signedInGm();
+
+    const campaignName = unique("Campaign");
+    await gm.getByRole("button", { name: "New", exact: true }).click();
+    await gm.getByLabel("Campaign name").fill(campaignName);
+    await gm.getByRole("button", { name: "Create campaign" }).click();
+    await gm.getByText(`Characters in ${campaignName}`).waitFor();
+
+    await gm.getByRole("button", { name: "Add", exact: true }).click();
+    await gm.getByLabel("Name").fill("Gandalf");
+    await gm.getByLabel(/Character sheet/).setInputFiles({
+      name: "sheet.html",
+      mimeType: "text/html",
+      buffer: Buffer.from("<h1>Gandalf</h1>"),
+    });
+    await gm.getByRole("button", { name: "Add character" }).last().click();
+    await gm.getByRole("button", { name: "Gandalf", exact: true }).waitFor();
+
+    const card = gm.getByRole("button", { name: "Gandalf", exact: true });
+    expect(await card.locator("img").count()).toBe(0);
+
+    await dropImage(card);
+
+    await gm.getByText("Updated the picture for “Gandalf”.").waitFor();
+    await card.locator("img").waitFor();
+
+    // The card sits inside the panel that opens the add form for a dropped
+    // sheet. The innermost target takes the drop, so the picture is filed and no
+    // dialog opens behind it.
+    expect(await gm.getByRole("dialog").count()).toBe(0);
   }, 60_000);
 
   test("a character sheet can be dropped onto the form instead of picked", async () => {
