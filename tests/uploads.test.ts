@@ -215,7 +215,7 @@ describe("the portrait inside a sheet", () => {
   });
 });
 
-describe("images are stored at the size they are looked at", () => {
+describe("images are stored at the size, and in the format, they are best kept in", () => {
   /** A real picture, not a header with noise behind it: this one gets decoded. */
   const picture = async (width: number, height: number, format: "png" | "gif" = "png") => {
     const image = sharp({
@@ -236,8 +236,11 @@ describe("images are stored at the size they are looked at", () => {
     expect(await sizeOf(upload.disk_path)).toEqual({
       width: Math.round((2000 / 1500) * limits.storedImagePx),
       height: limits.storedImagePx,
-      format: "png",
+      // A photograph in a lossless format is the case WebP wins by the most, so
+      // this one is kept as WebP however it arrived.
+      format: "webp",
     });
+    expect(upload.mime).toBe("image/webp");
   });
 
   test("the shape of the picture is never changed", async () => {
@@ -258,23 +261,36 @@ describe("images are stored at the size they are looked at", () => {
     expect(width).toBe(Math.round(4000 * (limits.storedImagePx / 800)));
   });
 
-  test("a picture already small enough is left exactly as it arrived", async () => {
+  test("a picture already small enough keeps its size, whatever format it ends up in", async () => {
     const original = await picture(300, 200);
     const upload = await storeImage(file("small.png", original));
 
-    // Not enlarged, and not re-encoded either.
-    const stored = new Uint8Array(await Bun.file(upload.disk_path).arrayBuffer());
-    expect([...stored]).toEqual([...original]);
+    // Nothing is enlarged to fill the card — the size it arrived at is the size
+    // it is kept at, even though the bytes may now be WebP rather than PNG.
+    expect(await sizeOf(upload.disk_path)).toMatchObject({ width: 300, height: 200 });
+    expect(upload.byte_size).toBeLessThanOrEqual(original.byteLength);
   });
 
-  test("an animated GIF stays a GIF", async () => {
+  test("a format WebP cannot beat is the one the picture keeps", async () => {
+    // Sixteen bytes with a PNG header and nothing decodable behind them: the
+    // encoder never gets a chance, so what was uploaded is what is stored.
+    const upload = await storeImage(file("tiny.png", PNG));
+
+    expect(upload.mime).toBe("image/png");
+    const stored = new Uint8Array(await Bun.file(upload.disk_path).arrayBuffer());
+    expect([...stored]).toEqual([...PNG]);
+  });
+
+  test("a GIF is fitted whole rather than flattened to its first frame", async () => {
     const upload = await storeImage(file("moving.gif", await picture(1600, 1200, "gif")));
 
-    expect(upload.mime).toBe("image/gif");
-    expect(await sizeOf(upload.disk_path)).toMatchObject({
-      height: limits.storedImagePx,
-      format: "gif",
-    });
+    // Whichever format wins, every frame is still there and the picture is the
+    // size a card wants — a GIF must never come back as one still frame.
+    const { pages, height } = await sharp(await Bun.file(upload.disk_path).arrayBuffer())
+      .metadata();
+    expect(height).toBe(limits.storedImagePx);
+    expect(pages ?? 1).toBe(1);
+    expect(upload.mime).toBe(`image/${(await sizeOf(upload.disk_path)).format}`);
   });
 
   test("a portrait taken out of a sheet is scaled like any other picture", async () => {

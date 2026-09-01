@@ -129,49 +129,87 @@ export async function storeSheet(file: File): Promise<UploadRow> {
 }
 
 /**
- * Scales a picture down to the size it is actually looked at.
+ * How hard the WebP encoder is asked to work.
+ *
+ * 80 is the knee of the curve for pictures at this size: visually indistinct
+ * from the source inside a 176px card, and roughly half the bytes of 90. Higher
+ * settings mostly buy detail the card crops away.
+ */
+const WEBP_QUALITY = 80;
+
+/**
+ * Scales a picture down to the size it is actually looked at, and stores it in
+ * the format that holds it in the fewest bytes.
  *
  * Every image the app shows ends up in a square card 176px across, so a 4000px
  * photograph costs a game master's phone several megabytes to draw a thumbnail.
  * The shorter side is what has to cover that square, so that is what is scaled —
  * to `limits.storedImagePx`, proportionally, with nothing cropped: the card takes
  * its square at display time, and the rest of the picture is still there for
- * anywhere it is shown differently.
+ * anywhere it is shown differently. Nothing is enlarged.
  *
- * Nothing is enlarged, and an image already small enough is stored exactly as it
- * arrived rather than re-encoded for no gain. The format is never changed; an
- * animated GIF is resized as a whole rather than flattened to its first frame.
+ * Then the same picture is encoded as WebP and the two are weighed against each
+ * other, because the format a picture arrives in is rarely the one it should be
+ * kept in: a photograph saved as PNG is lossless data about a lossy subject, and
+ * over the images this app has been given WebP came out about seven times
+ * smaller. The winner is whichever buffer is actually smaller, which is the whole
+ * rule — re-encoding an already-lossy JPEG can *grow* it, and when it does the
+ * original stands. Alpha survives the conversion, and an animated GIF converts
+ * whole rather than flattening to its first frame.
+ *
+ * What the format never decides is what is *accepted*: that is still the
+ * magic-byte check in `detectImageMime`, on the bytes as they arrived.
  *
  * A picture that cannot be read is stored as it came in. It passed the magic-byte
  * check, so this is a decoder disagreeing about the details of a real image, and
  * a game master would rather have their picture at full size than an error.
  */
-async function fitToCard(bytes: Uint8Array, mime: string): Promise<Uint8Array> {
+async function fitToCard(
+  bytes: Uint8Array,
+  mime: string,
+): Promise<{ bytes: Uint8Array; mime: string }> {
   const animated = mime === "image/gif";
+  const asUploaded = { bytes, mime };
   try {
     const { width, height } = await sharp(bytes).metadata();
-    if (!width || !height) return bytes;
-    if (Math.min(width, height) <= limits.storedImagePx) return bytes;
+    if (!width || !height) return asUploaded;
 
-    const resized = await sharp(bytes, { animated })
-      .resize({
-        width: limits.storedImagePx,
-        height: limits.storedImagePx,
-        // `outside` fits the shorter side to the box and lets the longer one run
-        // over, which is exactly what a cropping card needs.
-        fit: "outside",
-        withoutEnlargement: true,
-      })
-      .toBuffer();
+    // The picture at the size it will be looked at, still in its own format.
+    // This is the candidate WebP has to beat, and on an image already small
+    // enough it is simply the bytes that arrived.
+    const scaled = Math.min(width, height) > limits.storedImagePx
+      ? new Uint8Array(
+        await sharp(bytes, { animated })
+          .resize({
+            width: limits.storedImagePx,
+            height: limits.storedImagePx,
+            // `outside` fits the shorter side to the box and lets the longer one
+            // run over, which is exactly what a cropping card needs.
+            fit: "outside",
+            withoutEnlargement: true,
+          })
+          .toBuffer(),
+      )
+      : bytes;
 
-    log.info("image scaled for the card", {
-      from: `${width}x${height}`,
-      bytes: `${bytes.byteLength} -> ${resized.byteLength}`,
-    });
-    return new Uint8Array(resized);
+    const webp = new Uint8Array(
+      await sharp(scaled, { animated }).webp({ quality: WEBP_QUALITY }).toBuffer(),
+    );
+
+    const best = webp.byteLength < scaled.byteLength
+      ? { bytes: webp, mime: "image/webp" }
+      : { bytes: scaled, mime };
+
+    if (best.bytes !== bytes) {
+      log.info("image fitted to the card", {
+        from: `${width}x${height} ${mime} ${bytes.byteLength}B`,
+        to: `${best.mime} ${best.bytes.byteLength}B`,
+      });
+    }
+    return best;
   } catch (error) {
-    log.warn("could not scale an image; storing it as uploaded", { mime, error });
-    return bytes;
+    log.warn("could not fit an image; storing it as uploaded", { mime, error });
+    return asUploaded;
   }
 }
 
@@ -182,7 +220,10 @@ async function fitToCard(bytes: Uint8Array, mime: string): Promise<Uint8Array> {
 async function persistImage(bytes: Uint8Array, originalName: string): Promise<UploadRow | null> {
   const mime = detectImageMime(bytes);
   if (!mime) return null;
-  return await persist(await fitToCard(bytes, mime), IMAGE_DIR, "image", mime, originalName);
+  // What is stored, and the type it is served as, is what came back from the fit
+  // — which may be WebP whatever arrived.
+  const fitted = await fitToCard(bytes, mime);
+  return await persist(fitted.bytes, IMAGE_DIR, "image", fitted.mime, originalName);
 }
 
 /** Stores a card image, verifying the format by its magic bytes. */

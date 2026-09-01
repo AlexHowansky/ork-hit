@@ -1842,7 +1842,7 @@ describe("the deployment's card size reaches the browser", () => {
   });
 
   test("and the stored pictures follow it, so bigger cards stay sharp", () => {
-    expect(limits.storedImagePx).toBe(config.cardImagePx * 3);
+    expect(limits.storedImagePx).toBe(config.cardImagePx * 2);
   });
 
 

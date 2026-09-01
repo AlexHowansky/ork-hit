@@ -796,15 +796,24 @@ those two variables meet, and the reason the border width is a variable at all.
 in a square card 176px across, so keeping the 4000px photograph that was uploaded
 costs a game master's phone several megabytes to draw a thumbnail. `fitToCard`
 (`src/server/uploads.ts`, on the path every image upload takes) scales the
-**shorter** side down to `limits.cardImagePx`, since that is the side that has to
-cover a square. Nothing is cropped: the card takes its square at display time,
+**shorter** side down to `limits.storedImagePx` — twice `CARD_IMAGE_PX`, which
+covers a 2x screen exactly — since that is the side that has to cover a square. Nothing is cropped: the card takes its square at display time,
 and the rest of the picture is still in the file for anywhere it is shown
-differently. Nothing is enlarged either, and an image already small enough is
-stored byte-for-byte as it arrived rather than re-encoded for no gain — as is one
-whose bytes sharp cannot read, since it passed the magic-byte check and a game
-master would rather have their picture at full size than an error. The format is
-never changed, and an animated GIF is resized whole rather than flattened to its
-first frame.
+differently. Nothing is enlarged either, and one whose bytes sharp cannot read is
+stored exactly as it arrived, since it passed the magic-byte check and a game
+master would rather have their picture at full size than an error.
+
+**And in the format that holds them in the fewest bytes**, which is rarely the
+one they arrived in: a photograph saved as PNG is lossless data about a lossy
+subject, and over the pictures this app had been given, WebP at quality 80 came
+out about seven times smaller in total — one 2.3 MB card became 169 KB. So the
+fitted picture is encoded as WebP as well, and whichever buffer is *actually*
+smaller is the one stored, with `mime` following it. That comparison is the whole
+rule, and it is there because re-encoding an already-lossy JPEG can make it
+bigger — when it does, the original stands. Alpha survives, an animated GIF is
+converted whole rather than flattened to its first frame, and what is *accepted*
+is still decided by the magic bytes of the file as uploaded, never by the format
+it ends up in.
 
 This is the one thing in the app that needs a real library: `sharp`. It is a
 native binding, which is a heavier dependency than anything else here, and it is

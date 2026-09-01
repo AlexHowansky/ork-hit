@@ -190,12 +190,12 @@ export const limits = {
    * The shorter side a stored image is scaled down to.
    *
    * Every picture the app shows is cropped into a square card, so the shorter
-   * side is what has to cover it. Three times the card's own size leaves room for
-   * a high-density screen, or the full-width card a phone shows, without keeping
-   * a 4000px photograph to draw a thumbnail — and it follows the card, so making
-   * cards bigger keeps the pictures sharp rather than blowing them up.
+   * side is what has to cover it. Twice the card's own size covers a 2x screen
+   * exactly, and the full-width card a phone shows, without keeping a 4000px
+   * photograph to draw a thumbnail — and it follows the card, so making cards
+   * bigger keeps the pictures sharp rather than blowing them up.
    */
-  storedImagePx: config.cardImagePx * 3,
+  storedImagePx: config.cardImagePx * 2,
   /** Sliding window before a GM has to log in again. */
   gmSessionTtlMs: 7 * 24 * 60 * 60 * 1000,
   /** Hard ceiling regardless of activity. */
