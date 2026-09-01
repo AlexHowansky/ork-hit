@@ -1108,8 +1108,13 @@ Back up `data/` — it holds both the database and every uploaded file.
   present a same-origin `Sec-Fetch-Site` or a matching `Origin`. There are no
   form posts.
 - **Uploads** are checked by content, not by name — images by magic bytes, so an
-  HTML payload named `.png` is rejected. Files are stored under generated names
-  outside any served directory and reached only through authorised routes.
+  HTML payload named `.png` is rejected. Files are stored outside any served
+  directory and reached only through authorised routes, under a generated name —
+  the id of the `uploads` row that describes them, so a file found on its own
+  names its own row. The uploaded filename is kept as metadata and never reaches
+  the filesystem, so there is no path to traverse out of. Delivery still resolves
+  `disk_path` rather than rebuilding the path from the id, so rows predating that
+  naming rule keep working and files can be rehomed.
 - **Errors** shown to a user never carry internal detail; anything unexpected is
   logged in full server-side and reported as one generic line.
 - **Logs** are JSON lines with a request id, and redact passwords, tokens,

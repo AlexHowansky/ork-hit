@@ -129,7 +129,14 @@ export const gmAuthSessions = {
 /* ------------------------------------------------------------------- uploads */
 
 export const uploads = {
+  /**
+   * `id` is accepted rather than always minted here so a caller that has already
+   * written the file can name it after the row it is about to insert — see
+   * `persist` in `server/uploads.ts`. A caller with no file to match, such as a
+   * test fixture, leaves it out and gets a fresh one.
+   */
   create(input: {
+    id?: string;
     kind: UploadKind;
     diskPath: string;
     mime: string;
@@ -137,7 +144,7 @@ export const uploads = {
     sha256: string;
     originalName: string;
   }): UploadRow {
-    const id = newId();
+    const id = input.id ?? newId();
     db.query(`
       INSERT INTO uploads (id, kind, disk_path, mime, byte_size, sha256, original_name, created_at)
       VALUES ($id, $kind, $diskPath, $mime, $byteSize, $sha256, $originalName, $ts)

@@ -73,13 +73,21 @@ async function persist(
   mime: string,
   originalName: string,
 ): Promise<UploadRow> {
-  // The stored name is a fresh identifier; the uploaded filename never reaches
-  // the filesystem, so there is no path to traverse out of.
-  const diskName = newId();
-  const diskPath = join(directory, diskName);
+  // The file is named after the row that is about to describe it, and the
+  // uploaded filename never reaches the filesystem, so there is no path to
+  // traverse out of. The two used to be separate identifiers — one minted here
+  // and one inside `uploads.create` — which read as the same id typo'd whenever
+  // they turned up side by side in a log, and left a file whose row had gone
+  // (a restore from an older database, say) with nothing to identify it. Reading
+  // an upload still goes through `disk_path` rather than rebuilding the path
+  // from the id, so files can be rehomed and rows written before this change
+  // keep working untouched.
+  const id = newId();
+  const diskPath = join(directory, id);
   await Bun.write(diskPath, bytes);
 
   const row = uploads.create({
+    id,
     kind,
     diskPath,
     mime,

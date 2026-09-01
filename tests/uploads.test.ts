@@ -41,6 +41,14 @@ describe("character sheets", () => {
     expect(upload.original_name).not.toContain("/");
   });
 
+  test("are named on disk after the row that describes them", async () => {
+    const upload = await storeSheet(file("hero.html", "<p>x</p>"));
+
+    // One identifier, not two: a stray file names its own row, and a log line
+    // carrying both cannot read as the same id mistyped.
+    expect(basename(upload.disk_path)).toBe(upload.id);
+  });
+
   test("must actually be HTML by extension", async () => {
     await expect(storeSheet(file("sheet.exe", "<p>x</p>"))).rejects.toThrow(
       "Character sheets must be .html files.",
