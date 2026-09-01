@@ -160,6 +160,11 @@ export const uploads = {
     db.query("DELETE FROM uploads WHERE id = $id").run({ id });
   },
 
+  /** Every row, for the sweep that looks for files no row claims. */
+  all(): UploadRow[] {
+    return db.query<UploadRow, []>("SELECT * FROM uploads").all();
+  },
+
   /**
    * Upload rows that nothing references any more. The caller deletes the files
    * from disk and then removes these rows.

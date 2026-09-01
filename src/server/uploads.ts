@@ -14,7 +14,7 @@
  * ceiling and a content type the app assigns rather than one the client claims.
  */
 
-import { mkdir, unlink } from "node:fs/promises";
+import { mkdir, readdir, unlink } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import sharp from "sharp";
 import { config, limits } from "../lib/config.ts";
@@ -329,7 +329,12 @@ export async function deleteUpload(uploadId: string): Promise<void> {
   try {
     await unlink(row.disk_path);
   } catch (error) {
-    log.warn("could not delete upload file", { uploadId: row.id, error });
+    // A file that has already gone is the ordinary case when a sweep catches up
+    // with rows left behind by something else, so it is not worth a warning. A
+    // file that is there and will not delete is: that one needs a person.
+    const missing = (error as NodeJS.ErrnoException).code === "ENOENT";
+    const report = missing ? log.debug : log.warn;
+    report("could not delete upload file", { uploadId: row.id, error });
   }
 }
 
@@ -342,6 +347,43 @@ export async function collectOrphanedUploads(): Promise<number> {
   for (const orphan of orphans) await deleteUpload(orphan.id);
   if (orphans.length > 0) log.info("collected orphaned uploads", { count: orphans.length });
   return orphans.length;
+}
+
+/**
+ * Files under the upload directories that no `uploads` row claims.
+ *
+ * The mirror image of `uploads.orphaned()`, which finds rows nothing references:
+ * this finds files nothing describes. They come from a write that landed before
+ * its row failed to, and from a database restored from a backup older than the
+ * files beside it. Nothing swept for them before `db:gc`.
+ *
+ * The scan lives here because `SHEET_DIR` and `IMAGE_DIR` do — where the files
+ * are kept is this module's business and nobody else's.
+ */
+export async function findStrayFiles(): Promise<string[]> {
+  const claimed = new Set(uploads.all().map((row) => row.disk_path));
+  const stray: string[] = [];
+  for (const directory of [SHEET_DIR, IMAGE_DIR]) {
+    for (const name of await readdir(directory)) {
+      const path = join(directory, name);
+      if (!claimed.has(path)) stray.push(path);
+    }
+  }
+  return stray;
+}
+
+/** Deletes what `findStrayFiles` finds. Returns how many went. */
+export async function collectStrayFiles(): Promise<number> {
+  const stray = await findStrayFiles();
+  for (const path of stray) {
+    try {
+      await unlink(path);
+    } catch (error) {
+      log.warn("could not delete stray upload file", { path, error });
+    }
+  }
+  if (stray.length > 0) log.info("collected stray upload files", { count: stray.length });
+  return stray.length;
 }
 
 /**

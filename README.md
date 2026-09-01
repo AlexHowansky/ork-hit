@@ -35,11 +35,19 @@ bun run cli gm:list
 bun run cli gm:edit    --email you@example.com [--new-email …] [--password …]
 bun run cli gm:delete  --email you@example.com [--yes]
 bun run cli db:migrate
+bun run cli db:gc      [--dry-run]
 ```
 
 Omit `--password` and you'll be prompted for it without echo — better than
 putting a password in your shell history and the process list. Changing a
 password signs out every browser that account was signed in on.
+
+`db:gc` sweeps upload wreckage in both directions: rows nothing references any
+more, and files under `data/uploads/` that no row claims. `--dry-run` counts
+them without deleting. Deleting a game master or a character already collects
+the first kind on the way out, so a run that finds anything is cleaning up after
+an interrupted upload or a database restored from a backup older than the files
+beside it.
 
 ## How it fits together
 

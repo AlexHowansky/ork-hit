@@ -9,7 +9,12 @@
  */
 
 import { migrate } from "../db/migrate.ts";
-import { gms } from "../db/queries.ts";
+import { gms, uploads } from "../db/queries.ts";
+import {
+  collectOrphanedUploads,
+  collectStrayFiles,
+  findStrayFiles,
+} from "../server/uploads.ts";
 import { parse, schemas } from "../lib/validate.ts";
 import { limits } from "../lib/config.ts";
 import { AppError } from "../lib/errors.ts";
@@ -192,7 +197,39 @@ async function gmDelete(args: Args): Promise<void> {
   }
 
   gms.remove(gm.id);
-  console.log(`Deleted ${gm.email}.`);
+  // The cascade takes their campaigns, characters and sessions, but an upload
+  // row is referenced rather than owned, so their sheets and cards would survive
+  // as orphans. Sweeping here is what keeps `db:gc` from having anything to find.
+  const collected = await collectOrphanedUploads();
+  console.log(
+    collected > 0
+      ? `Deleted ${gm.email}, and ${collected} upload(s) nothing referenced any more.`
+      : `Deleted ${gm.email}.`,
+  );
+}
+
+/**
+ * Sweeps both directions of upload wreckage: rows nothing references, and files
+ * no row claims. Deleting a game master or a character collects the first kind
+ * as it goes, so a run that finds anything is usually cleaning up after an older
+ * version of the app, an interrupted upload, or a database restored from a
+ * backup older than the files beside it.
+ */
+async function dbGc(args: Args): Promise<void> {
+  if (args.flags["dry-run"] === true) {
+    const orphans = uploads.orphaned();
+    const stray = await findStrayFiles();
+    console.log(`${orphans.length} upload row(s) nothing references.`);
+    console.log(`${stray.length} file(s) no upload row claims.`);
+    if (orphans.length + stray.length > 0) console.log("Run without --dry-run to delete them.");
+    return;
+  }
+
+  // Rows first: collecting one deletes its file too, which keeps that file from
+  // being counted a second time as a stray.
+  const collected = await collectOrphanedUploads();
+  const stray = await collectStrayFiles();
+  console.log(`Deleted ${collected} orphaned upload row(s) and ${stray} stray file(s).`);
 }
 
 function usage(): void {
@@ -206,6 +243,7 @@ Commands:
   gm:edit    --email <address> [--new-email <address>] [--password <password>]
   gm:delete  --email <address> [--yes]                   Delete a game master
   db:migrate                                             Apply pending migrations
+  db:gc      [--dry-run]                                 Delete uploads nothing references
 
 Passwords are prompted for (without echo) when not passed as a flag. Prefer the
 prompt: a password on the command line is visible to other users via the process
@@ -236,6 +274,9 @@ try {
       break;
     case "db:migrate":
       console.log("Database is up to date.");
+      break;
+    case "db:gc":
+      await dbGc(args);
       break;
     case "help":
     case "--help":

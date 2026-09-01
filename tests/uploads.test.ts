@@ -8,9 +8,17 @@
  */
 
 import { describe, expect, test } from "bun:test";
-import { basename } from "node:path";
+import { unlink } from "node:fs/promises";
+import { basename, dirname, join } from "node:path";
 import sharp from "sharp";
-import { portraitFromSheet, storeImage, storeSheet } from "../src/server/uploads.ts";
+import {
+  collectStrayFiles,
+  deleteUpload,
+  findStrayFiles,
+  portraitFromSheet,
+  storeImage,
+  storeSheet,
+} from "../src/server/uploads.ts";
 import { limits } from "../src/lib/config.ts";
 
 const PNG = new Uint8Array([
@@ -277,5 +285,30 @@ describe("images are stored at the size they are looked at", () => {
 
     const found = await portraitFromSheet(sheet);
     expect(await sizeOf(found!.disk_path)).toMatchObject({ height: limits.storedImagePx });
+  });
+});
+
+describe("housekeeping", () => {
+  test("finds and deletes files no row claims, and leaves claimed ones alone", async () => {
+    const kept = await storeSheet(file("kept.html", "<p>keep me</p>"));
+    // A file written straight into the upload directory, as an interrupted
+    // upload or an older database would leave behind.
+    const stray = join(dirname(kept.disk_path), "stray-file");
+    await Bun.write(stray, "<p>nobody's</p>");
+
+    expect(await findStrayFiles()).toContain(stray);
+    expect(await findStrayFiles()).not.toContain(kept.disk_path);
+
+    await collectStrayFiles();
+
+    expect(await Bun.file(stray).exists()).toBe(false);
+    expect(await Bun.file(kept.disk_path).exists()).toBe(true);
+  });
+
+  test("deleting an upload whose file has already gone is not an error", async () => {
+    const upload = await storeSheet(file("gone.html", "<p>x</p>"));
+    await unlink(upload.disk_path);
+
+    await expect(deleteUpload(upload.id)).resolves.toBeUndefined();
   });
 });
