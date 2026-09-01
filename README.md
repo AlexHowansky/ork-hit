@@ -695,14 +695,22 @@ a name the last upload put there, tracked in a ref: a second file replaces its
 own suggestion, but never a name the game master typed, and never the name of a
 character being edited.
 
-The panel behind the dialog is a drop target too: a sheet dropped anywhere on
-"Characters in …" opens the add dialog already holding it, so a folder of sheets
-can be filed without opening the dialog first each time. Both targets are the
-same three handlers — `useFileDropTarget` in `ui.tsx` — and the file reaches the
-dialog as `initialFile`, which puts it through exactly the path a drop on the
-field itself takes, so the name fills in and the form submits with no idea where
-the file came from. `Panel` learns nothing about files: it spreads unknown props
-onto its `<section>` the way `Button` does, and the highlight is a `ring`, since a
+The panel behind the dialog is a drop target too, and it does not open the
+dialog at all: sheets dropped anywhere on "Characters in …" are filed as
+characters there and then. Everything the dialog would have asked for is already
+known by the time the drop lands — the panel only exists while a campaign is
+selected, the filename names the character exactly as the dialog's own field
+would, and a dropped character is a PC until someone edits it — so the dialog
+would have been a form with nothing left to fill in. A whole folder of sheets is
+therefore filed by dropping the folder: `fileSheets` (`GmLibrary.tsx`) posts one
+sheet at a time, since the server takes a portrait out of each and a dozen of
+those at once is a dozen image decodes racing each other for no gain. Each card
+appears as its sheet lands — inserted in name order, which is the order the
+library arrives in — under a line saying how many are still to come, and one
+failure is reported without stopping the rest: a name the campaign already has
+stops that sheet, not the folder it came with. Both targets are the same three
+handlers — `useFileDropTarget` in `ui.tsx`. `Panel` learns nothing about files:
+it spreads unknown props onto its `<section>` the way `Button` does, and the highlight is a `ring`, since a
 border or background utility would fight the panel's own for the same property
 and let stylesheet order decide the winner. The page also swallows `dragover` and
 `drop` at the window: having invited a drag, a miss must not make the browser
@@ -715,7 +723,7 @@ entirely alone: not `preventDefault`ed, so it passes through to whatever is behi
 and the browser draws a no-drop cursor rather than an invitation the element cannot
 honour. That one guard is what lets card drags and file drags share a page: before
 it, the character panel claimed every drag that crossed it, so a character dragged
-back onto its own panel opened the add dialog as though a sheet had arrived. The
+back onto its own panel was filed as though a sheet had arrived. The
 window-level swallow is narrowed the same way, for the same reason.
 
 **Dragging a character onto a campaign refiles it.** Both libraries are on screen

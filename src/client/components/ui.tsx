@@ -1095,7 +1095,6 @@ export function FileDrop({
   accept,
   hint,
   onFile,
-  initialFile = null,
 }: {
   label: ReactNode;
   name: string;
@@ -1103,8 +1102,6 @@ export function FileDrop({
   hint?: ReactNode;
   /** The file now in the field, however it arrived, for a form that wants to react. */
   onFile?: (file: File) => void;
-  /** A file the field starts out holding, for a form opened by a drop elsewhere. */
-  initialFile?: File | null;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [chosen, setChosen] = useState<string | null>(null);
@@ -1120,15 +1117,6 @@ export function FileDrop({
   };
 
   const { over, dropProps } = useFileDropTarget((files) => take(files.item(0)));
-
-  // A file the form was opened with is put through the same path a dropped one
-  // takes, so the field, the input the form reads, and anything listening on
-  // `onFile` all see it arrive the usual way.
-  const takeRef = useRef(take);
-  takeRef.current = take;
-  useEffect(() => {
-    if (initialFile) takeRef.current(initialFile);
-  }, [initialFile]);
 
   return (
     <label className="block">

@@ -166,8 +166,9 @@ The app should have the following features:
 * A game master may add, edit, and delete PCs and NPCs. These are represented by
   HTML file uploads. Each PC and NPC must be categorized into one campaign. Each
   PC and NPC may have a card image. Either file may be chosen with the file
-  picker or dropped onto its field; a sheet may also be dropped anywhere on the
-  character panel, which opens the add form holding it, and an image may be
+  picker or dropped onto its field; sheets may also be dropped anywhere on the
+  character panel, which files each of them as a PC of the selected campaign at
+  once, without a dialog, named after its file; and an image may be
   dropped straight onto a card — a campaign's or a character's — which becomes
   that card's picture at once, without a dialog. The add and edit form
   asks for the sheet first, then the name, the type, the campaign, and the image. Uploading a sheet

@@ -67,6 +67,31 @@ import type { Campaign, Character, GameSession } from "../types.ts";
 /** Mirrors `limits.nameMaxLength` on the server, which is what rejects a longer one. */
 const NAME_MAX_LENGTH = 60;
 
+/**
+ * The character name a sheet's filename gives, since a sheet is nearly always
+ * saved under the character's name and retyping it is busywork.
+ *
+ * The extension goes; nothing else about the filename is second-guessed. Empty
+ * when the filename was nothing but an extension, which is the one case the
+ * caller has to answer for — a dropped sheet cannot be filed without a name, and
+ * the dialog simply leaves its field alone.
+ */
+function characterNameFor(file: File): string {
+  return file.name.replace(/\.[^.]+$/, "").trim().slice(0, NAME_MAX_LENGTH);
+}
+
+/**
+ * A character added to the list where the server would have put it.
+ *
+ * The library arrives sorted by name, so a character filed without a reload has
+ * to be filed into that order rather than onto the end. `COLLATE NOCASE` is the
+ * server's rule; `sensitivity: "base"` is the nearest thing the browser has.
+ */
+function insertByName(current: Character[], added: Character): Character[] {
+  const next = [...current, added];
+  return next.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+}
+
 /* ------------------------------------------------------------------- dialogs */
 
 function CampaignForm({
@@ -148,14 +173,11 @@ function CharacterForm({
   campaigns,
   character,
   defaultCampaignId,
-  droppedFile,
   onDone,
 }: {
   campaigns: Campaign[];
   character: Character | null;
   defaultCampaignId: string;
-  /** Set when the dialog was opened by dropping a sheet on the panel. */
-  droppedFile: File | null;
   onDone: (character: Character) => void;
 }) {
   const toast = useToast();
@@ -174,7 +196,7 @@ function CharacterForm({
    */
   const suggestNameFrom = (file: File) => {
     if (name !== "" && name !== suggested.current) return;
-    const stripped = file.name.replace(/\.[^.]+$/, "").trim().slice(0, NAME_MAX_LENGTH);
+    const stripped = characterNameFor(file);
     if (!stripped) return;
     suggested.current = stripped;
     setName(stripped);
@@ -209,7 +231,6 @@ function CharacterForm({
         accept=".html,.htm,text/html"
         hint="Sheets keep their own scripts and styling. They are displayed in an isolated frame, so they cannot interact with the rest of this app. A picture inside a sheet becomes the character's card, and is taken out of the sheet rather than stored twice."
         onFile={suggestNameFrom}
-        initialFile={droppedFile}
       />
 
       <Field
@@ -490,9 +511,9 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
   const [characterDialog, setCharacterDialog] = useState<{
     open: boolean;
     editing: Character | null;
-    /** The sheet a drop on the panel arrived with, if that is how this opened. */
-    file: File | null;
-  }>({ open: false, editing: null, file: null });
+  }>({ open: false, editing: null });
+  /** Sheets from the current drop still to be filed, for the note the panel shows. */
+  const [filing, setFiling] = useState(0);
   const [previewing, setPreviewing] = useState<Character | null>(null);
   /**
    * The character being dragged, if one is.
@@ -559,18 +580,6 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
     void load();
   }, [load]);
 
-  /**
-   * Dropping a sheet on the character panel opens the add dialog holding it, so
-   * a folder of sheets can be filed without opening the dialog first each time.
-   * The panel only exists while a campaign is selected, so there is never a
-   * question of which campaign a dropped character belongs to.
-   *
-   * One file: the dialog files one character, as the field inside it does.
-   */
-  const { over: sheetOver, dropProps: sheetDrop } = useFileDropTarget((files) => {
-    const file = files.item(0);
-    if (file) setCharacterDialog({ open: true, editing: null, file });
-  });
 
   // Having invited a drag onto the page, catch the ones that miss: a file dropped
   // anywhere else would otherwise be opened by the browser, throwing the library
@@ -601,6 +610,58 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
   const runningHere = activeSessions.find(
     (session) => session.campaignId === selectedCampaignId,
   );
+
+  /**
+   * Files sheets dropped on the character panel as characters, there and then.
+   *
+   * Everything the add dialog would have asked for is already known: the panel
+   * only exists while a campaign is selected, the file names the character the
+   * way the dialog's own name field would have, and a dropped character is a PC
+   * until it is edited. So the dialog would have been a form with nothing left
+   * to fill in, and a folder of sheets can be filed by dropping the folder.
+   *
+   * Every dropped file is filed, one request at a time — the server takes a
+   * portrait out of each sheet, and a dozen of those at once is a dozen image
+   * decodes racing each other for no gain. Each character appears as it lands,
+   * in name order, so the panel fills in as the batch goes. One failure is
+   * reported and the rest carry on: a name the campaign already has stops that
+   * sheet, not the folder it arrived with.
+   */
+  const fileSheets = async (files: FileList, campaign: Campaign) => {
+    const dropped = Array.from(files);
+    setFiling(dropped.length);
+    let filed = 0;
+    for (const file of dropped) {
+      try {
+        const name = characterNameFor(file);
+        if (!name) {
+          throw new Error(`We couldn't work out a name for “${file.name}”.`);
+        }
+        const form = new FormData();
+        form.set("campaignId", campaign.id);
+        form.set("kind", "pc");
+        form.set("name", name);
+        form.set("sheet", file);
+        const { character } = await api.postForm<{ character: Character }>(
+          "/api/characters",
+          form,
+        );
+        setCharacters((current) => insertByName(current, character));
+        filed += 1;
+      } catch (error) {
+        toast.showError(error);
+      } finally {
+        setFiling((remaining) => remaining - 1);
+      }
+    }
+    if (filed > 0) {
+      toast.show(filed === 1 ? "Added 1 character." : `Added ${filed} characters.`, "success");
+    }
+  };
+
+  const { over: sheetOver, dropProps: sheetDrop } = useFileDropTarget((files) => {
+    if (selectedCampaign) void fileSheets(files, selectedCampaign);
+  });
 
   /**
    * Ends a session without opening its console.
@@ -830,7 +891,7 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
               <div className="flex gap-2">
                 <Button
                   variant="primary"
-                  onClick={() => setCharacterDialog({ open: true, editing: null, file: null })}
+                  onClick={() => setCharacterDialog({ open: true, editing: null })}
                 >
                   <Icon icon={faSquarePlus} /> Add
                 </Button>
@@ -846,10 +907,26 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
               </div>
             }
           >
-            {visibleCharacters.length === 0 ? (
+            {/*
+              A drop files its sheets one request at a time, and each card appears
+              as its sheet lands, so the line says what is still to come rather
+              than covering the panel with a spinner. `aria-live` because the
+              cards arriving underneath it are the only other announcement.
+            */}
+            {filing > 0 ? (
+              <p
+                className={`flex items-center gap-3 pb-3 text-sm ${TEXT_MUTED}`}
+                aria-live="polite"
+              >
+                <span className="loading loading-spinner loading-xs" aria-hidden="true" />
+                {filing === 1 ? "Filing 1 sheet…" : `Filing ${filing} sheets…`}
+              </p>
+            ) : null}
+
+            {visibleCharacters.length === 0 && filing === 0 ? (
               <EmptyState>
-                No characters in this campaign yet. Drop an HTML sheet here, or add one with
-                the button above.
+                No characters in this campaign yet. Drop HTML sheets here to file them, or add
+                one with the button above.
               </EmptyState>
             ) : (
               <div className={CARD_GRID}>
@@ -883,7 +960,7 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
                           bare
                           label={`Edit ${character.name}`}
                           icon={<EditIcon />}
-                          onClick={() => setCharacterDialog({ open: true, editing: character, file: null })}
+                          onClick={() => setCharacterDialog({ open: true, editing: character })}
                         />
                         <IconButton
                           bare
@@ -921,15 +998,14 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
       {characterDialog.open && selectedCampaign ? (
         <Modal
           title={characterDialog.editing ? "Edit character" : "Add character"}
-          onClose={() => setCharacterDialog({ open: false, editing: null, file: null })}
+          onClose={() => setCharacterDialog({ open: false, editing: null })}
         >
           <CharacterForm
             campaigns={campaigns}
             character={characterDialog.editing}
             defaultCampaignId={selectedCampaign.id}
-            droppedFile={characterDialog.file}
             onDone={async () => {
-              setCharacterDialog({ open: false, editing: null, file: null });
+              setCharacterDialog({ open: false, editing: null });
               await load();
             }}
           />

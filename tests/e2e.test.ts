@@ -1341,7 +1341,7 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     ]);
   }, 60_000);
 
-  test("a sheet dropped on the character panel opens the form holding it", async () => {
+  test("sheets dropped on the character panel are filed without a dialog", async () => {
     if (!browser) return;
     const gm = await signedInGm();
 
@@ -1351,10 +1351,10 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     await gm.getByRole("button", { name: "Create campaign" }).click();
     await gm.getByText(`Characters in ${campaignName}`).waitFor();
 
-    // A real drop on the panel itself, nowhere near the dialog — which is not
-    // even open yet. The panel is found and dropped on inside one evaluation:
-    // resolving it in an earlier round trip can hand back a node React has since
-    // replaced, and an event dispatched at a detached node reaches nothing.
+    // A real drop on the panel itself. The panel is found and dropped on inside
+    // one evaluation: resolving it in an earlier round trip can hand back a node
+    // React has since replaced, and an event dispatched at a detached node
+    // reaches nothing. Two files, because a drop files everything it carries.
     await gm.evaluate(() => {
       const panel = Array.from(document.querySelectorAll("section")).find((section) =>
         section.textContent?.startsWith("Characters in"),
@@ -1365,19 +1365,18 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
       transfer.items.add(
         new File(["<h1>Gimli</h1>"], "Gimli son of Gloin.html", { type: "text/html" }),
       );
+      transfer.items.add(new File(["<h1>Legolas</h1>"], "Legolas.html", { type: "text/html" }));
       panel.dispatchEvent(new DragEvent("dragover", { bubbles: true, dataTransfer: transfer }));
       panel.dispatchEvent(new DragEvent("drop", { bubbles: true, dataTransfer: transfer }));
     });
 
-    // The dialog opens already holding the file, named after it.
-    await gm.getByRole("dialog", { name: "Add character" }).waitFor();
-    await gm.getByText("Ready to upload: Gimli son of Gloin.html").waitFor();
-    expect(await gm.getByLabel("Name").inputValue()).toBe("Gimli son of Gloin");
-
-    // And that file is the one the form submits.
-    await gm.getByRole("button", { name: "Add character" }).last().click();
+    // Both are filed there and then, each named after its file, with no dialog
+    // in the way and nothing left to confirm.
+    await gm.getByText("Added 2 characters.").waitFor();
     await gm.getByRole("button", { name: "Gimli son of Gloin", exact: true }).waitFor();
     await gm.getByRole("button", { name: "View Gimli son of Gloin's sheet" }).waitFor();
+    await gm.getByRole("button", { name: "Legolas", exact: true }).waitFor();
+    expect(await gm.getByRole("dialog").count()).toBe(0);
   }, 60_000);
 
   test("uploading a sheet names the character after the file", async () => {
@@ -1479,10 +1478,12 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     await gm.getByText("Updated the picture for “Gandalf”.").waitFor();
     await card.locator("img").waitFor();
 
-    // The card sits inside the panel that opens the add form for a dropped
-    // sheet. The innermost target takes the drop, so the picture is filed and no
-    // dialog opens behind it.
+    // The card sits inside the panel that files a dropped sheet as a new
+    // character. The innermost target takes the drop, so the picture is filed
+    // and nothing behind the card sees it — no dialog, and no second character
+    // named after the image.
     expect(await gm.getByRole("dialog").count()).toBe(0);
+    expect(await gm.getByRole("button", { name: /'s sheet$/ }).count()).toBe(1);
   }, 60_000);
 
   test("a character sheet can be dropped onto the form instead of picked", async () => {
@@ -1745,7 +1746,7 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     expect(await page.getByLabel("Type").count()).toBe(0);
     expect(await page.getByRole("button", { name: "Thorin", exact: true }).count()).toBe(1);
 
-    // ...and a file let go there still is.
+    // ...and a file let go there still files a character.
     await page.evaluate(() => {
       const dataTransfer = new DataTransfer();
       dataTransfer.items.add(
@@ -1758,8 +1759,8 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
         panel.dispatchEvent(new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer }));
       }
     });
-    await page.getByLabel("Name").waitFor({ timeout: 5000 });
-    expect(await page.getByLabel("Name").inputValue()).toBe("Bilbo Baggins");
+    await page.getByRole("button", { name: "Bilbo Baggins", exact: true })
+      .waitFor({ timeout: 5000 });
 
     await page.close();
   }, 60_000);
