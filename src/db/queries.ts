@@ -166,6 +166,17 @@ export const uploads = {
   },
 
   /**
+   * Records that a stored file has been rewritten in place — which one upload
+   * does: a sheet has its portrait taken out of it once that picture is a card.
+   * The path and the type do not change, only what the file now weighs and
+   * hashes to.
+   */
+  rewrite(id: string, input: { byteSize: number; sha256: string }): void {
+    db.query("UPDATE uploads SET byte_size = $byteSize, sha256 = $sha256 WHERE id = $id")
+      .run({ ...input, id });
+  },
+
+  /**
    * Upload rows that nothing references any more. The caller deletes the files
    * from disk and then removes these rows.
    */

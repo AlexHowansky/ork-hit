@@ -1631,6 +1631,25 @@ describe("a sheet's own picture becomes the character's", () => {
     expect(await pictureType(cookie, character.cardUrl)).toBe("image/png");
   });
 
+  test("and the sheet is served without the copy it carried", async () => {
+    const { cookie } = await signIn();
+    const { campaign } = await makeTable(cookie);
+
+    // The same picture the sheet is built around, as the browser encoded it.
+    const portrait = Buffer.from(image(PNG_HEADER, 4096)).toString("base64");
+
+    const form = new FormData();
+    form.set("sheet", sheetWithPortrait());
+    const character = await addCharacter(cookie, campaign.id, form);
+    expect(character.cardUrl).not.toBeNull();
+
+    const html = await (await fetch(base + character.sheetUrl, authed(cookie))).text();
+    // The picture is a card now, so the sheet no longer carries it as well.
+    expect(html).not.toContain(portrait);
+    // Everything else about the sheet is the file that was uploaded.
+    expect(html).toContain("<h1>Hero</h1>");
+  });
+
   test("a sheet with no picture in it leaves the character without one", async () => {
     const { cookie } = await signIn();
     const { campaign } = await makeTable(cookie);

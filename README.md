@@ -1036,7 +1036,26 @@ Sheets are uploaded HTML and keep their JavaScript, so a sheet with dice buttons
 or auto-calculating fields keeps working. They are therefore treated as
 untrusted code.
 
-Nothing is rewritten or stripped on upload. The isolation happens on delivery:
+A sheet is stored as it was written, with one exception: when a portrait is
+lifted out of a sheet and becomes the character's card, that picture's own bytes
+are taken back out of the HTML (`removeRun`, `src/server/uploads.ts`). Keeping
+both is keeping the same image twice, and the copy inside the sheet is the larger
+one — a card is fitted on the way in, while a sheet carries whatever was pasted
+into it. It is also nearly all of what a sheet weighs: one library's sheets ran to
+18 MB, almost entirely embedded portraits, and one 985 KB sheet came out at 52 KB.
+
+Only the run that was decoded goes, and nothing is written in its place. The
+markup around it is never parsed — that is what lets the same code find a picture
+in an `img` tag, a CSS `url()` and a script variable alike — so what is left is
+an empty `data:` URI in the first case and an empty string literal in the last.
+A sheet that drew its own portrait therefore stops drawing one, which is the
+trade: the picture lives on the card, which is where the app shows it, and the
+sheet goes back to being a sheet rather than a second copy of the image. A sheet
+that cannot be rewritten is left alone and keeps its embedded picture; the card
+still stands either way.
+
+**Nothing else is rewritten, and nothing is stripped.** No script is removed, no
+style is touched. The isolation happens on delivery:
 each sheet is served with a `sandbox` Content-Security-Policy and embedded in an
 iframe that repeats it as an attribute, deliberately *without*
 `allow-same-origin`. That gives the document an opaque origin — its scripts run,

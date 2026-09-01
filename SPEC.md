@@ -176,8 +176,9 @@ The app should have the following features:
   and one found inside a sheet alike — are scaled down on the way in to the size
   the cards show them at, in proportion and without cropping. An uploaded sheet
   is also scanned for a portrait: if it carries one, and the character has no picture of its own, that
-  becomes the character's image. A picture the game master chose is never
-  replaced by one found in a file. Both edit forms offer `Remove the current card
+  becomes the character's image, and that picture's bytes are removed from the
+  stored sheet, since the card is now the copy that is kept. A picture the game
+  master chose is never replaced by one found in a file. Both edit forms offer `Remove the current card
   image` when there is one, which empties the picture; uploading an image in the
   same submission wins over ticking it. Present the character library as cards,
   ordered by name whatever their kind.

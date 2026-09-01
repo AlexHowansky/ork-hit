@@ -207,7 +207,7 @@ function CharacterForm({
         }`}
         name="sheet"
         accept=".html,.htm,text/html"
-        hint="Sheets keep their own scripts and styling. They are displayed in an isolated frame, so they cannot interact with the rest of this app."
+        hint="Sheets keep their own scripts and styling. They are displayed in an isolated frame, so they cannot interact with the rest of this app. A picture inside a sheet becomes the character's card, and is taken out of the sheet rather than stored twice."
         onFile={suggestNameFrom}
         initialFile={droppedFile}
       />

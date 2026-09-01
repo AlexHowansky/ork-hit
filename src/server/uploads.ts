@@ -7,7 +7,9 @@
  * buttons or auto-calculating fields is expected to keep working — so they are
  * treated as untrusted code from this point on. Nothing here tries to sanitise
  * them; the isolation happens at delivery time in routes/files.ts, which drops
- * them into an opaque origin where they can't reach the app.
+ * them into an opaque origin where they can't reach the app. The one edit a sheet
+ * ever receives is `removeRun`, which takes back out the portrait that has just
+ * become the character's card rather than storing that picture twice.
  *
  * What this module does guarantee: files land outside any statically served
  * directory, under a random name that never derives from user input, with a size
@@ -309,7 +311,7 @@ export async function portraitFromSheet(sheet: UploadRow): Promise<UploadRow | n
     return null;
   }
 
-  let best: { bytes: Uint8Array; mime: string } | null = null;
+  let best: { bytes: Uint8Array; mime: string; run: string } | null = null;
 
   for (const encoding of ENCODINGS) {
     let seen = 0;
@@ -345,7 +347,7 @@ export async function portraitFromSheet(sheet: UploadRow): Promise<UploadRow | n
       if (!mime || bytes.byteLength < MIN_PORTRAIT_BYTES) continue;
       if (best && bytes.byteLength <= best.bytes.byteLength) continue;
 
-      best = { bytes, mime };
+      best = { bytes, mime, run };
     }
   }
 
@@ -359,7 +361,55 @@ export async function portraitFromSheet(sheet: UploadRow): Promise<UploadRow | n
   });
   // Scaled on the way in like any other picture: a sheet's portrait is often the
   // largest image the app ever sees.
-  return await persistImage(best.bytes, `portrait.${extension}`);
+  const portrait = await persistImage(best.bytes, `portrait.${extension}`);
+  if (portrait) await removeRun(sheet, best.run);
+  return portrait;
+}
+
+/**
+ * Takes the portrait's own bytes back out of the sheet that carried it.
+ *
+ * Once the picture is a card of its own, the copy inside the HTML is the same
+ * image stored twice — and it is the larger copy, since a card is fitted on the
+ * way in while a sheet carries whatever was pasted into it. It is also the bulk
+ * of what a sheet weighs: the sheets in one library ran to 18 MB, almost all of
+ * it embedded portraits, and one 985 KB sheet came out at 52 KB.
+ *
+ * Only the run that was decoded goes, and it is replaced with nothing rather
+ * than with a stand-in. This module never looks at the syntax around a run —
+ * that is what lets it find a picture in an `img` tag, a CSS `url()` and a
+ * script variable alike — so what is left behind is an empty `data:` URI in the
+ * first case and an empty string literal in the last. Both are still the
+ * document the game master wrote, minus one picture; neither is markup this had
+ * to understand to produce.
+ *
+ * Which means a sheet that drew its own portrait no longer draws one. That is
+ * the trade this makes: the picture is on the card, which is where the app shows
+ * it, and the sheet is the sheet rather than a second copy of the image.
+ *
+ * Every copy of the run goes, since a sheet that pasted its portrait twice is
+ * carrying it twice. A sheet that cannot be rewritten is left exactly as it was
+ * and the portrait still stands: the picture is the point, and what the sheet
+ * saves is the bonus.
+ */
+async function removeRun(sheet: UploadRow, run: string): Promise<void> {
+  try {
+    const html = await Bun.file(sheet.disk_path).text();
+    const trimmed = html.replaceAll(run, "");
+    if (trimmed === html) return;
+
+    const bytes = new TextEncoder().encode(trimmed);
+    await Bun.write(sheet.disk_path, bytes);
+    // The row describes the file, so what the file now weighs and hashes to has
+    // to travel with it — `db:gc` and the duplicate check both read those.
+    uploads.rewrite(sheet.id, { byteSize: bytes.byteLength, sha256: sha256(bytes) });
+    log.info("portrait removed from the sheet that carried it", {
+      uploadId: sheet.id,
+      bytes: `${html.length} -> ${bytes.byteLength}`,
+    });
+  } catch (error) {
+    log.warn("could not take the portrait out of the sheet", { uploadId: sheet.id, error });
+  }
 }
 
 /** Removes an upload's row and its file. Missing files are not an error. */

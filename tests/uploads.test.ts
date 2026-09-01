@@ -20,6 +20,7 @@ import {
   storeSheet,
 } from "../src/server/uploads.ts";
 import { limits } from "../src/lib/config.ts";
+import { uploads } from "../src/db/queries.ts";
 
 const PNG = new Uint8Array([
   0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
@@ -134,6 +135,83 @@ describe("the portrait inside a sheet", () => {
     // Byte for byte what the sheet carried, not a re-encoding of it.
     const stored = new Uint8Array(await Bun.file(found!.disk_path).arrayBuffer());
     expect([...stored]).toEqual([...portrait]);
+  });
+
+  test("is taken out of the sheet once it is a card of its own", async () => {
+    const portrait = image(PNG, 4096);
+    const encoded = Buffer.from(portrait).toString("base64");
+    const sheet = await sheetWith(
+      `<h1>Hero</h1><img alt="portrait" src="${embed(portrait)}"><p>Strength 18</p>`,
+    );
+    const before = sheet.byte_size;
+
+    expect(await portraitFromSheet(sheet)).not.toBeNull();
+
+    // The picture's own bytes are gone; everything the game master wrote around
+    // them is untouched, the emptied `src` included.
+    const html = await Bun.file(sheet.disk_path).text();
+    expect(html).not.toContain(encoded);
+    expect(html).toContain("<h1>Hero</h1>");
+    expect(html).toContain("<p>Strength 18</p>");
+    expect(html).toContain('<img alt="portrait" src="data:image/png;base64,">');
+
+    // And the row still describes the file it points at.
+    const row = uploads.byId(sheet.id)!;
+    const stored = new Uint8Array(await Bun.file(sheet.disk_path).arrayBuffer());
+    expect(row.byte_size).toBe(stored.byteLength);
+    expect(row.byte_size).toBeLessThan(before);
+    expect(row.sha256).toBe(new Bun.CryptoHasher("sha256").update(stored).digest("hex"));
+  });
+
+  test("a run a script decodes itself is emptied, and nothing is written in its place", async () => {
+    // The Hero Designer export's shape: the picture is hex in a variable, and a
+    // handler builds the `data:` URI from it once the page is parsed. Nothing is
+    // put in the variable's place — a URL there would be decoded as though it
+    // were the picture — so the sheet simply stops drawing a portrait.
+    const portrait = image(PNG, 4096);
+    const hex = Buffer.from(portrait).toString("hex");
+    const sheet = await sheetWith(`
+      <img id="portrait-image">
+      <script>
+        const imageHex = '${hex}';
+        document.addEventListener('DOMContentLoaded', () => {
+          document.getElementById('portrait-image').src = 'data:image/png;base64,' + imageHex;
+        });
+      </script>
+    `);
+
+    expect(await portraitFromSheet(sheet)).not.toBeNull();
+
+    const html = await Bun.file(sheet.disk_path).text();
+    expect(html).not.toContain(hex);
+    expect(html).toContain("const imageHex = '';");
+    // The sheet is never pointed at the card, and nothing is appended to it.
+    expect(html).not.toContain("/uploads/images/");
+    expect(html.trimEnd()).toEndWith("</script>");
+  });
+
+  test("leaves a sheet it found nothing in exactly as it arrived", async () => {
+    const body = "<h1>Hero</h1><p>No pictures here.</p>";
+    const sheet = await sheetWith(body);
+
+    expect(await portraitFromSheet(sheet)).toBeNull();
+    expect(await Bun.file(sheet.disk_path).text()).toBe(body);
+    expect(uploads.byId(sheet.id)!.byte_size).toBe(sheet.byte_size);
+  });
+
+  test("only the picture that was taken goes; smaller ones stay", async () => {
+    const icon = image(GIF, 3000);
+    const face = image(PNG, 9000);
+    const sheet = await sheetWith(
+      `<img src="${embed(icon, "image/gif")}"><img src="${embed(face)}">`,
+    );
+
+    expect(await portraitFromSheet(sheet)).not.toBeNull();
+
+    const html = await Bun.file(sheet.disk_path).text();
+    expect(html).not.toContain(Buffer.from(face).toString("base64"));
+    // The dice icon is still furniture the sheet needs to draw itself.
+    expect(html).toContain(Buffer.from(icon).toString("base64"));
   });
 
   test("is the largest picture, whatever it is embedded in", async () => {
