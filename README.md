@@ -548,6 +548,20 @@ there. Where a colour has to carry meaning *and* be read, the tone goes on the
 border and the wash and the text stays `base-content` — see `TONES` in
 `Vitals.tsx` and the unclaimed row in `InitiativeList.tsx`.
 
+**One of its components is patched rather than trusted.** `file-input` only
+partly survives the bundler's rewrite of daisyUI's nested `@layer` and
+pseudo-element rules: the field keeps its border, radius and height, but the
+`::file-selector-button` rule comes out inert, so the browser's own "Choose File
+/ No file chosen" label sat flush against the left border and above the field's
+centre — and `align-items` could not move it, because the shadow content Chrome
+puts inside a file input is not a flex item. `styles.css` lays the field out as a
+block whose line box is exactly its content height instead, which puts the label
+on the same baseline an `input` of the same size gives text, and insets it by the
+`.75rem` both controls already use. Unlayered, so it beats daisyUI's own rule.
+Neither file input carries `file-input-sm` any more: at `sm` the card image
+field was 32px tall at 12px type against the name field's 40px at 14px, and the
+two sit one above the other in the same form.
+
 **And so are the shapes the screens repeat.** `ui.tsx` names them once —
 `TEXT_MUTED`, `SURFACE`, `HAIRLINE`, `FIELD_CAPTION`, `PANEL_CAPTION` and their
 neighbours — and the pieces of markup that repeat are small components beside

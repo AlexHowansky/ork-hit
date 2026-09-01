@@ -147,6 +147,38 @@ body {
 }
 
 /*
+  The label inside a file picker.
+
+  daisyUI draws `file-input` as a flex row and leans on its `::file-selector-button`
+  for both the inset that keeps "Choose File" off the border and the height that
+  centres it. Only part of that reaches the element here: the field gets its
+  border, radius and height, but the button rule does not land at all — the
+  bundler rewrites daisyUI's nested `@layer` and pseudo-element rules on the way
+  through, and that one comes out inert. So the browser's own label sat flush
+  against the left border and 6px above the field's centre, and `align-items`
+  did not move it: the shadow content Chrome puts in a file input is not a flex
+  item that centring reaches.
+
+  A line box is, which is what this uses instead — the field is laid out as a
+  block whose line is exactly as tall as its content box, so the label sits on
+  the same baseline an `input` of the same size would put text on, measured to
+  within half a pixel. The `calc` is what keeps that true at any size: `--size`
+  and `--border` are daisyUI's own, so `file-input-sm` and the rest follow along
+  without a second rule. The inset is the .75rem daisyUI already pads the far end
+  by, which is also `input`'s, so a file field and a text field above it line up.
+
+  Unlayered on purpose, as the card rules below are — daisyUI's own rules live in
+  a sublayer of `@layer utilities`, and an unlayered author rule beats every
+  layered one whatever its specificity.
+*/
+.file-input {
+  display: block;
+  padding-block: 0;
+  padding-inline-start: 0.75rem;
+  line-height: calc(var(--size) - 2 * var(--border));
+}
+
+/*
   The typeface a card's name is set in.
 
   A deployment can ask for one with CARD_FONT_URL and CARD_FONT_FAMILY; the

@@ -110,7 +110,7 @@ function CampaignForm({
           type="file"
           name="card"
           accept="image/png,image/jpeg,image/gif,image/webp"
-          className="file-input file-input-sm w-full"
+          className="file-input w-full"
         />
       </label>
       {campaign?.cardUrl ? (

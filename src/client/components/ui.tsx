@@ -1090,7 +1090,7 @@ export function FileDrop({
             setChosen(file?.name ?? null);
             if (file) onFile?.(file);
           }}
-          className="file-input file-input-sm w-full"
+          className="file-input w-full"
         />
         <span className={`mt-2 block text-xs ${TEXT_MUTED}`}>
           {chosen ? `Ready to upload: ${chosen}` : "…or drop a file here."}
