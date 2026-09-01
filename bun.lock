@@ -19,7 +19,7 @@
         "@types/react": "^19.2.18",
         "@types/react-dom": "^19.2.5",
         "bun-plugin-tailwind": "^0.0.15",
-        "daisyui": "^5.7.22",
+        "daisyui": "^5.7.23",
         "playwright": "^1.62.1",
         "tailwindcss": "^4.3.3",
         "typescript": "^5.9.3",
@@ -107,7 +107,7 @@
 
     "csstype": ["csstype@3.2.3", "", {}, "sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ=="],
 
-    "daisyui": ["daisyui@5.7.22", "", {}, "sha512-pYii+2NCN0+OIL6Lpuc054LK0QJeNv+GRK9UzN1GRmjdYhYO6WFl0QLoj5oPcitPD7o+okiiI0SKFkn641TxmA=="],
+    "daisyui": ["daisyui@5.7.23", "", {}, "sha512-Jp5VuhfpLz9zLGEB1VTZFTSAcUn02qMazb55RSciY7V4xQgmzYm3Af160gkQc3OnMVfDUwnQXvwu4O4MwoK1NQ=="],
 
     "detect-libc": ["detect-libc@2.1.2", "", {}, "sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ=="],
 
