@@ -30,6 +30,9 @@
 
 export const SESSION_STARTED = "Session started";
 
+/** The subject of every line about something the game master did. */
+export const GAME_MASTER = "The game master";
+
 /* ------------------------------------------------------------ the players' */
 
 export const playerJoined = (name: string): string => `${name} joined`;
@@ -69,6 +72,27 @@ export const gmAddedToScene = (character: string): string =>
 
 export const gmRemovedFromScene = (character: string): string =>
   `The game master removed ${character} from the scene`;
+
+/* ------------------------------------------------------------- either of them */
+
+/**
+ * What condition a character is in — the one thing both roles change through the
+ * same endpoint, since being knocked prone happens to your character and saying
+ * so is part of playing it.
+ *
+ * So these are the only builders that take their subject rather than knowing it:
+ * the route names the game master or the player who pressed, and the rule that
+ * whoever acted is the subject of the sentence holds either way.
+ *
+ * A list rather than one tag because one hit commonly leaves a character both
+ * prone and stunned, and a caller with the pair in hand should be able to say so
+ * in one line. Today's route sets one tag per press and passes one.
+ */
+export const tagsAdded = (actor: string, tags: string[], character: string): string =>
+  `${actor} added ${tags.join(", ")} to ${character}`;
+
+export const tagsRemoved = (actor: string, tags: string[], character: string): string =>
+  `${actor} removed ${tags.join(", ")} from ${character}`;
 
 /* ------------------------------------------------------------- the clock's */
 

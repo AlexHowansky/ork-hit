@@ -27,6 +27,9 @@ import {
   playerLeft,
   playerSelected,
   segmentBegan,
+  tagsAdded,
+  tagsRemoved,
+  GAME_MASTER,
 } from "../src/server/events.ts";
 
 let base: string;
@@ -510,7 +513,7 @@ describe("what a character has left", () => {
 
     test("the game master may tag any slot, and the snapshot carries it", async () => {
       const { cookie } = await signIn();
-      const { session } = await makeTable(cookie);
+      const { session, pc, npc } = await makeTable(cookie);
       const [first] = await slotsOf(cookie, session.id);
 
       const response = await patchTag(cookie, session.id, first!.id, "prone", true);
@@ -526,6 +529,14 @@ describe("what a character has left", () => {
       await patchTag(cookie, session.id, first!.id, "prone", false);
       const cleared = await slotsOf(cookie, session.id);
       expect((cleared[0] as unknown as { statusTags: string[] }).statusTags).toEqual([]);
+
+      // Both changes are written down, and the doubled press in between is not:
+      // it left the character exactly as prone as it found them.
+      expect(await messages(cookie, session.id)).toEqual([
+        ...opening(npc),
+        tagsAdded(GAME_MASTER, ["Prone"], pc.name),
+        tagsRemoved(GAME_MASTER, ["Prone"], pc.name),
+      ]);
     });
 
     test("a player may tag their own character, and only theirs", async () => {
@@ -549,6 +560,15 @@ describe("what a character has left", () => {
       expect((await patchTag(player, session.id, mine.id, "stunned", true)).status).toBe(200);
       expect((await patchTag(player, session.id, theirs.id, "dead", true)).status).toBe(403);
 
+      // Whoever acted is the subject: the player's own doing is in their name,
+      // and the refusal is nobody's doing, so it is no line at all.
+      expect(await messages(cookie, session.id)).toEqual([
+        ...opening(npc),
+        playerJoined("Fen"),
+        playerSelected("Fen", pc.name),
+        tagsAdded("Fen", ["Stunned"], pc.name),
+      ]);
+
       // The refusal changed nothing: the NPC is not quietly dead.
       const after = await slotsOf(cookie, session.id);
       const npcRow = after.find((row) => row.id === theirs.id) as unknown as {
@@ -568,7 +588,7 @@ describe("what a character has left", () => {
 
     test("a typed tag that spells a known one becomes that one", async () => {
       const { cookie } = await signIn();
-      const { session } = await makeTable(cookie);
+      const { session, pc, npc } = await makeTable(cookie);
       const [first] = await slotsOf(cookie, session.id);
 
       await patchTag(cookie, session.id, first!.id, "  Prone  ", true);
@@ -576,6 +596,59 @@ describe("what a character has left", () => {
 
       expect((await response.json()).snapshot.characters[0].statusTags)
         .toEqual(["prone", "On Fire"]);
+
+      // The log calls a condition what the badge calls it: the known one in the
+      // case a person writes it, the typed one exactly as it was typed.
+      expect(await messages(cookie, session.id)).toEqual([
+        ...opening(npc),
+        tagsAdded(GAME_MASTER, ["Prone"], pc.name),
+        tagsAdded(GAME_MASTER, ["On Fire"], pc.name),
+      ]);
+    });
+
+    test("a second copy is tagged by the name the console gives it", async () => {
+      const { cookie } = await signIn();
+      const { session, npc } = await makeTable(cookie);
+
+      // The same goblin again, so the stage holds two of it.
+      const staged = (
+        await (
+          await fetch(
+            `${base}/api/sessions/${session.id}/stage`,
+            authed(cookie, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ characterId: npc.id }),
+            }),
+          )
+        ).json()
+      ).snapshot;
+      const second = staged.characters.find(
+        (character: { characterId: string; copyNumber: number }) =>
+          character.characterId === npc.id && character.copyNumber === 2,
+      );
+
+      await patchTag(cookie, session.id, second.id, "prone", true);
+
+      // "added Prone to Goblin" twice over would tell a table nothing about
+      // which goblin went down.
+      expect(await messages(cookie, session.id)).toEqual([
+        ...opening(npc),
+        gmAddedToScene(`${npc.name} 2`),
+        tagsAdded(GAME_MASTER, ["Prone"], `${npc.name} 2`),
+      ]);
+    });
+
+    test("clearing a tag nobody had writes nothing", async () => {
+      const { cookie } = await signIn();
+      const { session } = await makeTable(cookie);
+      const [first] = await slotsOf(cookie, session.id);
+
+      const before = await messages(cookie, session.id);
+      expect((await patchTag(cookie, session.id, first!.id, "dead", false)).status).toBe(200);
+
+      // Nothing about the character changed, so the log has nothing to say.
+      expect(await messages(cookie, session.id)).toEqual(before);
     });
   });
 });

@@ -29,10 +29,10 @@ import {
   isKnownTag,
   normalizeTag,
   STATUS_TAG_HINTS,
-  STATUS_TAG_LABELS,
   STATUS_TAG_MAX_LENGTH,
   STATUS_TAGS,
   type StatusTag,
+  tagLabel,
 } from "../../lib/hero.ts";
 import { Button, Field, HAIRLINE, Icon, Modal, PANEL_CAPTION, TEXT_MUTED } from "./ui.tsx";
 import type { SessionCharacter } from "../types.ts";
@@ -58,8 +58,8 @@ const STATUS_TAG_ICONS: Record<StatusTag, IconDefinition> = {
 /** What to draw and what to call it, for a named condition or a typed one. */
 function present(tag: string): { icon: IconDefinition; label: string; hint?: string } {
   return isKnownTag(tag)
-    ? { icon: STATUS_TAG_ICONS[tag], label: STATUS_TAG_LABELS[tag], hint: STATUS_TAG_HINTS[tag] }
-    : { icon: faTag, label: tag };
+    ? { icon: STATUS_TAG_ICONS[tag], label: tagLabel(tag), hint: STATUS_TAG_HINTS[tag] }
+    : { icon: faTag, label: tagLabel(tag) };
 }
 
 /**

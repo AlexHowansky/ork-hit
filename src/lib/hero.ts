@@ -152,6 +152,19 @@ export function isKnownTag(tag: string): tag is StatusTag {
 }
 
 /**
+ * What a tag is called wherever it is shown or written down.
+ *
+ * The eight are stored in the lower case the buttons send and read back in the
+ * case a person would write them; a typed one is already whatever the table
+ * wrote, and is left alone. Here rather than in the browser because the log
+ * lines the server composes have to call a condition what the badge beside them
+ * calls it.
+ */
+export function tagLabel(tag: string): string {
+  return isKnownTag(tag) ? STATUS_TAG_LABELS[tag] : tag;
+}
+
+/**
  * Tidies a tag on its way in: the outer spaces go, a run of inner space becomes
  * one, and anything that spells one of the eight — in whatever case it was typed
  * — becomes that one.

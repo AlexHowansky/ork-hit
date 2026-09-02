@@ -30,14 +30,16 @@ import {
   sessionEvents,
 } from "../../db/queries.ts";
 import { db } from "../../db/index.ts";
-import type { GameSessionRow, SessionCharacterRow } from "../../db/types.ts";
+import type { GameSessionRow, PlayerRow, SessionCharacterRow } from "../../db/types.ts";
 import {
   actsIn,
   OPENING_SEGMENT,
   POST_SEGMENT_12_NOTICE,
   SEGMENTS_PER_TURN,
+  tagLabel,
 } from "../../lib/hero.ts";
 import {
+  GAME_MASTER,
   SESSION_STARTED,
   gmAddedToScene,
   gmAssigned,
@@ -48,6 +50,8 @@ import {
   playerJoined,
   playerSelected,
   segmentBegan,
+  tagsAdded,
+  tagsRemoved,
 } from "../events.ts";
 import { presentSessionForGm } from "../presenters.ts";
 import { buildGmSessionList, buildSnapshot } from "../session-state.ts";
@@ -83,7 +87,7 @@ function requireSlotAccess(
     | "/api/sessions/:id/stage/:slotId/rest"
     | "/api/sessions/:id/stage/:slotId/tags"
   >,
-): { session: GameSessionRow; asPlayer: boolean } {
+): { session: GameSessionRow; asPlayer: boolean; player: PlayerRow | null } {
   const sessionId = request.params.id;
   const identity = currentPlayer(request);
   const asPlayer = identity !== null && identity.session.id === sessionId;
@@ -101,7 +105,10 @@ function requireSlotAccess(
     throw errors.forbidden("You can only change your own character.");
   }
 
-  return { session, asPlayer };
+  // The player row comes back too, since a line in the log is written in the
+  // name of whoever pressed. Null is the game master, who is the only other
+  // reader that gets this far.
+  return { session, asPlayer, player: asPlayer ? identity.player : null };
 }
 
 /** Publishes the new state and returns it to the caller in the same shape. */
@@ -540,15 +547,35 @@ export const sessionRoutes = {
         request: BunRequest<"/api/sessions/:id/stage/:slotId/tags">,
         { logger }: RequestContext,
       ) => {
-        const { session, asPlayer } = requireSlotAccess(request);
+        const { session, asPlayer, player } = requireSlotAccess(request);
         const { tag, active } = await parseJsonBody(request, schemas.setStatusTag);
+        const { slotId } = request.params;
 
-        sessionCharacters.setTag(session.id, request.params.slotId, tag, active);
+        // Asked before the write, because the body says where the tag should end
+        // up rather than "flip it": a press that changes nothing is not
+        // something to write down, exactly as re-picking the character you are
+        // already holding writes nothing.
+        const changed = sessionCharacters.hasTag(session.id, slotId, tag) !== active;
+
+        sessionCharacters.setTag(session.id, slotId, tag, active);
+
+        // The copy number comes with the name, so the log calls a monster what
+        // the console beside it calls the same monster.
+        const named = sceneName(session.id, slotId);
+        if (changed && named) {
+          const line = active ? tagsAdded : tagsRemoved;
+          sessionEvents.record(
+            session.id,
+            line(player ? player.name : GAME_MASTER, [tagLabel(tag)], named),
+          );
+        }
+
         logger.info("status tag set", {
           sessionId: session.id,
-          slotId: request.params.slotId,
+          slotId,
           tag,
           active,
+          changed,
           by: asPlayer ? "player" : "gm",
         });
 
