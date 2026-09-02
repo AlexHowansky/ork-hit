@@ -89,7 +89,7 @@ export function Login({ onIdentity }: { onIdentity: (identity: Identity) => void
       <div className="w-full max-w-md">
         <div className="mb-6 flex items-center justify-between">
           <h1 className="text-xl font-semibold">
-            <Icon icon={faDiceD20} className="h-5 w-5" /> TTRPG Synchronizer
+            <Icon icon={faDiceD20} className="h-5 w-5" /> HERO Initiative Tracker
           </h1>
           <ThemeToggle />
         </div>

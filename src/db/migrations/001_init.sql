@@ -1,4 +1,4 @@
--- Initial schema for the TTRPG Synchronizer.
+-- Initial schema for the HERO Initiative Tracker.
 
 -- Administrative users. Created only through the CLI; there is no account UI.
 CREATE TABLE gms (

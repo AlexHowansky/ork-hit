@@ -233,7 +233,7 @@ async function dbGc(args: Args): Promise<void> {
 }
 
 function usage(): void {
-  console.log(`TTRPG Synchronizer — game master accounts
+  console.log(`HERO Initiative Tracker — game master accounts
 
 Usage: bun run cli <command> [flags]
 

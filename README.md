@@ -1,4 +1,4 @@
-# TTRPG Synchronizer
+# HERO Initiative Tracker
 
 A private table companion. The game master keeps a library of campaigns and
 character sheets, starts a session, and hands out a code. Players join with that
