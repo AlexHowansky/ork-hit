@@ -19,7 +19,7 @@
 
 import { useState } from "react";
 import type { SessionCharacter } from "../types.ts";
-import { faPlay, faUserMinus } from "@fortawesome/free-solid-svg-icons";
+import { faPlay, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { actsIn } from "../../lib/hero.ts";
 import { StatLine } from "./StatLine.tsx";
 import { StatusTagButton, StatusTagPicker, StatusTagPills } from "./StatusTags.tsx";
@@ -129,114 +129,149 @@ function Row({
       aria-current={isActive ? "true" : undefined}
     >
       {/*
-        The controls fall onto their own line rather than squeezing the name out
-        of existence: three labelled buttons and a name cannot both have the room
-        they want in the game master's narrow column, and a name clipped to
-        nothing is worse than a row one line taller. `basis-40` is what makes the
-        wrap happen — without a width to fall below, the name column would shrink
-        to zero first and never trigger it.
+        Two groups, and only the inner one wraps. The controls fall onto their
+        own line rather than squeezing the name out of existence: labelled
+        buttons and a name cannot both have the room they want in the game
+        master's narrow column, and a name clipped to nothing is worse than a row
+        one line taller. `basis-40` is what makes the wrap happen — without a
+        width to fall below, the name column would shrink to zero first and never
+        trigger it.
+
+        The remove control is deliberately outside that group, so it holds the
+        row's top right corner however the rest of the line wraps under it.
+        `items-start` is what keeps it level with the name rather than centred
+        against a name column that has grown to two lines.
       */}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-      <span
-        className={`w-5 text-center text-xs tabular-nums ${TEXT_MUTED}`}
-        aria-hidden="true"
-      >
-        {index + 1}
-      </span>
-
-      <CharacterThumb kind={character.kind} cardUrl={character.cardUrl} />
-
-      <div className="min-w-0 flex-1 basis-40">
-        {/* Badges wrap below the name rather than crowding it out: with a picture
-            and three of them, the game master's narrower column runs out of room. */}
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+      <div className="flex items-start gap-1">
+        <div className="flex flex-1 flex-wrap items-center gap-x-3 gap-y-1">
           <span
-            className={`max-w-full truncate ${
-              isActive
-                ? "font-semibold text-base-content"
-                : isActing
-                  ? "text-base-content"
-                  : TEXT_MUTED
-            }`}
+            className={`w-5 text-center text-xs tabular-nums ${TEXT_MUTED}`}
+            aria-hidden="true"
           >
-            {character.name}
+            {index + 1}
           </span>
-          {copies > 1 ? (
-            // Read as part of the name above rather than as a badge of its own.
-            <CountBadge hidden>{character.copyNumber}</CountBadge>
-          ) : null}
-          <KindBadge kind={character.kind} />
-          {isActive ? (
-            <span className="badge badge-xs badge-primary font-semibold tracking-wide uppercase">
-              Turn
-            </span>
-          ) : null}
-          {isUnclaimed ? (
-            <span className="badge badge-xs badge-error badge-soft font-semibold tracking-wide uppercase">
-              Unclaimed
-            </span>
-          ) : null}
-          {/* Both audiences, whoever may change them: what condition a character
-              is in is what the table reads the row for. */}
-          <StatusTagPills tags={character.statusTags} />
+
+          <CharacterThumb kind={character.kind} cardUrl={character.cardUrl} />
+
+          <div className="min-w-0 flex-1 basis-40">
+            {/* Badges wrap below the name rather than crowding it out: with a picture
+                and three of them, the game master's narrower column runs out of room. */}
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span
+                className={`max-w-full truncate ${
+                  isActive
+                    ? "font-semibold text-base-content"
+                    : isActing
+                      ? "text-base-content"
+                      : TEXT_MUTED
+                }`}
+              >
+                {character.name}
+              </span>
+              {copies > 1 ? (
+                // Read as part of the name above rather than as a badge of its own.
+                <CountBadge hidden>{character.copyNumber}</CountBadge>
+              ) : null}
+              <KindBadge kind={character.kind} />
+              {isActive ? (
+                <span className="badge badge-xs badge-primary font-semibold tracking-wide uppercase">
+                  Turn
+                </span>
+              ) : null}
+              {isUnclaimed ? (
+                <span className="badge badge-xs badge-error badge-soft font-semibold tracking-wide uppercase">
+                  Unclaimed
+                </span>
+              ) : null}
+              {/* Both audiences, whoever may change them: what condition a character
+                  is in is what the table reads the row for. */}
+              <StatusTagPills tags={character.statusTags} />
+            </div>
+
+            {/*
+              The game master gets the four looked-up characteristics under the name,
+              in the same line a player reads on their own character panel: this is
+              the panel where the order is worked out, so the numbers it is worked
+              out from belong in it.
+
+              A player gets who is playing what instead, which is what the spec asks
+              of their scene. The trade is deliberate rather than a want of room —
+              another table's DEX is the game master's to give out, and who holds
+              which character is already on the game master's players panel, so
+              neither screen is carrying the other's line as well as its own.
+            */}
+            {editable ? (
+              <StatLine character={character} className="mt-0.5" />
+            ) : character.kind === "pc" ? (
+              <p
+                className={`mt-0.5 truncate text-xs ${
+                  isUnclaimed
+                    // Un-muted rather than coloured: the row's own error wash and
+                    // the "Unclaimed" badge already carry the signal, and a caption
+                    // drawn in a pale theme colour is the one that stops being read.
+                    ? "font-medium text-base-content"
+                    : TEXT_MUTED
+                }`}
+              >
+                {character.claimedByPlayerName
+                  ? `Played by ${character.claimedByPlayerName}${isYours ? " (you)" : ""}`
+                  : "No player has claimed this character"}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="flex shrink-0 items-center gap-1">
+            {onToggleTag ? (
+              <StatusTagButton character={character} onOpen={() => setTaggingOpen(true)} />
+            ) : null}
+            {editable && onSetTurn ? (
+              <button
+                type="button"
+                onClick={onSetTurn}
+                className="btn btn-ghost btn-xs"
+              >
+                <Icon icon={faPlay} /> Go now
+              </button>
+            ) : null}
+          </div>
         </div>
 
-        {/*
-          The game master gets the four looked-up characteristics under the name,
-          in the same line a player reads on their own character panel: this is
-          the panel where the order is worked out, so the numbers it is worked
-          out from belong in it.
-
-          A player gets who is playing what instead, which is what the spec asks
-          of their scene. The trade is deliberate rather than a want of room —
-          another table's DEX is the game master's to give out, and who holds
-          which character is already on the game master's players panel, so
-          neither screen is carrying the other's line as well as its own.
-        */}
-        {editable ? (
-          <StatLine character={character} className="mt-0.5" />
-        ) : character.kind === "pc" ? (
-          <p
-            className={`mt-0.5 truncate text-xs ${
-              isUnclaimed
-                // Un-muted rather than coloured: the row's own error wash and
-                // the "Unclaimed" badge already carry the signal, and a caption
-                // drawn in a pale theme colour is the one that stops being read.
-                ? "font-medium text-base-content"
-                : TEXT_MUTED
-            }`}
-          >
-            {character.claimedByPlayerName
-              ? `Played by ${character.claimedByPlayerName}${isYours ? " (you)" : ""}`
-              : "No player has claimed this character"}
-          </p>
-        ) : null}
-      </div>
-
-      <div className="flex shrink-0 items-center gap-1">
-        {onToggleTag ? (
-          <StatusTagButton character={character} onOpen={() => setTaggingOpen(true)} />
-        ) : null}
-        {editable && onSetTurn ? (
-          <button
-            type="button"
-            onClick={onSetTurn}
-            className="btn btn-ghost btn-xs"
-          >
-            <Icon icon={faPlay} /> Go now
-          </button>
-        ) : null}
+        {/* The one destructive control on the row, so it is the one kept out of
+            the cluster the game master's thumb lives in all night. Icon-only, so
+            the label is the whole of its name — and the copy number is in it, or
+            two goblins would offer the same instruction twice. The drag guard is
+            the tag button's, for the same reason: a press here is a press. */}
         {editable && onRemove ? (
           <button
             type="button"
             onClick={onRemove}
-            className="btn btn-soft btn-error btn-xs"
+            onPointerDown={(event) => event.stopPropagation()}
+            // No `btn` at all: the glyph is the whole control, in every state.
+            // `btn-ghost` still paints on hover — a wash of `base-content`, and
+            // a border, inset and shadow with it — and switching those off one
+            // by one is a longer argument with the cascade than simply not
+            // starting it. The bare icon controls on the character cards
+            // (`ui.tsx`) are written the same way and for the same reason.
+            //
+            // So the only thing hovering changes is the red, from held back to
+            // the full token. It carries the whole of the feedback, which is why
+            // the focus ring is spelled out — a keyboard reader gets no hover to
+            // tell them where they are.
+            //
+            // The box is a `btn-xs` square's 1.5rem, pulled up and out through
+            // the row's own `px-3 py-2.5` so it sits in the corner rather than a
+            // control's width inside it.
+            className={
+              "-mt-2 -mr-3 flex h-6 w-6 shrink-0 items-center justify-center rounded "
+              + "text-error/70 transition-colors hover:text-error focus-visible:text-error "
+              + "focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-error"
+            }
+            title={`Remove ${copyLabel} from the session`}
             aria-label={`Remove ${copyLabel} from the session`}
           >
-            <Icon icon={faUserMinus} /> Remove
+            <Icon icon={faXmark} />
           </button>
         ) : null}
-      </div>
       </div>
 
       {/*
