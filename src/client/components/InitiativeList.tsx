@@ -24,6 +24,7 @@ import { actsIn } from "../../lib/hero.ts";
 import { StatLine } from "./StatLine.tsx";
 import { StatusTagButton, StatusTagPicker, StatusTagPills } from "./StatusTags.tsx";
 import {
+  bareIcon,
   CharacterThumb,
   CountBadge,
   EmptyState,
@@ -31,7 +32,7 @@ import {
   KindBadge,
   TEXT_MUTED,
 } from "./ui.tsx";
-import { Vitals, type VitalsPatch } from "./Vitals.tsx";
+import { VitalActions, Vitals, type VitalsPatch } from "./Vitals.tsx";
 
 /**
  * What to call one slot, given the whole stage.
@@ -102,6 +103,10 @@ function Row({
   // apart from; a lone goblin is just the goblin. Spoken names take it too, or
   // two rows of "Remove Goblin" would be the same instruction twice.
   const copyLabel = copies > 1 ? `${character.name} ${character.copyNumber}` : character.name;
+
+  // Whether this reader has anything to press. A player's list is given none of
+  // these, and an empty cluster would still take the gap beside the numbers.
+  const hasControls = Boolean(onToggleTag || (editable && onSetTurn) || onRecover || onRest);
 
   return (
     <li
@@ -220,20 +225,6 @@ function Row({
             ) : null}
           </div>
 
-          <div className="flex shrink-0 items-center gap-1">
-            {onToggleTag ? (
-              <StatusTagButton character={character} onOpen={() => setTaggingOpen(true)} />
-            ) : null}
-            {editable && onSetTurn ? (
-              <button
-                type="button"
-                onClick={onSetTurn}
-                className="btn btn-ghost btn-xs"
-              >
-                <Icon icon={faPlay} /> Go now
-              </button>
-            ) : null}
-          </div>
         </div>
 
         {/* The one destructive control on the row, so it is the one kept out of
@@ -246,26 +237,11 @@ function Row({
             type="button"
             onClick={onRemove}
             onPointerDown={(event) => event.stopPropagation()}
-            // No `btn` at all: the glyph is the whole control, in every state.
-            // `btn-ghost` still paints on hover — a wash of `base-content`, and
-            // a border, inset and shadow with it — and switching those off one
-            // by one is a longer argument with the cascade than simply not
-            // starting it. The bare icon controls on the character cards
-            // (`ui.tsx`) are written the same way and for the same reason.
-            //
-            // So the only thing hovering changes is the red, from held back to
-            // the full token. It carries the whole of the feedback, which is why
-            // the focus ring is spelled out — a keyboard reader gets no hover to
-            // tell them where they are.
-            //
-            // The box is a `btn-xs` square's 1.5rem, pulled up and out through
-            // the row's own `px-3 py-2.5` so it sits in the corner rather than a
-            // control's width inside it.
-            className={
-              "-mt-2 -mr-3 flex h-6 w-6 shrink-0 items-center justify-center rounded "
-              + "text-error/70 transition-colors hover:text-error focus-visible:text-error "
-              + "focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-error"
-            }
+            // The same bare control as the four in the cluster below, in the
+            // one colour that says what this one does. Pulled up and out through
+            // the row's own `px-3 py-2.5`, so it sits in the corner rather than
+            // a control's width inside it.
+            className={`-mt-2 -mr-3 ${bareIcon("danger")}`}
             title={`Remove ${copyLabel} from the session`}
             aria-label={`Remove ${copyLabel} from the session`}
           >
@@ -290,17 +266,59 @@ function Row({
         three labelled boxes, a name and a control cannot all have the room they
         need in the game master's narrow panel, and across the full width they
         fit on one line. Only slightly indented — the width is what keeps the
-        Recovery control on the same line as the numbers it changes, so there is
-        none to give away to lining up with the name above.
+        controls beside it on the same line as the numbers half of them change,
+        so there is none to give away to lining up with the name above.
+
+        Everything this reader may do to the character is gathered at the right
+        of that same line: the conditions, a Recovery, a rest and the turn. Four
+        glyphs in one place read as one set of controls, where the same four
+        split across the two lines of the row read as two — and it puts them all
+        under the same thumb, at the far end from the one control that takes a
+        character off the stage.
       */}
-      {onSetVitals ? (
-        <Vitals
-          character={character}
-          onChange={onSetVitals}
-          onRecover={onRecover}
-          onRest={onRest}
-          className="pl-2"
-        />
+      {onSetVitals || hasControls ? (
+        <div className="flex items-end gap-2">
+          {onSetVitals ? (
+            <Vitals
+              character={character}
+              onChange={onSetVitals}
+              className="min-w-0 flex-1 pl-2"
+            />
+          ) : null}
+          {hasControls ? (
+            // `ml-auto` rather than `justify-between`, so the cluster still sits
+            // at the right edge on a row that has no numbers to sit beside. The
+            // negative pair pulls it out through the row's own `px-3 py-2.5`,
+            // close to the corner the remove control holds at the top.
+            //
+            // Barely a gap between them: four glyphs a hair apart read as one
+            // set of controls, where four evenly spaced across the end of the
+            // row read as four separate ones.
+            <div className="-mr-2 -mb-2 ml-auto flex shrink-0 items-center gap-0.5">
+              {onToggleTag ? (
+                <StatusTagButton character={character} onOpen={() => setTaggingOpen(true)} bare />
+              ) : null}
+              <VitalActions character={character} onRecover={onRecover} onRest={onRest} bare />
+              {editable && onSetTurn ? (
+                // Icon-only, like the three beside it: the play arrow is what a
+                // game master reaches for mid-fight, and three words of label
+                // were most of what made this row wrap. The name lives in the
+                // label instead, where it can afford to say which character it
+                // means — two goblins would otherwise offer the same instruction.
+                <button
+                  type="button"
+                  onClick={onSetTurn}
+                  onPointerDown={(event) => event.stopPropagation()}
+                  className={bareIcon()}
+                  title={`Give ${copyLabel} the turn`}
+                  aria-label={`Give ${copyLabel} the turn`}
+                >
+                  <Icon icon={faPlay} />
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
       ) : null}
 
       {taggingOpen && onToggleTag ? (

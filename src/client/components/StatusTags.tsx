@@ -34,7 +34,16 @@ import {
   type StatusTag,
   tagLabel,
 } from "../../lib/hero.ts";
-import { Button, Field, HAIRLINE, Icon, Modal, PANEL_CAPTION, TEXT_MUTED } from "./ui.tsx";
+import {
+  bareIcon,
+  Button,
+  Field,
+  HAIRLINE,
+  Icon,
+  Modal,
+  PANEL_CAPTION,
+  TEXT_MUTED,
+} from "./ui.tsx";
 import type { SessionCharacter } from "../types.ts";
 
 /**
@@ -207,9 +216,11 @@ export function StatusTagPicker({
  * Sized and styled like the Recovery and rest controls it sits beside, including
  * their guard against a press being taken for the start of a drag.
  */
-export function StatusTagButton({ character, onOpen }: {
+export function StatusTagButton({ character, onOpen, bare = false }: {
   character: SessionCharacter;
   onOpen: () => void;
+  /** Just the glyph, for the segment row's cluster. See `bareIcon`. */
+  bare?: boolean;
 }) {
   return (
     <button
@@ -218,7 +229,7 @@ export function StatusTagButton({ character, onOpen }: {
       onPointerDown={(event) => event.stopPropagation()}
       title={`Set ${character.name}'s status`}
       aria-label={`Set ${character.name}'s status`}
-      className={`btn btn-ghost btn-square btn-xs ${TEXT_MUTED}`}
+      className={bare ? bareIcon() : `btn btn-ghost btn-square btn-xs ${TEXT_MUTED}`}
     >
       <Icon icon={faTag} />
     </button>

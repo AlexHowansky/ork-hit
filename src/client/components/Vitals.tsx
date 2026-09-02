@@ -27,6 +27,7 @@ import { useState } from "react";
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import { faBed, faHeartPulse } from "@fortawesome/free-solid-svg-icons";
 import {
+  bareIcon,
   Button,
   Field,
   HAIRLINE,
@@ -257,11 +258,12 @@ function Box({
  * it follows. What each does is spelled out in the label and the tooltip, which
  * is where a control with a picture on it says what it means.
  */
-function VitalAction({ icon, label, title, onClick }: {
+function VitalAction({ icon, label, title, onClick, bare = false }: {
   icon: IconDefinition;
   label: string;
   title: string;
   onClick: () => void;
+  bare?: boolean;
 }) {
   return (
     <button
@@ -271,10 +273,51 @@ function VitalAction({ icon, label, title, onClick }: {
       onPointerDown={(event) => event.stopPropagation()}
       title={title}
       aria-label={label}
-      className={`btn btn-ghost btn-square btn-xs ${TEXT_MUTED}`}
+      className={bare ? bareIcon() : `btn btn-ghost btn-square btn-xs ${TEXT_MUTED}`}
     >
       <Icon icon={icon} />
     </button>
+  );
+}
+
+/**
+ * The pair of them, wherever they are drawn.
+ *
+ * A component rather than two calls at each site because what each button says
+ * belongs with the button: the Recovery's tooltip carries this character's REC,
+ * and a second copy of that sentence somewhere else is a second copy to keep
+ * right. The initiative row gathers its controls into a cluster of its own and
+ * so draws these itself; the character panel lets `Vitals` draw them at the end
+ * of the numbers they change.
+ */
+export function VitalActions({ character, onRecover, onRest, bare = false }: {
+  character: SessionCharacter;
+  onRecover?: () => void;
+  onRest?: () => void;
+  /** Passed to both: just the glyph, for the segment row's cluster. */
+  bare?: boolean;
+}) {
+  return (
+    <>
+      {onRecover ? (
+        <VitalAction
+          icon={faHeartPulse}
+          label={`Take a Recovery for ${character.name}`}
+          title={`Take a Recovery: +${character.recovery} to END and STUN, up to full`}
+          onClick={onRecover}
+          bare={bare}
+        />
+      ) : null}
+      {onRest ? (
+        <VitalAction
+          icon={faBed}
+          label={`Rest ${character.name}`}
+          title="Rest: END and STUN back to full"
+          onClick={onRest}
+          bare={bare}
+        />
+      ) : null}
+    </>
   );
 }
 
@@ -321,22 +364,7 @@ export function Vitals({
           />
         );
       })}
-      {onRecover ? (
-        <VitalAction
-          icon={faHeartPulse}
-          label={`Take a Recovery for ${character.name}`}
-          title={`Take a Recovery: +${character.recovery} to END and STUN, up to full`}
-          onClick={onRecover}
-        />
-      ) : null}
-      {onRest ? (
-        <VitalAction
-          icon={faBed}
-          label={`Rest ${character.name}`}
-          title="Rest: END and STUN back to full"
-          onClick={onRest}
-        />
-      ) : null}
+      <VitalActions character={character} onRecover={onRecover} onRest={onRest} />
     </div>
   );
 }

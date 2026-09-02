@@ -247,7 +247,7 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
 
     // Turn marker.
     await gm.getByRole("listitem").filter({ hasText: "Strahd" })
-      .getByRole("button", { name: "Go now" }).click();
+      .getByRole("button", { name: /Give .* the turn/ }).click();
     await player.locator("p", { hasText: "Up now:" }).getByText("Strahd")
       .waitFor({ timeout: 5000 });
 
@@ -453,14 +453,14 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
 
     // An NPC's turn is not this player's business.
     await gm.getByRole("listitem").filter({ hasText: "Strahd" })
-      .getByRole("button", { name: "Go now" }).click();
+      .getByRole("button", { name: /Give .* the turn/ }).click();
     await player.locator("p", { hasText: "Up now:" }).getByText("Strahd")
       .waitFor({ timeout: 5000 });
     expect(await player.getByText("It's your turn!").count()).toBe(0);
 
     // Their own character's turn is.
     await gm.getByRole("listitem").filter({ hasText: "Thorin" })
-      .getByRole("button", { name: "Go now" }).click();
+      .getByRole("button", { name: /Give .* the turn/ }).click();
     await player.getByText("It's your turn!").waitFor({ timeout: 5000 });
   }, 60_000);
 

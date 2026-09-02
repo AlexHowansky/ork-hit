@@ -53,6 +53,33 @@ export const TEXT_MUTED = "text-base-content/60";
 export const HAIRLINE = "border-base-300";
 
 /**
+ * A control that is nothing but its glyph, in every state.
+ *
+ * `btn-ghost` is the usual answer to "an icon button with no chrome", but it is
+ * only chromeless at rest: hovering it paints a wash of `base-content` and a
+ * border, inset and shadow with it. Switching those off one at a time is a
+ * longer argument with the cascade than not starting it, so these controls carry
+ * no `btn` at all — the same reasoning the `bare` variant of `IconButton` below
+ * is written from.
+ *
+ * The box is a `btn-xs` square's 1.5rem, so a bare control lines up with a
+ * daisyUI one beside it. The glyph is whatever the row's font size is, since
+ * FontAwesome draws an icon at `1em` and nothing here overrides it.
+ *
+ * Colour carries the whole of the feedback, which is why the focus ring is
+ * spelled out: a keyboard reader gets no hover to tell them where they are.
+ * `danger` is for the one control that takes something away.
+ */
+export function bareIcon(tone: "muted" | "danger" = "muted"): string {
+  const colour = tone === "danger"
+    ? "text-error/70 hover:text-error focus-visible:text-error focus-visible:outline-error"
+    : `${TEXT_MUTED} hover:text-base-content focus-visible:text-base-content `
+      + "focus-visible:outline-base-content";
+  return "flex h-6 w-6 shrink-0 items-center justify-center rounded transition-colors "
+    + `focus-visible:outline-2 focus-visible:outline-offset-1 ${colour}`;
+}
+
+/**
  * The caption above a form field. Every field in the app is a `<label>` whose
  * first child is this, which is the shape `tests/e2e.test.ts` reads a form by —
  * which is also why these are not daisyUI's `fieldset`/`legend` form pattern.
