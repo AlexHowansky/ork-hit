@@ -18,6 +18,7 @@ import {
   portraitFromSheet,
   storeImage,
   storeSheet,
+  uploadPath,
 } from "../src/server/uploads.ts";
 import { limits } from "../src/lib/config.ts";
 import { uploads } from "../src/db/queries.ts";
@@ -37,7 +38,7 @@ describe("character sheets", () => {
     const upload = await storeSheet(file("hero.html", html));
 
     // Nothing is stripped: an interactive sheet has to keep working.
-    expect(await Bun.file(upload.disk_path).text()).toBe(html);
+    expect(await Bun.file(uploadPath(upload)).text()).toBe(html);
     expect(upload.mime).toBe("text/html");
   });
 
@@ -133,7 +134,7 @@ describe("the portrait inside a sheet", () => {
     expect(found?.kind).toBe("image");
 
     // Byte for byte what the sheet carried, not a re-encoding of it.
-    const stored = new Uint8Array(await Bun.file(found!.disk_path).arrayBuffer());
+    const stored = new Uint8Array(await Bun.file(uploadPath(found!)).arrayBuffer());
     expect([...stored]).toEqual([...portrait]);
   });
 
@@ -149,7 +150,7 @@ describe("the portrait inside a sheet", () => {
 
     // The picture's own bytes are gone; everything the game master wrote around
     // them is untouched, the emptied `src` included.
-    const html = await Bun.file(sheet.disk_path).text();
+    const html = await Bun.file(uploadPath(sheet)).text();
     expect(html).not.toContain(encoded);
     expect(html).toContain("<h1>Hero</h1>");
     expect(html).toContain("<p>Strength 18</p>");
@@ -157,7 +158,7 @@ describe("the portrait inside a sheet", () => {
 
     // And the row still describes the file it points at.
     const row = uploads.byId(sheet.id)!;
-    const stored = new Uint8Array(await Bun.file(sheet.disk_path).arrayBuffer());
+    const stored = new Uint8Array(await Bun.file(uploadPath(sheet)).arrayBuffer());
     expect(row.byte_size).toBe(stored.byteLength);
     expect(row.byte_size).toBeLessThan(before);
     expect(row.sha256).toBe(new Bun.CryptoHasher("sha256").update(stored).digest("hex"));
@@ -182,7 +183,7 @@ describe("the portrait inside a sheet", () => {
 
     expect(await portraitFromSheet(sheet)).not.toBeNull();
 
-    const html = await Bun.file(sheet.disk_path).text();
+    const html = await Bun.file(uploadPath(sheet)).text();
     expect(html).not.toContain(hex);
     expect(html).toContain("const imageHex = '';");
     // The sheet is never pointed at the card, and nothing is appended to it.
@@ -195,7 +196,7 @@ describe("the portrait inside a sheet", () => {
     const sheet = await sheetWith(body);
 
     expect(await portraitFromSheet(sheet)).toBeNull();
-    expect(await Bun.file(sheet.disk_path).text()).toBe(body);
+    expect(await Bun.file(uploadPath(sheet)).text()).toBe(body);
     expect(uploads.byId(sheet.id)!.byte_size).toBe(sheet.byte_size);
   });
 
@@ -208,7 +209,7 @@ describe("the portrait inside a sheet", () => {
 
     expect(await portraitFromSheet(sheet)).not.toBeNull();
 
-    const html = await Bun.file(sheet.disk_path).text();
+    const html = await Bun.file(uploadPath(sheet)).text();
     expect(html).not.toContain(Buffer.from(face).toString("base64"));
     // The dice icon is still furniture the sheet needs to draw itself.
     expect(html).toContain(Buffer.from(icon).toString("base64"));
@@ -224,7 +225,7 @@ describe("the portrait inside a sheet", () => {
 
     const found = await portraitFromSheet(sheet);
     expect(found?.mime).toBe("image/gif");
-    expect((await Bun.file(found!.disk_path).arrayBuffer()).byteLength).toBe(9000);
+    expect((await Bun.file(uploadPath(found!)).arrayBuffer()).byteLength).toBe(9000);
   });
 
   test("is found where a script hid it, rather than only in a data URI", async () => {
@@ -244,7 +245,7 @@ describe("the portrait inside a sheet", () => {
 
     const found = await portraitFromSheet(sheet);
     expect(found?.mime).toBe("image/png");
-    const stored = new Uint8Array(await Bun.file(found!.disk_path).arrayBuffer());
+    const stored = new Uint8Array(await Bun.file(uploadPath(found!)).arrayBuffer());
     expect([...stored]).toEqual([...portrait]);
   });
 
@@ -311,7 +312,7 @@ describe("images are stored at the size, and in the format, they are best kept i
     const upload = await storeImage(file("big.png", await picture(2000, 1500)));
 
     // The shorter side is what has to cover the card, so that is what is fitted.
-    expect(await sizeOf(upload.disk_path)).toEqual({
+    expect(await sizeOf(uploadPath(upload))).toEqual({
       width: Math.round((2000 / 1500) * limits.storedImagePx),
       height: limits.storedImagePx,
       // A photograph in a lossless format is the case WebP wins by the most, so
@@ -323,7 +324,7 @@ describe("images are stored at the size, and in the format, they are best kept i
 
   test("the shape of the picture is never changed", async () => {
     const tall = await storeImage(file("tall.png", await picture(900, 2700)));
-    const { width, height } = await sizeOf(tall.disk_path);
+    const { width, height } = await sizeOf(uploadPath(tall));
 
     expect(width).toBe(limits.storedImagePx);
     expect(height! / width!).toBeCloseTo(2700 / 900, 1);
@@ -333,7 +334,7 @@ describe("images are stored at the size, and in the format, they are best kept i
     // A panorama keeps its panorama-ness: the card crops at display time, and the
     // rest of the picture is still in the file.
     const wide = await storeImage(file("wide.png", await picture(4000, 800)));
-    const { width, height } = await sizeOf(wide.disk_path);
+    const { width, height } = await sizeOf(uploadPath(wide));
 
     expect(height).toBe(limits.storedImagePx);
     expect(width).toBe(Math.round(4000 * (limits.storedImagePx / 800)));
@@ -345,7 +346,7 @@ describe("images are stored at the size, and in the format, they are best kept i
 
     // Nothing is enlarged to fill the card — the size it arrived at is the size
     // it is kept at, even though the bytes may now be WebP rather than PNG.
-    expect(await sizeOf(upload.disk_path)).toMatchObject({ width: 300, height: 200 });
+    expect(await sizeOf(uploadPath(upload))).toMatchObject({ width: 300, height: 200 });
     expect(upload.byte_size).toBeLessThanOrEqual(original.byteLength);
   });
 
@@ -355,7 +356,7 @@ describe("images are stored at the size, and in the format, they are best kept i
     const upload = await storeImage(file("tiny.png", PNG));
 
     expect(upload.mime).toBe("image/png");
-    const stored = new Uint8Array(await Bun.file(upload.disk_path).arrayBuffer());
+    const stored = new Uint8Array(await Bun.file(uploadPath(upload)).arrayBuffer());
     expect([...stored]).toEqual([...PNG]);
   });
 
@@ -364,11 +365,11 @@ describe("images are stored at the size, and in the format, they are best kept i
 
     // Whichever format wins, every frame is still there and the picture is the
     // size a card wants — a GIF must never come back as one still frame.
-    const { pages, height } = await sharp(await Bun.file(upload.disk_path).arrayBuffer())
+    const { pages, height } = await sharp(await Bun.file(uploadPath(upload)).arrayBuffer())
       .metadata();
     expect(height).toBe(limits.storedImagePx);
     expect(pages ?? 1).toBe(1);
-    expect(upload.mime).toBe(`image/${(await sizeOf(upload.disk_path)).format}`);
+    expect(upload.mime).toBe(`image/${(await sizeOf(uploadPath(upload))).format}`);
   });
 
   test("a portrait taken out of a sheet is scaled like any other picture", async () => {
@@ -378,7 +379,7 @@ describe("images are stored at the size, and in the format, they are best kept i
     );
 
     const found = await portraitFromSheet(sheet);
-    expect(await sizeOf(found!.disk_path)).toMatchObject({ height: limits.storedImagePx });
+    expect(await sizeOf(uploadPath(found!))).toMatchObject({ height: limits.storedImagePx });
   });
 });
 
@@ -387,21 +388,21 @@ describe("housekeeping", () => {
     const kept = await storeSheet(file("kept.html", "<p>keep me</p>"));
     // A file written straight into the upload directory, as an interrupted
     // upload or an older database would leave behind.
-    const stray = join(dirname(kept.disk_path), "stray-file");
+    const stray = join(dirname(uploadPath(kept)), "stray-file");
     await Bun.write(stray, "<p>nobody's</p>");
 
     expect(await findStrayFiles()).toContain(stray);
-    expect(await findStrayFiles()).not.toContain(kept.disk_path);
+    expect(await findStrayFiles()).not.toContain(uploadPath(kept));
 
     await collectStrayFiles();
 
     expect(await Bun.file(stray).exists()).toBe(false);
-    expect(await Bun.file(kept.disk_path).exists()).toBe(true);
+    expect(await Bun.file(uploadPath(kept)).exists()).toBe(true);
   });
 
   test("deleting an upload whose file has already gone is not an error", async () => {
     const upload = await storeSheet(file("gone.html", "<p>x</p>"));
-    await unlink(upload.disk_path);
+    await unlink(uploadPath(upload));
 
     await expect(deleteUpload(upload.id)).resolves.toBeUndefined();
   });

@@ -17,7 +17,7 @@
  */
 
 import { mkdir, readdir, unlink } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { isAbsolute, join, resolve } from "node:path";
 import sharp from "sharp";
 import { config, limits } from "../lib/config.ts";
 import { errors } from "../lib/errors.ts";
@@ -28,6 +28,19 @@ import type { UploadRow } from "../db/types.ts";
 
 const SHEET_DIR = resolve(config.uploadDir, "sheets");
 const IMAGE_DIR = resolve(config.uploadDir, "images");
+
+/**
+ * Where an upload's file actually is.
+ *
+ * `disk_path` is stored relative to the upload directory, so the rows survive
+ * the checkout being renamed or moved — an absolute path written at upload time
+ * froze the directory name of the day into every row, and a rename orphaned the
+ * lot. Rows written before that changed hold an absolute path and are passed
+ * through untouched.
+ */
+export function uploadPath(row: Pick<UploadRow, "disk_path">): string {
+  return isAbsolute(row.disk_path) ? row.disk_path : resolve(config.uploadDir, row.disk_path);
+}
 
 await mkdir(SHEET_DIR, { recursive: true });
 await mkdir(IMAGE_DIR, { recursive: true });
@@ -83,7 +96,9 @@ async function persist(
   // (a restore from an older database, say) with nothing to identify it. Reading
   // an upload still goes through `disk_path` rather than rebuilding the path
   // from the id, so files can be rehomed and rows written before this change
-  // keep working untouched.
+  // keep working untouched. What the row stores is relative to the upload
+  // directory: an absolute path would name whatever directory the checkout sat
+  // in the day the file arrived, and moving it would orphan every upload.
   const id = newId();
   const diskPath = join(directory, id);
   await Bun.write(diskPath, bytes);
@@ -91,7 +106,7 @@ async function persist(
   const row = uploads.create({
     id,
     kind,
-    diskPath,
+    diskPath: join(kind === "image" ? "images" : "sheets", id),
     mime,
     byteSize: bytes.byteLength,
     sha256: sha256(bytes),
@@ -305,7 +320,7 @@ const ENCODINGS = [
 export async function portraitFromSheet(sheet: UploadRow): Promise<UploadRow | null> {
   let html: string;
   try {
-    html = await Bun.file(sheet.disk_path).text();
+    html = await Bun.file(uploadPath(sheet)).text();
   } catch (error) {
     log.warn("could not re-read sheet to look for a portrait", { uploadId: sheet.id, error });
     return null;
@@ -394,12 +409,12 @@ export async function portraitFromSheet(sheet: UploadRow): Promise<UploadRow | n
  */
 async function removeRun(sheet: UploadRow, run: string): Promise<void> {
   try {
-    const html = await Bun.file(sheet.disk_path).text();
+    const html = await Bun.file(uploadPath(sheet)).text();
     const trimmed = html.replaceAll(run, "");
     if (trimmed === html) return;
 
     const bytes = new TextEncoder().encode(trimmed);
-    await Bun.write(sheet.disk_path, bytes);
+    await Bun.write(uploadPath(sheet), bytes);
     // The row describes the file, so what the file now weighs and hashes to has
     // to travel with it — `db:gc` and the duplicate check both read those.
     uploads.rewrite(sheet.id, { byteSize: bytes.byteLength, sha256: sha256(bytes) });
@@ -418,7 +433,7 @@ export async function deleteUpload(uploadId: string): Promise<void> {
   if (!row) return;
   uploads.remove(row.id);
   try {
-    await unlink(row.disk_path);
+    await unlink(uploadPath(row));
   } catch (error) {
     // A file that has already gone is the ordinary case when a sweep catches up
     // with rows left behind by something else, so it is not worth a warning. A
@@ -452,7 +467,7 @@ export async function collectOrphanedUploads(): Promise<number> {
  * are kept is this module's business and nobody else's.
  */
 export async function findStrayFiles(): Promise<string[]> {
-  const claimed = new Set(uploads.all().map((row) => row.disk_path));
+  const claimed = new Set(uploads.all().map(uploadPath));
   const stray: string[] = [];
   for (const directory of [SHEET_DIR, IMAGE_DIR]) {
     for (const name of await readdir(directory)) {

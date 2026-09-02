@@ -20,11 +20,12 @@ import { handler } from "../http.ts";
 import { errors } from "../../lib/errors.ts";
 import { currentGm, currentPlayer } from "../middleware/auth.ts";
 import { campaigns, characters, uploads } from "../../db/queries.ts";
+import { uploadPath } from "../uploads.ts";
 import type { UploadRow } from "../../db/types.ts";
 
 /** Streams an upload from disk, or 404s if the row points at a missing file. */
 async function serveUpload(upload: UploadRow, headers: Record<string, string>): Promise<Response> {
-  const file = Bun.file(upload.disk_path);
+  const file = Bun.file(uploadPath(upload));
   if (!(await file.exists())) {
     throw errors.notFound("That file is no longer available.");
   }

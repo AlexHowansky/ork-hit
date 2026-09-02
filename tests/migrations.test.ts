@@ -45,7 +45,7 @@ describe("one active session per campaign", () => {
     addActiveSession(target, "mid", "2026-01-01T11:00:00.000Z");
     addActiveSession(target, "new", "2026-01-01T12:00:00.000Z");
 
-    expect(migrate(target)).toBe(8);
+    expect(migrate(target)).toBe(9);
 
     const statuses = Object.fromEntries(
       target.query<{ id: string; status: string }, []>(
@@ -238,5 +238,31 @@ describe("card images", () => {
         "SELECT card_upload_id FROM characters WHERE id = 'ch1'",
       ).get()!.card_upload_id,
     ).toBe("u1");
+  });
+});
+
+describe("upload paths", () => {
+  test("an absolute path from an older checkout becomes one relative to the upload directory", () => {
+    const target = atInitialSchema();
+    target.exec(`
+      INSERT INTO uploads
+        VALUES ('u1', 'image', '/home/someone/old-name/data/uploads/images/u1',
+                'image/png', 10, 'sha', 'art.png', '2026-01-01T00:00:00.000Z');
+      INSERT INTO uploads
+        VALUES ('u2', 'sheet', '/home/someone/old-name/data/uploads/sheets/u2',
+                'text/html', 10, 'sha', 'hero.html', '2026-01-01T00:00:00.000Z');
+    `);
+
+    migrate(target);
+
+    // The directory the checkout happened to sit in is gone from the row, so
+    // renaming or moving it no longer orphans the file.
+    expect(
+      Object.fromEntries(
+        target.query<{ id: string; disk_path: string }, []>(
+          "SELECT id, disk_path FROM uploads",
+        ).all().map((row) => [row.id, row.disk_path]),
+      ),
+    ).toEqual({ u1: "images/u1", u2: "sheets/u2" });
   });
 });
