@@ -442,30 +442,41 @@ export function PlayerSession({
               // with an ellipsis for the same reason; the whole of it is on the
               // page header above.
               <div className="space-y-3">
+                {/*
+                  The row a character gets on the game master's segment panel:
+                  the big square, then the same three lines beside it — who they
+                  are, the four numbers the order is worked out from, and what
+                  they have left. A player reading over the game master's
+                  shoulder is reading their own row twice rather than two
+                  arrangements of it, which is the same reason `StatLine` is
+                  shared between the two screens at all.
+                */}
                 <div className="flex items-center gap-3">
                   <CharacterThumb
+                    fill
                     kind={myCharacter.kind}
                     cardUrl={myCharacter.cardUrl}
                   />
-                  <div className="min-w-0">
+                  <div className="flex min-w-0 flex-1 flex-col justify-center gap-1">
                     <p className="truncate font-medium">{myCharacter.name}</p>
                     <StatLine character={myCharacter} />
+                    {/*
+                      Spent during a fight, and this player's own to spend. The
+                      line does not wrap, and this column's width is the reader's
+                      to choose, so it is pushed sideways to see the end of
+                      rather than allowed to spill: without this it overflowed
+                      the panel and lay across the drag handle beside it, which
+                      put the handle out of reach exactly when a reader wanted
+                      their column back.
+                    */}
+                    <div className="overflow-x-auto">
+                      <Vitals
+                        character={myCharacter}
+                        wrap={false}
+                        onChange={(patch) => void setVitals(myCharacter.id, patch)}
+                      />
+                    </div>
                   </div>
-                </div>
-                {/*
-                  Spent during a fight, and this player's own to spend. The line
-                  does not wrap, and this column's width is the reader's to
-                  choose, so it is pushed sideways to see the end of rather than
-                  allowed to spill: without this it overflowed the panel and lay
-                  across the drag handle beside it, which put the handle out of
-                  reach exactly when a reader wanted their column back.
-                */}
-                <div className="overflow-x-auto">
-                <Vitals
-                  character={myCharacter}
-                  wrap={false}
-                  onChange={(patch) => void setVitals(myCharacter.id, patch)}
-                />
                 </div>
                 {/*
                   And what condition they are in, set here rather than in the
