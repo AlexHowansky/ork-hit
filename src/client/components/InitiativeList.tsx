@@ -112,7 +112,8 @@ function Row({
   const copyLabel = copies > 1 ? `${character.name} ${character.copyNumber}` : character.name;
 
   // Whether this reader has anything to press. A player's list is given none of
-  // these, and an empty cluster would still take the gap beside the numbers.
+  // these, and an empty cluster would still take a gap out of the width the name
+  // has to say itself in.
   const hasControls = Boolean(
     onToggleTag || onToggleHold || (editable && onSetTurn) || onRecover || onRest,
   );
@@ -133,7 +134,18 @@ function Row({
       // the game master can still see and reach them — their STUN is still theirs
       // to change on a segment they are not acting in. The filter button above
       // takes them out of the list entirely for a reader who would rather that.
-      className={`flex flex-col gap-1 border-l-4 px-3 py-2.5 ${
+      //
+      // The row itself is the flex line, in three columns: the number, the
+      // picture, and everything there is to read. Nothing here sets a height —
+      // the stack of text is what the row is as tall as, and the two columns
+      // beside it stretch to match.
+      //
+      // `relative` is for the remove control, which is taken out of the flow and
+      // hung in the top right corner. In the line it would be a column of its
+      // own, and a column is as wide as its widest row: the toolbar under it is
+      // five glyphs across, so a hundred and twenty pixels of the name's width
+      // would go to holding a corner.
+      className={`relative flex items-stretch gap-2 border-l-4 px-3 py-2.5 ${
         isActive
           ? "border-l-primary bg-primary/10"
           : isUnclaimed
@@ -142,233 +154,223 @@ function Row({
       } ${isActing ? "" : "opacity-60"}`}
       aria-current={isActive ? "true" : undefined}
     >
-      {/*
-        Two groups, and only the inner one wraps. The controls fall onto their
-        own line rather than squeezing the name out of existence: labelled
-        buttons and a name cannot both have the room they want in the game
-        master's narrow column, and a name clipped to nothing is worse than a row
-        one line taller. `basis-40` is what makes the wrap happen — without a
-        width to fall below, the name column would shrink to zero first and never
-        trigger it.
+      {/* Where a character stands in the order, against the whole stage. Centred
+          down the full height of the row rather than sat on the first line: it
+          numbers the row, not the name. */}
+      <span
+        className={`flex w-5 shrink-0 items-center justify-center text-xs tabular-nums ${TEXT_MUTED}`}
+        aria-hidden="true"
+      >
+        {index + 1}
+      </span>
 
-        The remove control is deliberately outside that group, so it holds the
-        row's top right corner however the rest of the line wraps under it.
-        `items-start` is what keeps it level with the name rather than centred
-        against a name column that has grown to two lines.
-      */}
-      <div className="flex items-start gap-1">
-        <div className="flex flex-1 flex-wrap items-center gap-x-3 gap-y-1">
+      {/* The game master's list gets the big square, which is about as tall as
+          the three lines of text beside it and so fills the row without the
+          layout having to be told the row's height — see `CharacterThumb`, where
+          why it is a size rather than a ratio is written down.
+
+          A player's row is one or two lines rather than three, so that list
+          keeps the small thumb: the big one would be the tallest thing in the
+          row and would set the height of every row in the list. */}
+      <CharacterThumb fill={editable} kind={character.kind} cardUrl={character.cardUrl} />
+
+      {/* Everything there is to read about this character, in three lines: who
+          they are, what they are, and what they have left. The column is what
+          sets the height of the row, so it carries no minimum of its own — a
+          player's row, which has no numbers to draw, is simply shorter. */}
+      <div className="flex min-w-0 flex-1 flex-col justify-center gap-1">
+        {/* Badges wrap below the name rather than crowding it out: with a picture
+            and three of them, the game master's narrower column runs out of room.
+            The room on the right is for the remove control hanging over this
+            line — only this line, since that is as far down as it reaches. */}
+        <div className={`flex flex-wrap items-center gap-x-2 gap-y-1 ${
+          editable && onRemove ? "pr-5" : ""
+        }`}>
           <span
-            className={`w-5 text-center text-xs tabular-nums ${TEXT_MUTED}`}
-            aria-hidden="true"
+            className={`max-w-full truncate ${
+              isActive
+                ? "font-semibold text-base-content"
+                : isActing
+                  ? "text-base-content"
+                  : TEXT_MUTED
+            }`}
           >
-            {index + 1}
+            {character.name}
           </span>
-
-          <CharacterThumb kind={character.kind} cardUrl={character.cardUrl} />
-
-          <div className="min-w-0 flex-1 basis-40">
-            {/* Badges wrap below the name rather than crowding it out: with a picture
-                and three of them, the game master's narrower column runs out of room. */}
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <span
-                className={`max-w-full truncate ${
-                  isActive
-                    ? "font-semibold text-base-content"
-                    : isActing
-                      ? "text-base-content"
-                      : TEXT_MUTED
-                }`}
-              >
-                {character.name}
-              </span>
-              {copies > 1 ? (
-                // Read as part of the name above rather than as a badge of its own.
-                <CountBadge hidden>{character.copyNumber}</CountBadge>
-              ) : null}
-              <KindBadge kind={character.kind} />
-              {isActive ? (
-                <span className="badge badge-xs badge-primary font-semibold tracking-wide uppercase">
-                  Turn
-                </span>
-              ) : null}
-              {isUnclaimed ? (
-                <span className="badge badge-xs badge-error badge-soft font-semibold tracking-wide uppercase">
-                  Unclaimed
-                </span>
-              ) : null}
-              {/* Both audiences, whoever may change them: what condition a
-                  character is in is what the table reads the row for. The close
-                  control on each is for whoever may write them, which is the
-                  same reader `onToggleTag` was given to — a player looking at
-                  somebody else's row gets the words alone. */}
-              <StatusTagPills
-                tags={character.statusTags}
-                subject={copyLabel}
-                onRemove={onToggleTag ? (tag) => onToggleTag(tag, false) : undefined}
-              />
-              {character.isHeld ? (
-                // Written like the `Unclaimed` badge above rather than like a
-                // condition: holding is a fact about the order, not about the
-                // character, and the two states that colour a row red should
-                // look like each other.
-                <span className="badge badge-xs badge-error badge-soft font-semibold tracking-wide uppercase">
-                  Held
-                </span>
-              ) : null}
-            </div>
-
-            {/*
-              The game master gets the four looked-up characteristics under the name,
-              in the same line a player reads on their own character panel: this is
-              the panel where the order is worked out, so the numbers it is worked
-              out from belong in it.
-
-              A player gets who is playing what instead, which is what the spec asks
-              of their scene. The trade is deliberate rather than a want of room —
-              another table's DEX is the game master's to give out, and who holds
-              which character is already on the game master's players panel, so
-              neither screen is carrying the other's line as well as its own.
-            */}
-            {editable ? (
-              <StatLine character={character} className="mt-0.5" />
-            ) : character.kind === "pc" ? (
-              <p
-                className={`mt-0.5 truncate text-xs ${
-                  isUnclaimed
-                    // Un-muted rather than coloured: the row's own error wash and
-                    // the "Unclaimed" badge already carry the signal, and a caption
-                    // drawn in a pale theme colour is the one that stops being read.
-                    ? "font-medium text-base-content"
-                    : TEXT_MUTED
-                }`}
-              >
-                {character.claimedByPlayerName
-                  ? `Played by ${character.claimedByPlayerName}${isYours ? " (you)" : ""}`
-                  : "No player has claimed this character"}
-              </p>
-            ) : null}
-          </div>
-
+          {copies > 1 ? (
+            // Read as part of the name above rather than as a badge of its own.
+            <CountBadge hidden>{character.copyNumber}</CountBadge>
+          ) : null}
+          <KindBadge kind={character.kind} />
+          {isActive ? (
+            <span className="badge badge-xs badge-primary font-semibold tracking-wide uppercase">
+              Turn
+            </span>
+          ) : null}
+          {isUnclaimed ? (
+            <span className="badge badge-xs badge-error badge-soft font-semibold tracking-wide uppercase">
+              Unclaimed
+            </span>
+          ) : null}
+          {/* Both audiences, whoever may change them: what condition a character
+              is in is what the table reads the row for. The close control on
+              each is for whoever may write them, which is the same reader
+              `onToggleTag` was given to — a player looking at somebody else's
+              row gets the words alone. */}
+          <StatusTagPills
+            tags={character.statusTags}
+            subject={copyLabel}
+            onRemove={onToggleTag ? (tag) => onToggleTag(tag, false) : undefined}
+          />
+          {character.isHeld ? (
+            // Written like the `Unclaimed` badge above rather than like a
+            // condition: holding is a fact about the order, not about the
+            // character, and the two states that colour a row red should look
+            // like each other.
+            <span className="badge badge-xs badge-error badge-soft font-semibold tracking-wide uppercase">
+              Held
+            </span>
+          ) : null}
         </div>
 
-        {/* The one destructive control on the row, so it is the one kept out of
-            the cluster the game master's thumb lives in all night. Icon-only, so
-            the label is the whole of its name — and the copy number is in it, or
-            two goblins would offer the same instruction twice. The drag guard is
-            the tag button's, for the same reason: a press here is a press. */}
-        {editable && onRemove ? (
-          <button
-            type="button"
-            onClick={onRemove}
-            onPointerDown={(event) => event.stopPropagation()}
-            // The same bare control as the four in the cluster below, in the
-            // one colour that says what this one does. Pulled up and out through
-            // the row's own `px-3 py-2.5`, so it sits in the corner rather than
-            // a control's width inside it.
-            className={`-mt-2 -mr-3 ${bareIcon("danger")}`}
-            title={`Remove ${copyLabel} from the session`}
-            aria-label={`Remove ${copyLabel} from the session`}
+        {/*
+          The game master gets the four looked-up characteristics under the name,
+          in the same line a player reads on their own character panel: this is
+          the panel where the order is worked out, so the numbers it is worked
+          out from belong in it.
+
+          A player gets who is playing what instead, which is what the spec asks
+          of their scene. The trade is deliberate rather than a want of room —
+          another table's DEX is the game master's to give out, and who holds
+          which character is already on the game master's players panel, so
+          neither screen is carrying the other's line as well as its own.
+        */}
+        {editable ? (
+          <StatLine character={character} />
+        ) : character.kind === "pc" ? (
+          <p
+            className={`truncate text-xs ${
+              isUnclaimed
+                // Un-muted rather than coloured: the row's own error wash and
+                // the "Unclaimed" badge already carry the signal, and a caption
+                // drawn in a pale theme colour is the one that stops being read.
+                ? "font-medium text-base-content"
+                : TEXT_MUTED
+            }`}
           >
-            <Icon icon={faXmark} />
-          </button>
+            {character.claimedByPlayerName
+              ? `Played by ${character.claimedByPlayerName}${isYours ? " (you)" : ""}`
+              : "No player has claimed this character"}
+          </p>
+        ) : null}
+
+        {/*
+          What a character has left is the game master's to see. How badly the
+          monster is hurt is theirs to give out or hold back, and reading another
+          player's STUN off the screen is not the same as being told — so the same
+          thing that decides who may write these decides who may read them:
+          `onSetVitals`, which only the game master's list is given.
+
+          A player's own numbers are not repeated here either. They have a panel
+          of their own, `My character`, which is where that player edits them; a
+          second copy in the scene would be the same three numbers twice on one
+          screen.
+
+          Everything this reader may do to the character rides at the end of this
+          same line, which is the bottom right of the row: the conditions, a
+          Recovery, a rest, the hold and the turn. Five glyphs in one place read
+          as one set of controls, and it puts them all under the same thumb, at
+          the far end of the row from the one control that takes a character off
+          the stage.
+        */}
+        {onSetVitals || hasControls ? (
+          <div className="flex items-end gap-2">
+            {onSetVitals ? (
+              <Vitals character={character} onChange={onSetVitals} className="min-w-0 flex-1" />
+            ) : null}
+            {hasControls ? (
+              // `ml-auto` rather than `justify-between`, so the cluster still
+              // sits at the right edge on a row that has no numbers to sit
+              // beside. Barely a gap between them: five glyphs a hair apart read
+              // as one set of controls, where five evenly spaced across the end
+              // of the row read as five separate ones. The negative pair pulls it
+              // out through the row's own padding, into the corner opposite the
+              // remove control.
+              <div className="-mr-1.5 -mb-1.5 ml-auto flex shrink-0 items-center gap-0.5">
+                {onToggleTag ? (
+                  <StatusTagButton character={character} onOpen={() => setTaggingOpen(true)} />
+                ) : null}
+                <VitalActions character={character} onRecover={onRecover} onRest={onRest} />
+                {onToggleHold ? (
+                  // Red while it is holding, which is the same red the badge
+                  // above takes. The label says what the press will do rather
+                  // than what the state is — the badge and the colour already say
+                  // that, and a control's name is the promise it makes when
+                  // pressed.
+                  <button
+                    type="button"
+                    onClick={() => onToggleHold(!character.isHeld)}
+                    onPointerDown={(event) => event.stopPropagation()}
+                    className={bareIcon(character.isHeld ? "danger" : "muted")}
+                    title={
+                      character.isHeld
+                        ? `Take ${copyLabel}'s held action now`
+                        : `Hold ${copyLabel}'s action`
+                    }
+                    aria-label={
+                      character.isHeld
+                        ? `Take ${copyLabel}'s held action now`
+                        : `Hold ${copyLabel}'s action`
+                    }
+                    aria-pressed={character.isHeld}
+                  >
+                    <Icon icon={faOctagon} />
+                  </button>
+                ) : null}
+                {editable && onSetTurn ? (
+                  // Icon-only, like the four beside it: the play arrow is what a
+                  // game master reaches for mid-fight, and the name lives in the
+                  // label instead, where it can afford to say which character it
+                  // means — two goblins would otherwise offer the same
+                  // instruction.
+                  <button
+                    type="button"
+                    onClick={onSetTurn}
+                    onPointerDown={(event) => event.stopPropagation()}
+                    className={bareIcon()}
+                    title={`Give ${copyLabel} the turn`}
+                    aria-label={`Give ${copyLabel} the turn`}
+                  >
+                    <Icon icon={faPlay} />
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
         ) : null}
       </div>
 
-      {/*
-        What a character has left is the game master's to see. How badly the
-        monster is hurt is theirs to give out or hold back, and reading another
-        player's STUN off the screen is not the same as being told — so the same
-        thing that decides who may write these decides who may read them:
-        `onSetVitals`, which only the game master's list is given.
+      {/* The one destructive control on the row, so it is the one kept out of
+          the cluster the game master's thumb lives in all night. Icon-only, so
+          the label is the whole of its name — and the copy number is in it, or
+          two goblins would offer the same instruction twice. The drag guard is
+          the tag button's, for the same reason: a press here is a press.
 
-        A player's own numbers are not repeated here either. They have a panel of
-        their own, `My character`, which is where that player edits them; a
-        second copy in the scene would be the same three numbers twice on one
-        screen.
-
-        A band of its own under the row rather than a column beside the name:
-        three labelled boxes, a name and a control cannot all have the room they
-        need in the game master's narrow panel, and across the full width they
-        fit on one line. Only slightly indented — the width is what keeps the
-        controls beside it on the same line as the numbers half of them change,
-        so there is none to give away to lining up with the name above.
-
-        Everything this reader may do to the character is gathered at the right
-        of that same line: the conditions, a Recovery, a rest and the turn. Four
-        glyphs in one place read as one set of controls, where the same four
-        split across the two lines of the row read as two — and it puts them all
-        under the same thumb, at the far end from the one control that takes a
-        character off the stage.
-      */}
-      {onSetVitals || hasControls ? (
-        <div className="flex items-end gap-2">
-          {onSetVitals ? (
-            <Vitals
-              character={character}
-              onChange={onSetVitals}
-              className="min-w-0 flex-1 pl-2"
-            />
-          ) : null}
-          {hasControls ? (
-            // `ml-auto` rather than `justify-between`, so the cluster still sits
-            // at the right edge on a row that has no numbers to sit beside. The
-            // negative pair pulls it out through the row's own `px-3 py-2.5`,
-            // close to the corner the remove control holds at the top.
-            //
-            // Barely a gap between them: four glyphs a hair apart read as one
-            // set of controls, where four evenly spaced across the end of the
-            // row read as four separate ones.
-            <div className="-mr-2 -mb-2 ml-auto flex shrink-0 items-center gap-0.5">
-              {onToggleTag ? (
-                <StatusTagButton character={character} onOpen={() => setTaggingOpen(true)} />
-              ) : null}
-              <VitalActions character={character} onRecover={onRecover} onRest={onRest} />
-              {onToggleHold ? (
-                // Red while it is holding, which is the same red the badge above
-                // takes. The label says what the press will do rather than what
-                // the state is — the badge and the colour already say that, and
-                // a control's name is the promise it makes when pressed.
-                <button
-                  type="button"
-                  onClick={() => onToggleHold(!character.isHeld)}
-                  onPointerDown={(event) => event.stopPropagation()}
-                  className={bareIcon(character.isHeld ? "danger" : "muted")}
-                  title={
-                    character.isHeld
-                      ? `Take ${copyLabel}'s held action now`
-                      : `Hold ${copyLabel}'s action`
-                  }
-                  aria-label={
-                    character.isHeld
-                      ? `Take ${copyLabel}'s held action now`
-                      : `Hold ${copyLabel}'s action`
-                  }
-                  aria-pressed={character.isHeld}
-                >
-                  <Icon icon={faOctagon} />
-                </button>
-              ) : null}
-              {editable && onSetTurn ? (
-                // Icon-only, like the three beside it: the play arrow is what a
-                // game master reaches for mid-fight, and three words of label
-                // were most of what made this row wrap. The name lives in the
-                // label instead, where it can afford to say which character it
-                // means — two goblins would otherwise offer the same instruction.
-                <button
-                  type="button"
-                  onClick={onSetTurn}
-                  onPointerDown={(event) => event.stopPropagation()}
-                  className={bareIcon()}
-                  title={`Give ${copyLabel} the turn`}
-                  aria-label={`Give ${copyLabel} the turn`}
-                >
-                  <Icon icon={faPlay} />
-                </button>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
+          Hung in the corner rather than laid out in the line: see the row's own
+          `relative` above for why it is worth the pixels it saves. */}
+      {editable && onRemove ? (
+        <button
+          type="button"
+          onClick={onRemove}
+          onPointerDown={(event) => event.stopPropagation()}
+          // The same bare control as the five in the cluster, in the one colour
+          // that says what this one does.
+          className={`absolute top-1.5 right-1.5 ${bareIcon("danger")}`}
+          title={`Remove ${copyLabel} from the session`}
+          aria-label={`Remove ${copyLabel} from the session`}
+        >
+          <Icon icon={faXmark} />
+        </button>
       ) : null}
 
       {taggingOpen && onToggleTag ? (

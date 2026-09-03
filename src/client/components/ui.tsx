@@ -947,28 +947,50 @@ export function CardPicture({
  * daisyUI's `avatar`, which is what a small square portrait beside a name is.
  * Decorative: every list that uses one puts the character's name right beside it,
  * so the image carries no alt text and the placeholder is hidden outright.
+ *
+ * `fill` is for a caller that wants the picture to be as tall as the row it sits
+ * in rather than a fixed size — the segment panel, where the portrait is one
+ * column of a row whose height is set by the three lines of text beside it. It
+ * stays square, so the width follows whatever that height turns out to be; the
+ * caller's own flex row is what supplies the height, hence `self-stretch`.
  */
 export function CharacterThumb({
   kind,
   cardUrl,
+  fill = false,
 }: {
   kind: "pc" | "npc";
   cardUrl: string | null;
+  fill?: boolean;
 }) {
+  const picture = cardUrl ? (
+    <img src={cardUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
+  ) : (
+    <span className="flex h-full w-full items-center justify-center opacity-40" aria-hidden="true">
+      <Icon icon={kind === "pc" ? faShieldHalved : faDragon} className="h-5 w-5" />
+    </span>
+  );
+
+  // The big square, for a list whose rows are three lines tall.
+  //
+  // A size rather than `h-full aspect-square`: a flex row works out its items'
+  // widths before it stretches their heights, so an item asking to be square
+  // from the height it is about to be given is asking for a width that nothing
+  // knows yet — the browser answers zero and the picture comes out a sliver.
+  // Fixing the size instead makes the picture the shorter of the two things it
+  // sits beside: 4.5rem is about what three lines of that text come to, so it
+  // fills the row it is in and stays square when the text runs longer.
+  if (fill) {
+    return (
+      <div className="h-18 w-18 shrink-0 self-center overflow-hidden rounded-md bg-base-300">
+        {picture}
+      </div>
+    );
+  }
+
   return (
     <div className="avatar shrink-0">
-      <div className="h-10 w-10 overflow-hidden rounded-md bg-base-300">
-        {cardUrl ? (
-          <img src={cardUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
-        ) : (
-          <span
-            className="flex h-full w-full items-center justify-center opacity-40"
-            aria-hidden="true"
-          >
-            <Icon icon={kind === "pc" ? faShieldHalved : faDragon} className="h-5 w-5" />
-          </span>
-        )}
-      </div>
+      <div className="h-10 w-10 overflow-hidden rounded-md bg-base-300">{picture}</div>
     </div>
   );
 }
