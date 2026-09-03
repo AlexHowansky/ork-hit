@@ -85,6 +85,27 @@ Changes *inside* a session are deliberately not published here — each row alre
 follows its own session — so a busy table does not rebuild the whole list on
 every turn.
 
+**A player may arrive with their own sheet.** The chooser takes a dropped or
+picked HTML file and `POST /api/sessions/:id/characters` does the rest in one
+request: the sheet is filed as a PC under the campaign the session is playing,
+brought on stage, and claimed by whoever sent it. There is no form, because there
+is nothing to ask — the filename is the character's name, the campaign is the
+session's, and a character a player brings is a player character by definition.
+It is the one write a player makes to a game master's library, so it is fenced
+accordingly: offered only to a player who has not claimed anybody yet — which is
+exactly when the chooser is on screen, and so caps it at one character per player
+per session — and through the same `storeSheet` that has always decided what an
+acceptable sheet is. There is no rate limit beyond that cap, deliberately: a
+player can only reach this endpoint at all while a game master has a session
+running, with a code they were given, and a game master who is being imposed on
+can kick them. A name the campaign already has is refused
+rather than made unique: the character it collides with is usually the one the
+player meant to claim off the list, and a second `Warrior` filed quietly beside
+the first leaves the game master with two and no way to tell them apart. The
+characteristics stay at zero, which means a
+character brought this way does not come up on turn until the game master fills
+in a SPEED; the drop zone says so rather than leaving it to be discovered.
+
 **A player is present for as long as they are connected.** Closing the tab is how
 people actually leave a table — few of them find the button first — and someone
 who is gone still holds their character, so the seat has to come free on its own.

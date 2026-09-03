@@ -23,6 +23,7 @@ import {
   gmReassigned,
   gmRemovedFromScene,
   gmUnassigned,
+  playerBroughtCharacter,
   playerDisconnected,
   playerJoined,
   playerLeft,
@@ -2449,5 +2450,198 @@ describe("a character is refiled by being moved to another campaign", () => {
 
     expect(response.status).toBe(200);
     expect((await response.json()).character.name).toBe(renamed);
+  });
+});
+
+
+describe("a player brings their own character sheet", () => {
+  const PNG = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+
+  /** A sheet with a picture inside it, the way a browser saves one. */
+  function sheetWithPortrait(name: string): File {
+    const bytes = new Uint8Array(new ArrayBuffer(4096));
+    bytes.set(PNG);
+    for (let i = PNG.length; i < bytes.length; i += 1) bytes[i] = (i * 7) % 251;
+    const encoded = Buffer.from(bytes).toString("base64");
+    return new File([`<h1>Hero</h1><img src="data:image/png;base64,${encoded}">`], name);
+  }
+
+  const bring = (cookie: string, sessionId: string, file: File) => {
+    const form = new FormData();
+    form.set("sheet", file);
+    return fetch(
+      `${base}/api/sessions/${sessionId}/characters`,
+      authed(cookie, { method: "POST", body: form }),
+    );
+  };
+
+  test("files it, stages it and claims it in one request", async () => {
+    const { cookie } = await signIn();
+    const { campaign, session } = await makeTable(cookie);
+    const player = await joinAs(session.code, "Ada");
+
+    const response = await bring(player, session.id, new File(["<h1>mine</h1>"], "Nightjar.html"));
+    expect(response.status).toBe(200);
+
+    const { snapshot } = await response.json();
+    const ada = snapshot.players.find((entry: { name: string }) => entry.name === "Ada");
+    const brought = snapshot.characters.find(
+      (entry: { name: string }) => entry.name === "Nightjar",
+    );
+
+    // Named after the file, a PC, on the stage, and held by whoever brought it.
+    expect(brought).toBeDefined();
+    expect(brought.kind).toBe("pc");
+    expect(brought.claimedByPlayerId).toBe(ada.id);
+    expect(ada.claimedCharacterId).toBe(brought.characterId);
+    // Nobody typed any characteristics, so they are all the zero the column
+    // carries — which is what the game master fills in afterwards.
+    expect(brought.speed).toBe(0);
+    expect(brought.dexterity).toBe(0);
+
+    // Filed under the campaign this session is playing, so the game master has
+    // it in their library from now on.
+    const library = await (
+      await fetch(`${base}/api/characters?campaignId=${campaign.id}`, authed(cookie))
+    ).json();
+    expect(library.characters.map((entry: { name: string }) => entry.name)).toContain("Nightjar");
+
+    // One line in the log, because it was one gesture.
+    const messages = snapshot.events.map((event: { message: string }) => event.message);
+    expect(messages).toContain(playerBroughtCharacter("Ada", "Nightjar"));
+  });
+
+  test("the picture inside the sheet becomes their card", async () => {
+    const { cookie } = await signIn();
+    const { session } = await makeTable(cookie);
+    const player = await joinAs(session.code, "Bex");
+
+    const response = await bring(player, session.id, sheetWithPortrait("Bex the Bold.html"));
+    expect(response.status).toBe(200);
+
+    const { snapshot } = await response.json();
+    const brought = snapshot.characters.find(
+      (entry: { name: string }) => entry.name === "Bex the Bold",
+    );
+    expect(brought.cardUrl).not.toBeNull();
+    expect((await fetch(base + brought.cardUrl, authed(player))).status).toBe(200);
+  });
+
+  test("and they can open the sheet they brought", async () => {
+    const { cookie } = await signIn();
+    const { session } = await makeTable(cookie);
+    const player = await joinAs(session.code, "Cleo");
+
+    const { snapshot } = await (
+      await bring(player, session.id, new File(["<h1>mine</h1>"], "Cleo's Hero.html"))
+    ).json();
+    const brought = snapshot.characters.find(
+      (entry: { name: string }) => entry.name === "Cleo's Hero",
+    );
+
+    const sheet = await fetch(base + brought.sheetUrl, authed(player));
+    expect(sheet.status).toBe(200);
+    expect(await sheet.text()).toContain("<h1>mine</h1>");
+  });
+
+  test("a name the campaign already has is refused", async () => {
+    const { cookie } = await signIn();
+    const { session } = await makeTable(cookie);
+
+    const first = await joinAs(session.code, "Dara");
+    const second = await joinAs(session.code, "Emil");
+
+    expect(
+      (await bring(first, session.id, new File(["<h1>a</h1>"], "Warrior.html"))).status,
+    ).toBe(200);
+
+    // Not made unique behind their back: the character it collides with is
+    // usually the one they meant to pick off the list.
+    const response = await bring(second, session.id, new File(["<h1>b</h1>"], "Warrior.html"));
+    expect(response.status).toBe(409);
+    expect((await response.json()).error.message).toContain("Warrior");
+
+    const { snapshot } = await (
+      await fetch(`${base}/api/sessions/${session.id}`, authed(cookie))
+    ).json();
+    const warriors = snapshot.characters
+      .map((entry: { name: string }) => entry.name)
+      .filter((name: string) => name.startsWith("Warrior"));
+    expect(warriors).toEqual(["Warrior"]);
+  });
+
+  test("and a character the game master already filed is refused too", async () => {
+    const { cookie } = await signIn();
+    const { pc, session } = await makeTable(cookie);
+    const player = await joinAs(session.code, "Juno");
+
+    const response = await bring(
+      player,
+      session.id,
+      new File(["<h1>x</h1>"], `${pc.name}.html`),
+    );
+    expect(response.status).toBe(409);
+  });
+
+  test("a player already playing someone is refused", async () => {
+    const { cookie } = await signIn();
+    const { pc, session } = await makeTable(cookie);
+    const player = await joinAs(session.code, "Fen");
+
+    await fetch(
+      `${base}/api/sessions/${session.id}/claim`,
+      authed(player, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ characterId: pc.id }),
+      }),
+    );
+
+    const response = await bring(player, session.id, new File(["<h1>x</h1>"], "Second.html"));
+    expect(response.status).toBe(409);
+  });
+
+  test("a file that is not a sheet is refused", async () => {
+    const { cookie } = await signIn();
+    const { session } = await makeTable(cookie);
+    const player = await joinAs(session.code, "Gita");
+
+    const response = await bring(player, session.id, new File(["not html"], "notes.txt"));
+    expect(response.status).toBe(400);
+    // And nothing was filed under the campaign on the way to that refusal.
+    const { snapshot } = await (
+      await fetch(`${base}/api/sessions/${session.id}`, authed(cookie))
+    ).json();
+    expect(snapshot.characters).toHaveLength(2);
+  });
+
+  test("a request with no file at all is refused", async () => {
+    const { cookie } = await signIn();
+    const { session } = await makeTable(cookie);
+    const player = await joinAs(session.code, "Hal");
+
+    const response = await fetch(
+      `${base}/api/sessions/${session.id}/characters`,
+      authed(player, { method: "POST", body: new FormData() }),
+    );
+    expect(response.status).toBe(400);
+  });
+
+  test("the game master is not a player here", async () => {
+    const { cookie } = await signIn();
+    const { session } = await makeTable(cookie);
+
+    const response = await bring(cookie, session.id, new File(["<h1>x</h1>"], "Theirs.html"));
+    expect(response.status).toBe(401);
+  });
+
+  test("and a player of another session cannot reach this one", async () => {
+    const { cookie } = await signIn();
+    const mine = await makeTable(cookie);
+    const theirs = await makeTable(cookie);
+    const player = await joinAs(theirs.session.code, "Iris");
+
+    const response = await bring(player, mine.session.id, new File(["<h1>x</h1>"], "Iris.html"));
+    expect(response.status).toBe(403);
   });
 });

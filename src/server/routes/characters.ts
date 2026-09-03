@@ -15,11 +15,11 @@ import { HERO_STAT_FIELDS, type HeroStatField } from "../../lib/hero.ts";
 import {
   collectOrphanedUploads,
   fileField,
-  portraitFromSheet,
+  portraitOrNone,
   storeImage,
   storeSheet,
 } from "../uploads.ts";
-import type { CharacterRow, GmRow, UploadRow } from "../../db/types.ts";
+import type { CharacterRow, GmRow } from "../../db/types.ts";
 import { presentCharacter } from "../presenters.ts";
 import { sessionIdsWith } from "../session-state.ts";
 import { broadcastSession } from "../ws.ts";
@@ -39,25 +39,6 @@ function requireOwnedCampaignId(gm: GmRow, campaignId: string): void {
   const campaign = campaigns.byId(campaignId);
   if (!campaign || campaign.gm_id !== gm.id) {
     throw errors.badRequest("Please choose one of your own campaigns for this character.");
-  }
-}
-
-/**
- * The portrait embedded in a freshly uploaded sheet, if there is one.
- *
- * A picture the game master did not ask for is a convenience, never a reason to
- * fail: anything that goes wrong scanning the sheet leaves the character without
- * one, which is exactly where it would have been anyway.
- */
-async function portraitOrNone(
-  sheet: UploadRow,
-  logger: RequestContext["logger"],
-): Promise<UploadRow | null> {
-  try {
-    return await portraitFromSheet(sheet);
-  } catch (error) {
-    logger.warn("could not take a portrait from the sheet", { uploadId: sheet.id, error });
-    return null;
   }
 }
 

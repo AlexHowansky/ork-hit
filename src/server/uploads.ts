@@ -21,7 +21,7 @@ import { isAbsolute, join, resolve } from "node:path";
 import sharp from "sharp";
 import { config, limits } from "../lib/config.ts";
 import { errors } from "../lib/errors.ts";
-import { log } from "../lib/log.ts";
+import { log, type Logger } from "../lib/log.ts";
 import { newId } from "../lib/ids.ts";
 import { uploads } from "../db/queries.ts";
 import type { UploadRow } from "../db/types.ts";
@@ -426,6 +426,29 @@ async function removeRun(sheet: UploadRow, run: string): Promise<void> {
     log.warn("could not take the portrait out of the sheet", { uploadId: sheet.id, error });
   }
 }
+
+/**
+ * The portrait embedded in a freshly uploaded sheet, if there is one.
+ *
+ * A picture nobody asked for is a convenience, never a reason to fail: anything
+ * that goes wrong scanning the sheet leaves the character without one, which is
+ * exactly where it would have been anyway. It lives here rather than beside one
+ * of its callers because both the game master's library and a player bringing
+ * their own sheet want the same policy about failure.
+ */
+export async function portraitOrNone(
+  sheet: UploadRow,
+  logger: Logger,
+): Promise<UploadRow | null> {
+  try {
+    return await portraitFromSheet(sheet);
+  } catch (error) {
+    logger.warn("could not take a portrait from the sheet", { uploadId: sheet.id, error });
+    return null;
+  }
+}
+
+/* ------------------------------------------------------------- housekeeping */
 
 /** Removes an upload's row and its file. Missing files are not an error. */
 export async function deleteUpload(uploadId: string): Promise<void> {

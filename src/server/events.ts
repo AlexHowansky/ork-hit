@@ -42,6 +42,18 @@ export const playerJoined = (name: string): string => `${name} joined`;
 export const playerSelected = (name: string, character: string): string =>
   `${name} selected ${character}`;
 
+/**
+ * A player who arrived with their own sheet.
+ *
+ * One line rather than an upload and a selection, because it was one gesture by
+ * one person — the same reasoning `gmReassigned` is written under. It says
+ * "brought" rather than "uploaded" for the reason every other line here names a
+ * doing rather than a mechanism: what the table saw was somebody turning up with
+ * a character.
+ */
+export const playerBroughtCharacter = (name: string, character: string): string =>
+  `${name} brought ${character} to the table`;
+
 export const playerLeft = (name: string): string => `${name} left`;
 
 /**

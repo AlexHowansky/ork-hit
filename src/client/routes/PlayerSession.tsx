@@ -32,11 +32,13 @@ import {
   HoverCard,
   CharacterThumb,
   EmptyState,
+  FileDrop,
   Icon,
   LoadingNote,
   Panel,
   SURFACE,
   TEXT_MUTED,
+  useFileDropTarget,
 } from "../components/ui.tsx";
 import { InitiativeList, stageLabel } from "../components/InitiativeList.tsx";
 import { LogDrawer, LogToggle, useLogDrawer } from "../components/EventLog.tsx";
@@ -90,6 +92,7 @@ export function PlayerSession({
     (message) => toast.show(message, "success"),
   );
   const [claiming, setClaiming] = useState(false);
+  const [bringing, setBringing] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [taggingOpen, setTaggingOpen] = useState(false);
   const [dropped, setDropped] = useState(false);
@@ -128,6 +131,25 @@ export function PlayerSession({
     return () => clearInterval(timer);
   }, [connection]);
 
+  /**
+   * Having invited a sheet to be dropped on the chooser, catch the drops that
+   * miss it: a file let go anywhere else would otherwise be opened by the
+   * browser, throwing the table away to show a character sheet as a bare page.
+   * The game master's library does the same, for the same reason.
+   */
+  useEffect(() => {
+    const swallow = (event: Event) => {
+      const transfer = (event as globalThis.DragEvent).dataTransfer;
+      if (transfer?.types.includes("Files")) event.preventDefault();
+    };
+    window.addEventListener("dragover", swallow);
+    window.addEventListener("drop", swallow);
+    return () => {
+      window.removeEventListener("dragover", swallow);
+      window.removeEventListener("drop", swallow);
+    };
+  }, []);
+
   // Identifies this player's turn, changing again if the order comes back round
   // to them — with one character in the scene the id alone would never change.
   //
@@ -159,6 +181,40 @@ export function PlayerSession({
     toast.show("It's your turn!", "success");
     void playDing();
   }, [snapshot, myTurnKey, toast]);
+
+  /**
+   * A player who arrived with their own sheet.
+   *
+   * One file and nothing else to fill in: the server names the character after
+   * the file, files it under this session's campaign as a PC, brings it on
+   * stage and hands it to whoever dropped it. So the snapshot that comes back
+   * already has this player holding a character, and the chooser below simply
+   * stops being what this screen is.
+   */
+  const bring = async (file: File) => {
+    setBringing(true);
+    try {
+      const form = new FormData();
+      form.set("sheet", file);
+      const { snapshot: next } = await api.postForm<{ snapshot: Snapshot }>(
+        `/api/sessions/${sessionId}/characters`,
+        form,
+      );
+      applySnapshot(next);
+    } catch (error) {
+      toast.showError(error);
+    } finally {
+      setBringing(false);
+    }
+  };
+
+  // One character, so one file: whichever was let go first. The whole chooser is
+  // the target, since a sheet dropped on the cards is the same gesture as a
+  // sheet dropped on the box below them.
+  const sheetDrop = useFileDropTarget((files) => {
+    const file = files.item(0);
+    if (file && !bringing) void bring(file);
+  });
 
   if (connection === "ended") {
     return (
@@ -298,11 +354,20 @@ export function PlayerSession({
           <ThemeToggle />
         </header>
 
-        <Panel title="Choose your character">
+        {/*
+          The whole panel takes a dropped sheet, cards and all, and says so while
+          one is over it — the ring the game master's library draws round its own
+          character panel, for the same gesture.
+        */}
+        <Panel
+          title="Choose your character"
+          {...sheetDrop.dropProps}
+          className={sheetDrop.over ? "ring-2 ring-primary" : undefined}
+        >
           {available.length === 0 ? (
             <EmptyState>
-              No player characters are free right now. Your game master can add more — this list
-              updates on its own.
+              No player characters are free right now. Your game master can add more — or bring
+              your own sheet below. This list updates on its own.
             </EmptyState>
           ) : (
             // Built from the same two constants as the library cards, so a player
@@ -334,6 +399,26 @@ export function PlayerSession({
               ))}
             </div>
           )}
+
+          {/*
+            And the other way in: a player who brought their own sheet. There is
+            no form because there is nothing to ask — the file names the
+            character, the campaign is the one this session is playing, and a
+            character a player brings is a PC by definition. Picking a file is
+            the whole gesture, so `onFile` uploads rather than a submit button
+            waiting below it.
+          */}
+          <div className="mt-4 border-t border-base-200 pt-4">
+            <FileDrop
+              label={bringing ? "Bringing your character in…" : "Bring your own character sheet"}
+              name="sheet"
+              accept=".html,.htm,text/html"
+              hint="An HTML sheet. It joins this campaign as a player character and is yours for the session. Your game master fills in SPEED and DEX afterwards — until they do, your character won't come up on turn."
+              onFile={(file) => {
+                if (!bringing) void bring(file);
+              }}
+            />
+          </div>
         </Panel>
       </div>
     );

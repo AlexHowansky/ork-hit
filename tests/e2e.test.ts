@@ -1952,4 +1952,35 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
 
     await page.close();
   }, 60_000);
+
+  test("a player brings their own sheet on the way in", async () => {
+    if (!browser) return;
+    const { page: gm, code } = await gmWithSession();
+
+    const player = await (await browser.newContext()).newPage();
+    await player.goto(`${base}/join?code=${encodeURIComponent(code)}`);
+    await player.getByLabel("Player name").fill("Nadia");
+    await player.getByRole("button", { name: "Join session" }).click();
+    await player.getByText("Choose your character").waitFor();
+
+    // No form to fill in: the file is the whole gesture, and the name comes off
+    // the filename.
+    await player.getByLabel(/Bring your own character sheet/).setInputFiles({
+      name: "Nightjar.html",
+      mimeType: "text/html",
+      buffer: Buffer.from("<h1>Nightjar</h1>"),
+    });
+
+    // The chooser is gone, because there is nothing left to choose: the sheet
+    // came back staged and claimed.
+    const mine = player.locator("section", { hasText: /My character/ });
+    await mine.getByText("Nightjar", { exact: true }).waitFor({ timeout: 10_000 });
+    await mine.getByRole("button", { name: "My sheet" }).waitFor();
+
+    // And the game master's console hears about it without a reload — the
+    // snapshot is published like any other change.
+    await stagePanel(gm).getByText("Nightjar").waitFor({ timeout: 5000 });
+
+    await player.close();
+  }, 60_000);
 });

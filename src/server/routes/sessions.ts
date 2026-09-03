@@ -10,7 +10,7 @@ import type { BunRequest } from "bun";
 import { handler, json, noContent, type RequestContext } from "../http.ts";
 import { parse, parseJsonBody, schemas } from "../../lib/validate.ts";
 import { errors } from "../../lib/errors.ts";
-import { config } from "../../lib/config.ts";
+import { config, limits } from "../../lib/config.ts";
 import { generateSessionCode, normalizeSessionCode } from "../../lib/ids.ts";
 import { joinLimiter } from "../middleware/ratelimit.ts";
 import {
@@ -50,12 +50,14 @@ import {
   gmReassigned,
   gmRemovedFromScene,
   gmUnassigned,
+  playerBroughtCharacter,
   playerJoined,
   playerSelected,
   segmentBegan,
   tagsAdded,
   tagsRemoved,
 } from "../events.ts";
+import { fileField, portraitOrNone, storeSheet } from "../uploads.ts";
 import { presentSessionForGm } from "../presenters.ts";
 import { buildGmSessionList, buildSnapshot } from "../session-state.ts";
 import {
@@ -309,6 +311,39 @@ function advanceTurn(sessionId: string, direction: "next" | "prev"): boolean {
 }
 
 /* ------------------------------------------------------------------- routes */
+
+/**
+ * What to call a character nobody named.
+ *
+ * A player brings a file, not a form: there is nowhere for them to type a name,
+ * so the filename is the name — which is how the game master's own drag-and-drop
+ * files a batch of sheets (`fileSheets` in GmLibrary.tsx), and how sheets are
+ * saved in the first place. The extension goes; nothing else about the filename
+ * is second-guessed, and a filename that was nothing but an extension leaves the
+ * player's own name, which is at least true.
+ *
+ * A name the campaign already has is refused rather than made unique. The
+ * character it collides with is very often the same character — a player
+ * bringing an updated sheet for the hero already sitting in the chooser — and
+ * quietly filing a second `Warrior` beside the first would leave the game master
+ * with two of them and no way to tell which is which. The refusal says the name,
+ * so the way out is to rename the file, or to claim the character that is
+ * already there.
+ */
+function nameForSheet(campaignId: string, fileName: string, playerName: string): string {
+  const clip = (value: string) => value.trim().slice(0, limits.nameMaxLength).trim();
+  const stem = clip(fileName.replace(/\.[^.]+$/, ""));
+  const name = stem || clip(playerName);
+
+  if (characters.nameTaken(campaignId, name)) {
+    throw errors.conflict(
+      `This campaign already has a character called “${name}”. Rename your sheet file, or ` +
+        "choose them from the list if they are yours.",
+    );
+  }
+
+  return name;
+}
 
 export const sessionRoutes = {
   "/api/sessions": {
@@ -876,6 +911,87 @@ export const sessionRoutes = {
           playerId: player.id,
           characterId,
         });
+        return publish(session.id);
+      },
+    ),
+  },
+
+  /**
+   * A player arrives with their own character sheet.
+   *
+   * The one write a player makes to the library, and it is deliberately narrow:
+   * one file, no form. The sheet is filed as a PC under the campaign this
+   * session belongs to, walks straight onto the stage, and is claimed by whoever
+   * brought it — one gesture, so one request, and one line in the log.
+   *
+   * Everything else is derived rather than sent. The campaign is the session's,
+   * the kind is `pc` (nothing else can be claimed), the name is the filename —
+   * and a name the campaign already has is refused, since the character it
+   * collides with is usually the one the player meant to claim — while every
+   * characteristic stays at the zero its column carries: a player
+   * knows what their character is called and the game master fills the numbers
+   * in from the library. Which means a character brought this way does not come
+   * up on turn until they have a SPEED — a SPD of nought is an empty row of the
+   * Speed Chart — and the screen that offers the upload says so.
+   *
+   * Offered only to a player who has not claimed anybody yet, which is exactly
+   * when the chooser is on screen. That is the whole cap — one character per
+   * player per session — and it is enough because a player can only reach this
+   * at all while a game master has a session running, with a code they were
+   * given and the game master can revoke.
+   */
+  "/api/sessions/:id/characters": {
+    POST: handler(
+      async (request: BunRequest<"/api/sessions/:id/characters">, { logger }: RequestContext) => {
+        const { player, session } = requirePlayer(request);
+        if (session.id !== request.params.id) throw errors.forbidden();
+
+        if (player.claimed_character_id !== null) {
+          throw errors.conflict(
+            "You're already playing a character. Your game master can add another one for you.",
+          );
+        }
+
+        const form = await request.formData();
+        const sheetFile = fileField(form, "sheet");
+        if (!sheetFile) throw errors.badRequest("Please choose an HTML character sheet to upload.");
+
+        // The name is settled before anything is written: a sheet refused for
+        // its name should not leave a file on disk and a scan of it behind.
+        const name = nameForSheet(session.campaign_id, sheetFile.name, player.name);
+
+        const sheet = await storeSheet(sheetFile);
+        // The picture inside the sheet becomes the card, as it does for a sheet
+        // the game master files — a player has nowhere to upload a second one.
+        const card = await portraitOrNone(sheet, logger);
+
+        // Filed, staged and claimed together. A character on the stage that
+        // nobody holds, or a character with no slot to stand in, is a worse
+        // outcome than the upload failing — and the player is looking at the
+        // chooser either way. The file itself is written before this and is not
+        // rolled back with it; an upload nothing references is what `db:gc`
+        // sweeps.
+        const character = db.transaction(() => {
+          const created = characters.create({
+            campaignId: session.campaign_id,
+            kind: "pc",
+            name,
+            sheetUploadId: sheet.id,
+            cardUploadId: card?.id ?? null,
+          });
+          sessionCharacters.add(session.id, created.id, "pc");
+          players.setClaim(player.id, created.id);
+          return created;
+        })();
+
+        sessionEvents.record(session.id, playerBroughtCharacter(player.name, character.name));
+        logger.info("player brought a character", {
+          sessionId: session.id,
+          playerId: player.id,
+          characterId: character.id,
+          portraitFromSheet: card !== null,
+        });
+
         return publish(session.id);
       },
     ),
