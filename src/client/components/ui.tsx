@@ -88,8 +88,8 @@ export const FIELD_CAPTION = "mb-1 block text-sm font-medium";
 
 /**
  * The small upright heading over a panel or a group of numbers. Carries no font
- * size: these run from `text-[10px]` over a Vitals box to `text-sm` over a
- * panel, and the size is the part each caller chooses.
+ * size: these run from `text-xs` over a Vitals box to `text-sm` over a panel,
+ * and the size is the part each caller chooses.
  */
 export const PANEL_CAPTION = `font-semibold tracking-wide uppercase ${TEXT_MUTED}`;
 

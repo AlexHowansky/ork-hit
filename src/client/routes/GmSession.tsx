@@ -419,24 +419,19 @@ export function GmSessionConsole({ onSignOut }: { onSignOut: () => void }) {
             scroll
           >
           {snapshot && snapshot.characters.length > 0 ? (
-            <>
-              <p className={`mb-2 text-xs ${TEXT_MUTED}`}>
-                Ordered by SPD, then DEX+INIT. Use the arrow keys to move the turn marker.
-              </p>
-              <InitiativeList
-                characters={snapshot.characters}
-                segment={segment}
-                showActingOnly={showActingOnly}
-                activeSlotId={snapshot.session.activeSlotId}
-                editable
-                onSetVitals={(id, patch) => void setVitals(id, patch)}
-                onRecover={(id) => void recover(id)}
-                onRest={(id) => void rest(id)}
-                onToggleTag={(id, tag, active) => void setStatusTag(id, tag, active)}
-                onSetTurn={(id) => void setTurn(id)}
-                onRemove={(id) => void removeCharacter(id)}
-              />
-            </>
+            <InitiativeList
+              characters={snapshot.characters}
+              segment={segment}
+              showActingOnly={showActingOnly}
+              activeSlotId={snapshot.session.activeSlotId}
+              editable
+              onSetVitals={(id, patch) => void setVitals(id, patch)}
+              onRecover={(id) => void recover(id)}
+              onRest={(id) => void rest(id)}
+              onToggleTag={(id, tag, active) => void setStatusTag(id, tag, active)}
+              onSetTurn={(id) => void setTurn(id)}
+              onRemove={(id) => void removeCharacter(id)}
+            />
           ) : (
             <EmptyState>
               No characters in the session yet. Add some from the library.

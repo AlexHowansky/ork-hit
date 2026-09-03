@@ -18,7 +18,7 @@
  */
 
 import { HERO_STAT_LABELS } from "../../lib/hero.ts";
-import { TEXT_MUTED } from "./ui.tsx";
+import { PANEL_CAPTION } from "./ui.tsx";
 
 export function StatLine({
   character,
@@ -28,7 +28,10 @@ export function StatLine({
   className?: string;
 }) {
   return (
-    <p className={`truncate text-xs tabular-nums ${TEXT_MUTED} ${className}`}>
+    // Set like the captions on the line of numbers below it — same size, weight
+    // and letter-spacing — so a row reads as one block of small print under the
+    // name rather than as two lines that were styled apart.
+    <p className={`truncate text-xs tabular-nums ${PANEL_CAPTION} ${className}`}>
       {HERO_STAT_LABELS.speed} {character.speed} ·{" "}
       {HERO_STAT_LABELS.dexterity} {character.dexterity} ·{" "}
       {HERO_STAT_LABELS.initiative} {character.initiative} ·{" "}

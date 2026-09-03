@@ -209,7 +209,11 @@ function Box({
 
   return (
     <div className="flex items-center gap-0.5 sm:gap-1">
-      <span className={`text-[10px] ${PANEL_CAPTION}`}>{label}</span>
+      {/* `text-xs`, which is `StatLine`'s size: the two lines sit one above the
+          other on a segment row — what a character has left over what they are
+          — and a caption two pixels smaller on one of them read as a mistake
+          rather than as a hierarchy. */}
+      <span className={`text-xs ${PANEL_CAPTION}`}>{label}</span>
       {onCommit ? (
         <>
           <button
@@ -245,7 +249,10 @@ function Box({
       ) : (
         <span className={shared}>{current}</span>
       )}
-      <span className={`text-xs tabular-nums ${TEXT_MUTED}`}>/{max}</span>
+      {/* The total is written like the caption in front of it rather than like
+          the number in the box: what a character has left is the figure a table
+          reads, and what it is out of is the label around it. */}
+      <span className={`text-xs tabular-nums ${PANEL_CAPTION}`}>/{max}</span>
     </div>
   );
 }
