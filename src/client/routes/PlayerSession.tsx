@@ -415,6 +415,7 @@ export function PlayerSession({
           <TurnControls
             className="lg:shrink-0"
             turn={snapshot.session.turn}
+            segment={snapshot.session.segment}
             activeCharacterName={(() => {
               const active = snapshot.characters.find(
                 (character) => character.id === snapshot.session.activeSlotId,
@@ -582,7 +583,7 @@ export function PlayerSession({
         <div className="contents lg:flex lg:min-w-0 lg:flex-col wide:min-h-0">
           <Panel
             scroll
-            title={`Segment ${snapshot.session.segment}`}
+            title="Stage"
             actions={
               <SegmentFilterToggle showActingOnly={showActingOnly} onToggle={toggleSegmentFilter} />
             }

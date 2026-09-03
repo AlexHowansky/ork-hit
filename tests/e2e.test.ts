@@ -154,17 +154,37 @@ async function playerIn(code: string, name: string, campaignName?: string): Prom
 }
 
 /**
- * The segment panel, on either screen.
+ * The stage panel, which both screens head the same way.
  *
- * Matched on the shape of the heading rather than on its words, since the segment
- * in it changes as the fight walks the clock.
+ * Matched on the panel's own heading rather than on any text inside it: the log
+ * names segments too, now that the clock writes a line each time the fight
+ * reaches one, and a panel is what this wants rather than whatever mentions the
+ * stage.
  */
 const stagePanel = (page: Page) =>
-  // Matched on the panel's own heading rather than on any text inside it: the
-  // log names segments too, now that the clock writes a line each time the fight
-  // reaches one, and a panel is what this wants rather than whatever mentions a
-  // segment.
-  page.locator("section").filter({ has: page.getByRole("heading", { name: /Segment \d+/ }) });
+  page.locator("section").filter({ has: page.getByRole("heading", { name: /^Stage$/ }) });
+
+/**
+ * The clock, which both screens head with the turn and the segment together.
+ *
+ * A pattern rather than a string because the two numbers are one line now, and
+ * every caller here is asking after one of them. Matched on the bar itself
+ * rather than on the words anywhere: the log writes the same sentence each time
+ * the fight reaches a segment, and an open log would otherwise answer for the
+ * clock.
+ */
+const clock = (page: Page, pattern: RegExp) =>
+  page.locator('p[aria-live="polite"]').filter({ hasText: pattern });
+
+/**
+ * The row whose turn it is.
+ *
+ * Which is how either screen says who is up, now that the bar says only where
+ * the clock stands: the console banners the row and a player's list badges it,
+ * and both mark it `aria-current`, which is the part that means it rather than
+ * draws it.
+ */
+const onTurn = (page: Page) => stagePanel(page).locator('li[aria-current="true"]');
 
 /**
  * Waits for the panel to hold `count` characters.
@@ -248,15 +268,14 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     // Turn marker.
     await gm.getByRole("listitem").filter({ hasText: "Strahd" })
       .getByRole("button", { name: /Give .* the turn/ }).click();
-    await player.locator("p", { hasText: "Up now:" }).getByText("Strahd")
-      .waitFor({ timeout: 5000 });
+    await onTurn(player).filter({ hasText: "Strahd" }).waitFor({ timeout: 5000 });
 
     // Walking off the end of segment 12 opens turn 2 on both screens.
     for (let i = 0; i < 3; i += 1) {
       await gm.getByRole("button", { name: "Next" }).click();
       await gm.waitForTimeout(120);
     }
-    await player.getByText("Turn 2", { exact: true }).waitFor({ timeout: 5000 });
+    await clock(player, /^Turn 2 Segment \d+$/).waitFor({ timeout: 5000 });
 
     // Removing an NPC takes it off the player's list.
     await gm.getByRole("listitem").filter({ hasText: "Strahd" })
@@ -391,7 +410,7 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     for (let i = 0; i < 5; i += 1) {
       await gm.getByRole("button", { name: "Next" }).click();
       await gm.waitForTimeout(150);
-      seen.push((await gm.locator("p", { hasText: "Up now:" }).innerText()).replace(/\s+/g, " "));
+      seen.push((await onTurn(gm).innerText()).replace(/\s+/g, " "));
     }
     expect(seen.filter((line) => line.includes("Strahd"))).toHaveLength(3);
     expect(new Set(seen).size).toBe(5);
@@ -415,32 +434,32 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
       await gm.getByRole("button", { name: "Next" }).click();
       await gm.waitForTimeout(120);
     }
-    await player.getByText("Turn 2", { exact: true }).waitFor({ timeout: 5000 });
+    await clock(player, /^Turn 2 Segment \d+$/).waitFor({ timeout: 5000 });
 
     // Restarting asks first, and backing out of the question changes nothing.
     await gm.getByRole("button", { name: "Restart" }).click();
     await gm.getByRole("dialog", { name: "Start over at turn 1?" })
       .getByRole("button", { name: "Cancel" }).click();
     await gm.waitForTimeout(200);
-    expect(await gm.getByText("Turn 2", { exact: true }).count()).toBe(1);
+    expect(await clock(gm, /^Turn 2 Segment \d+$/).count()).toBe(1);
 
     await gm.getByRole("button", { name: "Restart" }).click();
     await gm.getByRole("dialog", { name: "Start over at turn 1?" })
       .getByRole("button", { name: "Restart" }).click();
 
     // Turn one, nobody up, and the player sees it without a refresh.
-    await gm.getByText("No turn set yet").waitFor({ timeout: 5000 });
-    await player.getByText("Turn 1", { exact: true }).waitFor({ timeout: 5000 });
-    await player.getByText("No turn set yet").waitFor({ timeout: 5000 });
+    await clock(gm, /^Turn 1 Segment 12$/).waitFor({ timeout: 5000 });
+    await clock(player, /^Turn 1 Segment 12$/).waitFor({ timeout: 5000 });
+    expect(await onTurn(gm).count()).toBe(0);
+    expect(await onTurn(player).count()).toBe(0);
 
     // The stage is untouched: the same three are still in the scene.
     expect(await namesIn(gm)).toEqual(["Elara", "Thorin", "Strahd"]);
 
     // And the next step opens turn one, segment twelve, at the top of the order.
     await gm.getByRole("button", { name: "Next" }).click();
-    await gm.locator("p", { hasText: "Up now:" }).getByText("Elara")
-      .waitFor({ timeout: 5000 });
-    expect(await gm.getByText("Turn 1", { exact: true }).count()).toBe(1);
+    await onTurn(gm).filter({ hasText: "Elara" }).waitFor({ timeout: 5000 });
+    expect(await clock(gm, /^Turn 1 Segment \d+$/).count()).toBe(1);
   }, 60_000);
 
   test("the player whose turn it is gets told", async () => {
@@ -454,8 +473,7 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     // An NPC's turn is not this player's business.
     await gm.getByRole("listitem").filter({ hasText: "Strahd" })
       .getByRole("button", { name: /Give .* the turn/ }).click();
-    await player.locator("p", { hasText: "Up now:" }).getByText("Strahd")
-      .waitFor({ timeout: 5000 });
+    await onTurn(player).filter({ hasText: "Strahd" }).waitFor({ timeout: 5000 });
     expect(await player.getByText("It's your turn!").count()).toBe(0);
 
     // Their own character's turn is.
@@ -795,8 +813,8 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
       await gm.getByRole("button", { name: "Next" }).click();
       await gm.waitForTimeout(120);
     }
-    await gm.getByText("Segment 1", { exact: true }).waitFor({ timeout: 5000 });
-    await player.getByText("Segment 1", { exact: true }).waitFor({ timeout: 5000 });
+    await clock(gm, /^Turn \d+ Segment 1$/).waitFor({ timeout: 5000 });
+    await clock(player, /^Turn \d+ Segment 1$/).waitFor({ timeout: 5000 });
 
     // Everyone is still listed until the filter button is pressed.
     expect(await namesIn(gm)).toEqual(["Elara", "Thorin", "Strahd"]);
@@ -823,19 +841,19 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
       await gm.getByRole("button", { name: "Next" }).click();
       await gm.waitForTimeout(120);
     }
-    await gm.getByText("Segment 6", { exact: true }).waitFor({ timeout: 5000 });
+    await clock(gm, /^Turn \d+ Segment 6$/).waitFor({ timeout: 5000 });
     expect(await namesIn(gm)).toEqual(["Elara", "Thorin", "Strahd"]);
 
     // Remembered across a reload, for the length of the session. Three more
     // presses finish segment 6 — Strahd's second phase is in it — and open 7,
     // which is the heroes' alone again.
     await gm.reload();
-    await gm.getByText("Segment 6", { exact: true }).waitFor({ timeout: 5000 });
+    await clock(gm, /^Turn \d+ Segment 6$/).waitFor({ timeout: 5000 });
     for (let i = 0; i < 3; i += 1) {
       await gm.getByRole("button", { name: "Next" }).click();
       await gm.waitForTimeout(120);
     }
-    await gm.getByText("Segment 7", { exact: true }).waitFor({ timeout: 5000 });
+    await clock(gm, /^Turn \d+ Segment 7$/).waitFor({ timeout: 5000 });
     expect(await namesIn(gm)).toEqual(["Elara", "Thorin"]);
 
     // Pressed again, the whole stage comes back.
@@ -853,9 +871,9 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     const panelWith = (name: string | RegExp) =>
       gm.locator("section").filter({ has: gm.getByRole("heading", { name }) });
     // Each panel fills the column it is in, so the panels are how the columns are
-    // measured: the segment panel is the turn column, and the other two name
+    // measured: the stage panel is the turn column, and the other two name
     // themselves.
-    const turn = panelWith(/^Segment /);
+    const turn = panelWith(/^Stage$/);
     const library = panelWith("Library");
     const players = panelWith(/^Players/);
     const widthOf = async (panel: Locator) => (await panel.boundingBox())!.width;
@@ -940,7 +958,7 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     const panelWith = (name: string | RegExp) =>
       player.locator("section").filter({ has: player.getByRole("heading", { name }) });
     const mine = panelWith(/^Players/);
-    const scene = panelWith(/^Segment /);
+    const scene = panelWith(/^Stage$/);
     const widthOf = async (panel: Locator) => (await panel.boundingBox())!.width;
     const handle = player.getByRole("separator", { name: "Resize your column" });
 

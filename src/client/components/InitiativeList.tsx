@@ -145,7 +145,7 @@ function Row({
       // own, and a column is as wide as its widest row: the toolbar under it is
       // five glyphs across, so a hundred and twenty pixels of the name's width
       // would go to holding a corner.
-      className={`relative flex items-stretch gap-2 border-l-4 px-3 py-2.5 ${
+      className={`relative flex items-stretch gap-2 overflow-hidden border-l-4 px-3 py-2.5 ${
         isActive
           ? "border-l-primary bg-primary/10"
           : isUnclaimed
@@ -154,6 +154,27 @@ function Row({
       } ${isActing ? "" : "opacity-60"}`}
       aria-current={isActive ? "true" : undefined}
     >
+      {/* Whose turn it is, written across the corner of the row like a banner
+          rather than badged in beside the name. The row already carries the
+          colour and the heavy left border; this is the part a game master
+          glancing down a full stage picks out before reading anything.
+
+          Wider than the corner it crosses and hung outside the row on both
+          sides, so the row's own `overflow-hidden` cuts it to the diagonal — a
+          ribbon is a long bar clipped at both ends, not a shape drawn as one.
+          `pointer-events-none` because it crosses the row number, and a banner
+          is not something to press.
+
+          The game master's list only: it wants a corner to cross, and a player's
+          row is two lines where the game master's is three — the banner would
+          land on the number rather than above it. That list keeps the badge
+          below, beside the name. */}
+      {isActive && editable ? (
+        <span className="pointer-events-none absolute top-2.5 -left-9 w-28 rotate-[-45deg] bg-primary py-0.5 text-center text-[0.625rem] font-bold tracking-widest text-primary-content uppercase shadow-sm">
+          Turn
+        </span>
+      ) : null}
+
       {/* Where a character stands in the order, against the whole stage. Centred
           down the full height of the row rather than sat on the first line: it
           numbers the row, not the name. */}
@@ -202,7 +223,9 @@ function Row({
             <CountBadge hidden>{character.copyNumber}</CountBadge>
           ) : null}
           <KindBadge kind={character.kind} />
-          {isActive ? (
+          {isActive && !editable ? (
+            // The badge the game master's row wears as a banner across its
+            // corner. Same word, in the room a shorter row has for it.
             <span className="badge badge-xs badge-primary font-semibold tracking-wide uppercase">
               Turn
             </span>

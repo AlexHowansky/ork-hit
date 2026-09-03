@@ -3,9 +3,9 @@
  *
  * The game master gets the Turn counter and the controls that walk the HERO
  * clock; players get the same counter with no controls, so both screens read the
- * same turn at the same time. Which segment of that turn the fight is on heads
- * the segment panel below rather than sitting here — the counter answers "how
- * long has this fight been going", the panel answers "who is up".
+ * same turn at the same time. Where in the fight the clock stands is the whole
+ * of what this bar says — the turn and the segment of it, written as one line,
+ * since neither number means much without the other.
  *
  * Stepping off the end of a segment walks to the next segment anybody acts in,
  * and arriving at segment 1 advances the turn — that arithmetic lives on the
@@ -14,10 +14,11 @@
 
 import { useEffect } from "react";
 import { faArrowLeft, faArrowRight, faRotateLeft } from "@fortawesome/free-solid-svg-icons";
-import { Button, Icon, PANEL_CAPTION, SURFACE, TEXT_MUTED } from "./ui.tsx";
+import { Button, Icon, PANEL_CAPTION, SURFACE } from "./ui.tsx";
 
 export function TurnControls({
   turn,
+  segment,
   activeCharacterName,
   editable,
   onAdvance,
@@ -26,6 +27,13 @@ export function TurnControls({
   className = "",
 }: {
   turn: number;
+  /** Which of the twelve segments of that turn the fight is on. */
+  segment: number;
+  /**
+   * Who is up. Not written on the bar — the stage marks the row whose turn it
+   * is — but Restart has nothing to go back to before anybody has had one, and
+   * this is how it knows.
+   */
   activeCharacterName: string | null;
   editable: boolean;
   onAdvance?: (direction: "next" | "prev") => void;
@@ -65,19 +73,12 @@ export function TurnControls({
       // either end of the bar.
       className={`flex flex-row flex-wrap items-center justify-between gap-3 px-4 py-3 ${SURFACE} ${className}`}
     >
-      <div>
-        <p className={`text-xs ${PANEL_CAPTION}`}>Turn {turn}</p>
-        <p className="mt-0.5 text-sm" aria-live="polite">
-          {activeCharacterName ? (
-            <>
-              <span className={TEXT_MUTED}>Up now: </span>
-              <span className="font-semibold">{activeCharacterName}</span>
-            </>
-          ) : (
-            <span className={TEXT_MUTED}>No turn set yet</span>
-          )}
-        </p>
-      </div>
+      {/* Set like a panel heading rather than like a caption over a number: this
+          bar is the clock, and what it says is the heading of the whole console
+          — the same size and weight as the `Stage` panel it sits above. */}
+      <p className={`text-sm ${PANEL_CAPTION}`} aria-live="polite">
+        Turn {turn} Segment {segment}
+      </p>
 
       {editable && onAdvance ? (
         <div className="flex items-center gap-2">

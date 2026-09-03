@@ -409,6 +409,7 @@ export function GmSessionConsole({ onSignOut }: { onSignOut: () => void }) {
           <TurnControls
             className="sm:shrink-0"
             turn={snapshot?.session.turn ?? session.turn}
+            segment={segment}
             activeCharacterName={
               activeCharacter ? stageLabel(snapshot?.characters ?? [], activeCharacter) : null
             }
@@ -419,7 +420,7 @@ export function GmSessionConsole({ onSignOut }: { onSignOut: () => void }) {
           />
 
           <Panel
-            title={`Segment ${segment}`}
+            title="Stage"
             actions={
               <SegmentFilterToggle showActingOnly={showActingOnly} onToggle={toggleSegmentFilter} />
             }
