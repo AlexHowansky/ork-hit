@@ -100,16 +100,33 @@ const PINNED_SLACK_PX = 24;
 function timeOf(at: string): string {
   const when = new Date(at);
   if (Number.isNaN(when.getTime())) return "";
-  // `hour12` is set rather than left to the reader's locale, so the log reads the
-  // same at every seat at the table. `numeric` on the hour alone, because a
-  // twelve-hour clock does not write `01:27 PM` — the ragged left edge that
-  // leaves is a smaller price than a leading zero nobody writes by hand.
-  return when.toLocaleTimeString(undefined, {
+  // The hour and the minute, and neither the seconds nor the half of the day.
+  //
+  // These stamps are read against each other rather than against a clock on the
+  // wall — "that was two minutes ago", not "that was at 9:41:07 PM" — and a
+  // table knows whether it is playing in the evening. What is dropped is the
+  // part that was never the question, and what is left is narrow enough to sit
+  // beside the message rather than crowding it.
+  //
+  // `hour12` is set rather than left to the reader's locale, so the log reads
+  // the same at every seat at the table, and the half of the day is then cut
+  // back out of the parts: asking for a twelve-hour clock is what makes the hour
+  // read 9 rather than 21, and the `PM` it comes with is the part nobody needs.
+  // `numeric` on the hour, because a twelve-hour clock does not write `01:27` —
+  // the ragged left edge that leaves is a smaller price than a leading zero
+  // nobody writes by hand.
+  return new Intl.DateTimeFormat(undefined, {
     hour12: true,
     hour: "numeric",
     minute: "2-digit",
-    second: "2-digit",
-  });
+  })
+    .formatToParts(when)
+    .filter((part) => part.type !== "dayPeriod")
+    .map((part) => part.value)
+    .join("")
+    // The space the formatter puts between the minute and the half of the day,
+    // left behind by the part it belonged to.
+    .trim();
 }
 
 export function LogDrawer({
