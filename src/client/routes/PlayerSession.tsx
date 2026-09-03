@@ -42,7 +42,7 @@ import { InitiativeList, stageLabel } from "../components/InitiativeList.tsx";
 import { LogDrawer, LogToggle, useLogDrawer } from "../components/EventLog.tsx";
 import { SegmentFilterToggle, useSegmentFilter } from "../components/SegmentFilter.tsx";
 import { StatLine } from "../components/StatLine.tsx";
-import { Vitals, type VitalsPatch } from "../components/Vitals.tsx";
+import { VitalActions, Vitals, type VitalsPatch } from "../components/Vitals.tsx";
 import { faOctagon, faRightFromBracket, faShieldHalved } from "@fortawesome/free-solid-svg-icons";
 import { TurnControls } from "../components/TurnControls.tsx";
 import { SheetOverlay } from "../components/SheetFrame.tsx";
@@ -464,8 +464,6 @@ export function PlayerSession({
                   character={myCharacter}
                   wrap={false}
                   onChange={(patch) => void setVitals(myCharacter.id, patch)}
-                  onRecover={() => void recover(myCharacter.id)}
-                  onRest={() => void rest(myCharacter.id)}
                 />
                 </div>
                 {/*
@@ -474,43 +472,58 @@ export function PlayerSession({
                   character is theirs to change on their own panel, and the scene
                   is where everybody is read rather than written.
                 */}
-                <div className="flex flex-wrap items-center gap-2">
-                  <StatusTagButton
-                    character={myCharacter}
-                    onOpen={() => setTaggingOpen(true)}
-                  />
-                  {/*
-                    Waiting is this player's decision as much as spending their
-                    own END is, so the control is here beside the conditions
-                    rather than only on the game master's console. Taking the
-                    hold off cuts them back into the order and gives them the
-                    turn, which is why the label promises that rather than
-                    describing the state — the badge in the scene below says the
-                    state.
-                  */}
-                  <button
-                    type="button"
-                    onClick={() => void setHold(myCharacter.id, !myCharacter.isHeld)}
-                    className={bareIcon(myCharacter.isHeld ? "danger" : "muted")}
-                    title={
-                      myCharacter.isHeld
-                        ? "Take your held action now"
-                        : "Hold your action"
-                    }
-                    aria-label={
-                      myCharacter.isHeld
-                        ? "Take your held action now"
-                        : "Hold your action"
-                    }
-                    aria-pressed={myCharacter.isHeld}
-                  >
-                    <Icon icon={faOctagon} />
-                  </button>
-                  {myCharacter.statusTags.length > 0 ? (
+                {/*
+                  What is on this character on the left, what they can do about
+                  it on the right — the shape a segment row on the console has,
+                  so a player reading over the game master's shoulder is reading
+                  the same panel twice rather than two arrangements of it.
+                */}
+                <div className="flex items-center gap-2">
+                  {/* Nothing at all when there is nothing on them: the row of
+                      pills is the answer to "what is on me", and an empty row
+                      says that as plainly as a sentence would. */}
+                  <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+                    <StatusTagButton
+                      character={myCharacter}
+                      onOpen={() => setTaggingOpen(true)}
+                    />
                     <StatusTagPills tags={myCharacter.statusTags} />
-                  ) : (
-                    <span className={`text-xs ${TEXT_MUTED}`}>Nothing on them</span>
-                  )}
+                  </div>
+
+                  {/*
+                    The three that change something, in the console's own order.
+                    Waiting is this player's decision as much as spending their
+                    own END is, which is why the hold is here at all rather than
+                    only on the game master's screen; taking it off cuts them
+                    back into the order and gives them the turn, so the label
+                    promises that rather than describing the state — the badge in
+                    the scene below says the state.
+                  */}
+                  <div className="ml-auto flex shrink-0 items-center gap-0.5">
+                    <VitalActions
+                      character={myCharacter}
+                      onRecover={() => void recover(myCharacter.id)}
+                      onRest={() => void rest(myCharacter.id)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => void setHold(myCharacter.id, !myCharacter.isHeld)}
+                      className={bareIcon(myCharacter.isHeld ? "danger" : "muted")}
+                      title={
+                        myCharacter.isHeld
+                          ? "Take your held action now"
+                          : "Hold your action"
+                      }
+                      aria-label={
+                        myCharacter.isHeld
+                          ? "Take your held action now"
+                          : "Hold your action"
+                      }
+                      aria-pressed={myCharacter.isHeld}
+                    >
+                      <Icon icon={faOctagon} />
+                    </button>
+                  </div>
                 </div>
                 {taggingOpen ? (
                   <StatusTagPicker

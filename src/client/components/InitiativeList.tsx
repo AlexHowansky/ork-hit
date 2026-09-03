@@ -314,9 +314,9 @@ function Row({
             // row read as four separate ones.
             <div className="-mr-2 -mb-2 ml-auto flex shrink-0 items-center gap-0.5">
               {onToggleTag ? (
-                <StatusTagButton character={character} onOpen={() => setTaggingOpen(true)} bare />
+                <StatusTagButton character={character} onOpen={() => setTaggingOpen(true)} />
               ) : null}
-              <VitalActions character={character} onRecover={onRecover} onRest={onRest} bare />
+              <VitalActions character={character} onRecover={onRecover} onRest={onRest} />
               {onToggleHold ? (
                 // Red while it is holding, which is the same red the badge above
                 // takes. The label says what the press will do rather than what

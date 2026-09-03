@@ -76,8 +76,13 @@ export function StatusPill({ tag }: { tag: string }) {
   const { label, hint } = present(tag);
   return (
     <span
+      // Between the two: `badge-xs` drew these at two thirds the size of the
+      // controls beside them, and matching those exactly made a row of pills
+      // shout over the name above it. `badge-sm` is the size in the middle, and
+      // it is daisyUI's own — a box and a font size that were meant for each
+      // other, rather than one of them overridden.
       title={hint ? `${label} — ${hint}` : label}
-      className="badge badge-xs badge-primary badge-soft max-w-32 truncate font-semibold"
+      className="badge badge-sm badge-primary badge-soft max-w-32 truncate font-semibold"
     >
       {label}
     </span>
@@ -198,14 +203,14 @@ export function StatusTagPicker({
 /**
  * The control that opens the picker, for a reader who may write this character.
  *
- * Sized and styled like the Recovery and rest controls it sits beside, including
- * their guard against a press being taken for the start of a drag.
+ * Drawn like the Recovery, rest and hold controls it sits beside — the same bare
+ * glyph at the same size, and the same guard against a press being taken for the
+ * start of a drag — on both screens, so a row of controls is one row of controls
+ * wherever it is read.
  */
-export function StatusTagButton({ character, onOpen, bare = false }: {
+export function StatusTagButton({ character, onOpen }: {
   character: SessionCharacter;
   onOpen: () => void;
-  /** Just the glyph, for the segment row's cluster. See `bareIcon`. */
-  bare?: boolean;
 }) {
   return (
     <button
@@ -214,7 +219,7 @@ export function StatusTagButton({ character, onOpen, bare = false }: {
       onPointerDown={(event) => event.stopPropagation()}
       title={`Set ${character.name}'s status`}
       aria-label={`Set ${character.name}'s status`}
-      className={bare ? bareIcon() : `btn btn-ghost btn-square btn-xs ${TEXT_MUTED}`}
+      className={bareIcon()}
     >
       <Icon icon={faTag} />
     </button>

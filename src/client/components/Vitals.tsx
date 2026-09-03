@@ -14,9 +14,13 @@
  * Each box is coloured by how much of the total is left — see `toneFor` — so the
  * state of a fight reads off the panel before any of the numbers do.
  *
- * The two buttons at the end are the only arithmetic here, and it is the
- * server's: a Recovery puts RECOVERY back into ENDURANCE and STUN without going
- * over the character's total, and a rest sets both to it.
+ * The boxes are all this draws. The two controls that put numbers back — a
+ * Recovery and a rest — are `VitalActions` below, which both screens place in a
+ * cluster with the other controls a row carries rather than at the end of the
+ * numbers: they are pressed alongside the status and the hold, not alongside
+ * END. The arithmetic in them is the server's either way: a Recovery puts
+ * RECOVERY back into ENDURANCE and STUN without going over the character's
+ * total, and a rest sets both to it.
  *
  * Values are signed on purpose: a HERO character at -8 STUN is unconscious, not
  * a mistake, and nothing here clamps to the total either, since a Recovery can
@@ -265,12 +269,11 @@ function Box({
  * it follows. What each does is spelled out in the label and the tooltip, which
  * is where a control with a picture on it says what it means.
  */
-function VitalAction({ icon, label, title, onClick, bare = false }: {
+function VitalAction({ icon, label, title, onClick }: {
   icon: IconDefinition;
   label: string;
   title: string;
   onClick: () => void;
-  bare?: boolean;
 }) {
   return (
     <button
@@ -280,7 +283,7 @@ function VitalAction({ icon, label, title, onClick, bare = false }: {
       onPointerDown={(event) => event.stopPropagation()}
       title={title}
       aria-label={label}
-      className={bare ? bareIcon() : `btn btn-ghost btn-square btn-xs ${TEXT_MUTED}`}
+      className={bareIcon()}
     >
       <Icon icon={icon} />
     </button>
@@ -293,16 +296,14 @@ function VitalAction({ icon, label, title, onClick, bare = false }: {
  * A component rather than two calls at each site because what each button says
  * belongs with the button: the Recovery's tooltip carries this character's REC,
  * and a second copy of that sentence somewhere else is a second copy to keep
- * right. The initiative row gathers its controls into a cluster of its own and
- * so draws these itself; the character panel lets `Vitals` draw them at the end
- * of the numbers they change.
+ * right. Both screens draw it themselves, in the cluster of controls a row keeps
+ * at its right — which is why it is here beside the numbers it changes rather
+ * than inside `Vitals`, which only draws them.
  */
-export function VitalActions({ character, onRecover, onRest, bare = false }: {
+export function VitalActions({ character, onRecover, onRest }: {
   character: SessionCharacter;
   onRecover?: () => void;
   onRest?: () => void;
-  /** Passed to both: just the glyph, for the segment row's cluster. */
-  bare?: boolean;
 }) {
   return (
     <>
@@ -312,7 +313,6 @@ export function VitalActions({ character, onRecover, onRest, bare = false }: {
           label={`Take a Recovery for ${character.name}`}
           title={`Take a Recovery: +${character.recovery} to END and STUN, up to full`}
           onClick={onRecover}
-          bare={bare}
         />
       ) : null}
       {onRest ? (
@@ -321,7 +321,6 @@ export function VitalActions({ character, onRecover, onRest, bare = false }: {
           label={`Rest ${character.name}`}
           title="Rest: END and STUN back to full"
           onClick={onRest}
-          bare={bare}
         />
       ) : null}
     </>
@@ -331,17 +330,12 @@ export function VitalActions({ character, onRecover, onRest, bare = false }: {
 export function Vitals({
   character,
   onChange,
-  onRecover,
-  onRest,
   wrap = true,
   className = "",
 }: {
   character: SessionCharacter;
   /** Absent where this reader may look but not touch. */
   onChange?: (patch: VitalsPatch) => void;
-  /** Both absent for the same reason: this reader may look but not touch. */
-  onRecover?: () => void;
-  onRest?: () => void;
   /**
    * Whether the row may fall onto a second line when it runs out of width. The
    * initiative order lets it; a panel that is only about this one character does
@@ -371,7 +365,6 @@ export function Vitals({
           />
         );
       })}
-      <VitalActions character={character} onRecover={onRecover} onRest={onRest} />
     </div>
   );
 }
