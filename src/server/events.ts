@@ -28,6 +28,8 @@
  * The clock is the one exception, and it is at the bottom with its reasons.
  */
 
+import { markTag } from "../lib/hero.ts";
+
 export const SESSION_STARTED = "Session started";
 
 /** The subject of every line about something the game master did. */
@@ -87,12 +89,18 @@ export const gmRemovedFromScene = (character: string): string =>
  * A list rather than one tag because one hit commonly leaves a character both
  * prone and stunned, and a caller with the pair in hand should be able to say so
  * in one line. Today's route sets one tag per press and passes one.
+ *
+ * The conditions themselves are marked with `markTag`, so the log can draw each
+ * as the pill the character's row draws it as. The sentence is still a sentence
+ * with the marks in it — see the note on `markTag`.
  */
+const marked = (tags: string[]): string => tags.map(markTag).join(", ");
+
 export const tagsAdded = (actor: string, tags: string[], character: string): string =>
-  `${actor} added ${tags.join(", ")} to ${character}`;
+  `${actor} added ${marked(tags)} to ${character}`;
 
 export const tagsRemoved = (actor: string, tags: string[], character: string): string =>
-  `${actor} removed ${tags.join(", ")} from ${character}`;
+  `${actor} removed ${marked(tags)} from ${character}`;
 
 /* ------------------------------------------------------------- the clock's */
 

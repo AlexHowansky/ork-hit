@@ -19,6 +19,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { faRectangleList, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { splitMarkedTags } from "../../lib/hero.ts";
+import { StatusPill } from "./StatusTags.tsx";
 import { Button, EmptyState, Icon, Panel, TEXT_MUTED } from "./ui.tsx";
 import type { SessionEvent } from "../types.ts";
 
@@ -226,7 +228,17 @@ export function LogDrawer({
                   <time dateTime={event.at} className={`shrink-0 tabular-nums ${TEXT_MUTED}`}>
                     {timeOf(event.at)}
                   </time>
-                  <span className="min-w-0 flex-1">{event.message}</span>
+                  <span className="min-w-0 flex-1">
+                    {splitMarkedTags(event.message).map((piece, index) => (
+                      piece.isTag
+                        // The pieces of one sentence, so the index is the key:
+                        // they have no identity of their own and the list is
+                        // rebuilt whole whenever the message changes, which it
+                        // never does — an event is written once.
+                        ? <StatusPill key={index} tag={piece.text} />
+                        : <span key={index}>{piece.text}</span>
+                    ))}
+                  </span>
                 </li>
               ))}
             </ol>

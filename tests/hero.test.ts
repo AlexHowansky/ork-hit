@@ -7,7 +7,15 @@
  */
 
 import { describe, expect, test } from "bun:test";
-import { actsIn, bandFor, segmentsFor, SEGMENTS_PER_TURN, SPEED_CHART } from "../src/lib/hero.ts";
+import {
+  actsIn,
+  bandFor,
+  markTag,
+  segmentsFor,
+  SEGMENTS_PER_TURN,
+  SPEED_CHART,
+  splitMarkedTags,
+} from "../src/lib/hero.ts";
 
 describe("how healthy a characteristic looks", () => {
   test("under a third left is low, two thirds is middling, above that is full", () => {
@@ -110,5 +118,37 @@ describe("the speed chart", () => {
     expect(segmentsFor(-3)).toEqual([]);
     expect(segmentsFor(99)).toEqual(SPEED_CHART[12]!);
     expect(segmentsFor(4.9)).toEqual(SPEED_CHART[4]!);
+  });
+});
+
+describe("conditions marked inside a log line", () => {
+  test("a marked line splits into the words and the conditions in it", () => {
+    expect(splitMarkedTags(`The game master added ${markTag("Prone")} to Goblin 2`)).toEqual([
+      { text: "The game master added ", isTag: false },
+      { text: "Prone", isTag: true },
+      { text: " to Goblin 2", isTag: false },
+    ]);
+  });
+
+  test("two conditions in one line are two pills, and the comma between them is not", () => {
+    const line = `Ada added ${markTag("Prone")}, ${markTag("Stunned")} to Thorin`;
+    expect(splitMarkedTags(line).filter((piece) => piece.isTag).map((piece) => piece.text))
+      .toEqual(["Prone", "Stunned"]);
+    expect(splitMarkedTags(line).map((piece) => piece.text).join("")).toBe(
+      "Ada added Prone, Stunned to Thorin",
+    );
+  });
+
+  test("a line with nothing marked in it comes back whole", () => {
+    // Every event but these two, run through the same splitter by the log.
+    expect(splitMarkedTags("Ada joined")).toEqual([{ text: "Ada joined", isTag: false }]);
+  });
+
+  test("a brace typed into a tag cannot open a pill of its own", () => {
+    // Where the marks would otherwise nest and leave the reader guessing which
+    // closing brace ended the condition.
+    expect(markTag("On {fire}")).toBe("{On fire}");
+    expect(splitMarkedTags(`Ada added ${markTag("On {fire}")} to Thorin`)
+      .filter((piece) => piece.isTag)).toEqual([{ text: "On fire", isTag: true }]);
   });
 });

@@ -164,6 +164,42 @@ export function tagLabel(tag: string): string {
 }
 
 /**
+ * How a condition is marked inside a log line.
+ *
+ * A log event is one sentence, stored as it will be read — that is the whole of
+ * migration 008's reasoning, and it is why a line about a character renamed
+ * afterwards still says what it said. But the log draws a condition as the same
+ * pill the character's row does, and to do that it has to know which words of
+ * the sentence are the condition.
+ *
+ * So the tag is wrapped where the sentence is composed. Braces rather than
+ * something invisible: a message read straight out of the database is still a
+ * sentence a person can read, and `added {Prone} to Goblin 2` explains itself.
+ * A brace typed into a tag is dropped from the marked copy, since a nested pair
+ * would leave the reader below guessing where the pill ends.
+ */
+export function markTag(label: string): string {
+  return `{${label.replaceAll(/[{}]/g, "")}}`;
+}
+
+/**
+ * A marked-up line, split into what to draw plainly and what to draw as a pill.
+ *
+ * Every other event has no marks in it and comes back as one plain piece, so a
+ * caller can run this over the whole log without asking which kind each line is.
+ */
+export function splitMarkedTags(message: string): { text: string; isTag: boolean }[] {
+  return message
+    .split(/(\{[^{}]*\})/g)
+    .filter((piece) => piece !== "")
+    .map((piece) => (
+      piece.startsWith("{") && piece.endsWith("}")
+        ? { text: piece.slice(1, -1), isTag: true }
+        : { text: piece, isTag: false }
+    ));
+}
+
+/**
  * Tidies a tag on its way in: the outer spaces go, a run of inner space becomes
  * one, and anything that spells one of the eight — in whatever case it was typed
  * — becomes that one.

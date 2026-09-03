@@ -60,19 +60,27 @@ export function StatusTagPills({ tags }: { tags: string[] }) {
   if (tags.length === 0) return null;
   return (
     <>
-      {tags.map((tag) => {
-        const { label, hint } = present(tag);
-        return (
-          <span
-            key={tag}
-            title={hint ? `${label} — ${hint}` : label}
-            className="badge badge-xs badge-primary badge-soft max-w-32 truncate font-semibold"
-          >
-            {label}
-          </span>
-        );
-      })}
+      {tags.map((tag) => <StatusPill key={tag} tag={tag} />)}
     </>
+  );
+}
+
+/**
+ * One condition, drawn as itself.
+ *
+ * Its own component because the log draws them too: a line saying somebody was
+ * marked Prone shows the same pill the row shows, so the two are read as the
+ * same thing rather than as a word and a badge that happen to agree.
+ */
+export function StatusPill({ tag }: { tag: string }) {
+  const { label, hint } = present(tag);
+  return (
+    <span
+      title={hint ? `${label} — ${hint}` : label}
+      className="badge badge-xs badge-primary badge-soft max-w-32 truncate font-semibold"
+    >
+      {label}
+    </span>
   );
 }
 
