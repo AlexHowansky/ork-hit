@@ -158,7 +158,7 @@ function Row({
           down the full height of the row rather than sat on the first line: it
           numbers the row, not the name. */}
       <span
-        className={`flex w-5 shrink-0 items-center justify-center text-xs tabular-nums ${TEXT_MUTED}`}
+        className={`flex w-9 shrink-0 items-center justify-center text-2xl tabular-nums ${TEXT_MUTED}`}
         aria-hidden="true"
       >
         {index + 1}
