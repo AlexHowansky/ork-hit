@@ -291,6 +291,37 @@ describe("the log", () => {
     expect(sessionEvents.list(theirs.id)).toEqual([]);
   });
 
+  test("clears the whole of one session's log, and only that one's", () => {
+    const mine = makeSession(0).session;
+    const theirs = makeSession(0).session;
+    for (const message of ["first", "second", "third"]) {
+      sessionEvents.record(mine.id, message);
+      sessionEvents.record(theirs.id, message);
+    }
+
+    sessionEvents.clear(mine.id);
+
+    expect(sessionEvents.list(mine.id)).toEqual([]);
+    expect(sessionEvents.list(theirs.id)).toHaveLength(3);
+  });
+
+  test("clears past the tail a snapshot carries, rather than what can be seen", () => {
+    const session = makeSession(0).session;
+    // More lines than any one read hands back, so a clear that worked through
+    // `list` would leave the older ones behind for the next scroll to find.
+    for (let index = 0; index < 250; index += 1) {
+      sessionEvents.record(session.id, `line ${index}`);
+    }
+
+    sessionEvents.clear(session.id);
+
+    expect(
+      db.query<{ n: number }, { sessionId: string }>(
+        "SELECT COUNT(*) AS n FROM session_events WHERE game_session_id = $sessionId",
+      ).get({ sessionId: session.id })!.n,
+    ).toBe(0);
+  });
+
   test("survives the session ending, and dies with the campaign", () => {
     const campaign = makeCampaign();
     const session = gameSessions.create({

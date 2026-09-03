@@ -15,6 +15,7 @@ import { gms } from "../src/db/queries.ts";
 import { config, limits } from "../src/lib/config.ts";
 import { unique } from "./helpers.ts";
 import {
+  LOG_CLEARED,
   SESSION_STARTED,
   gmAddedToScene,
   gmAssigned,
@@ -1348,6 +1349,62 @@ describe("the log", () => {
       }),
     );
     expect(await messages(cookie, session.id)).toEqual(before);
+  });
+
+  test("the game master can throw it away, and it says so afterwards", async () => {
+    const { cookie } = await signIn();
+    const { session, npc } = await makeTable(cookie);
+    await joinAs(session.code, "Ada");
+    expect(await messages(cookie, session.id)).toEqual([...opening(npc), playerJoined("Ada")]);
+
+    const response = await fetch(
+      `${base}/api/sessions/${session.id}/log/clear`,
+      authed(cookie, { method: "POST" }),
+    );
+    expect(response.status).toBe(200);
+
+    // Everything that came before is gone, and the clearing is the whole of what
+    // is left: an empty drawer would read as a fault rather than as somebody's
+    // doing. The response carries the same log the next reader gets.
+    const { snapshot } = await response.json();
+    expect(snapshot.events.map((event: { message: string }) => event.message)).toEqual([
+      LOG_CLEARED,
+    ]);
+    expect(await messages(cookie, session.id)).toEqual([LOG_CLEARED]);
+  });
+
+  test("a player reads the cleared log but cannot clear it", async () => {
+    const { cookie } = await signIn();
+    const { session, npc } = await makeTable(cookie);
+    const playerCookie = await joinAs(session.code, "Ada");
+
+    // The log is theirs to read, not theirs to empty.
+    const refused = await fetch(
+      `${base}/api/sessions/${session.id}/log/clear`,
+      authed(playerCookie, { method: "POST" }),
+    );
+    expect(refused.status).toBeGreaterThanOrEqual(401);
+    expect(refused.status).toBeLessThan(500);
+    expect(await messages(cookie, session.id)).toEqual([...opening(npc), playerJoined("Ada")]);
+
+    // And when the game master does it, the player is reading the same log
+    // afterwards as before: one table, one history.
+    await fetch(`${base}/api/sessions/${session.id}/log/clear`, authed(cookie, { method: "POST" }));
+    expect(await messages(playerCookie, session.id)).toEqual([LOG_CLEARED]);
+  });
+
+  test("one session's log is cleared without touching another's", async () => {
+    const { cookie } = await signIn();
+    const mine = await makeTable(cookie);
+    const theirs = await makeTable(cookie);
+
+    await fetch(
+      `${base}/api/sessions/${mine.session.id}/log/clear`,
+      authed(cookie, { method: "POST" }),
+    );
+
+    expect(await messages(cookie, mine.session.id)).toEqual([LOG_CLEARED]);
+    expect(await messages(cookie, theirs.session.id)).toEqual(opening(theirs.npc));
   });
 
   test("leaving, and being made to leave, read differently", async () => {
