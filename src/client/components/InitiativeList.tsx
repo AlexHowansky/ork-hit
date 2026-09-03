@@ -197,9 +197,16 @@ function Row({
                   Unclaimed
                 </span>
               ) : null}
-              {/* Both audiences, whoever may change them: what condition a character
-                  is in is what the table reads the row for. */}
-              <StatusTagPills tags={character.statusTags} />
+              {/* Both audiences, whoever may change them: what condition a
+                  character is in is what the table reads the row for. The close
+                  control on each is for whoever may write them, which is the
+                  same reader `onToggleTag` was given to — a player looking at
+                  somebody else's row gets the words alone. */}
+              <StatusTagPills
+                tags={character.statusTags}
+                subject={copyLabel}
+                onRemove={onToggleTag ? (tag) => onToggleTag(tag, false) : undefined}
+              />
               {character.isHeld ? (
                 // Written like the `Unclaimed` badge above rather than like a
                 // condition: holding is a fact about the order, not about the

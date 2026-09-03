@@ -14,7 +14,7 @@
  */
 
 import { useState, type FormEvent } from "react";
-import { faTag } from "@fortawesome/free-solid-svg-icons";
+import { faTag, faXmark } from "@fortawesome/free-solid-svg-icons";
 import {
   isKnownTag,
   normalizeTag,
@@ -56,11 +56,28 @@ function present(tag: string): { label: string; hint?: string } {
  * be undone by a child — being dead does not change your SPD, so the pill a game
  * master most wants to spot is one that spends eleven segments in twelve dimmed.
  */
-export function StatusTagPills({ tags }: { tags: string[] }) {
+export function StatusTagPills({ tags, onRemove, subject }: {
+  tags: string[];
+  /**
+   * Lets this reader take a condition off from the pill itself. Absent wherever
+   * they may read the row but not write it, which is every pill on somebody
+   * else's character and every pill in the log.
+   */
+  onRemove?: (tag: string) => void;
+  /** Whose conditions these are, for the removals' accessible names. */
+  subject?: string;
+}) {
   if (tags.length === 0) return null;
   return (
     <>
-      {tags.map((tag) => <StatusPill key={tag} tag={tag} />)}
+      {tags.map((tag) => (
+        <StatusPill
+          key={tag}
+          tag={tag}
+          subject={subject}
+          onRemove={onRemove ? () => onRemove(tag) : undefined}
+        />
+      ))}
     </>
   );
 }
@@ -72,8 +89,15 @@ export function StatusTagPills({ tags }: { tags: string[] }) {
  * marked Prone shows the same pill the row shows, so the two are read as the
  * same thing rather than as a word and a badge that happen to agree.
  */
-export function StatusPill({ tag }: { tag: string }) {
+export function StatusPill({ tag, onRemove, subject }: {
+  tag: string;
+  /** Absent on a pill nobody may change — the log's, and another player's row. */
+  onRemove?: () => void;
+  /** Whose condition this is, for the removal's accessible name. */
+  subject?: string;
+}) {
   const { label, hint } = present(tag);
+  const removeLabel = subject ? `Remove ${label} from ${subject}` : `Remove ${label}`;
   return (
     <span
       // Between the two: `badge-xs` drew these at two thirds the size of the
@@ -82,8 +106,32 @@ export function StatusPill({ tag }: { tag: string }) {
       // it is daisyUI's own — a box and a font size that were meant for each
       // other, rather than one of them overridden.
       title={hint ? `${label} — ${hint}` : label}
-      className="badge badge-sm badge-primary badge-soft max-w-32 truncate font-semibold"
+      // `gap-1` over daisyUI's own .5rem: that gap is meant for a badge holding
+      // two things worth telling apart, and here it left the close control
+      // floating a word's width from the word it belongs to.
+      className="badge badge-sm badge-primary badge-soft max-w-32 gap-1 truncate font-semibold"
     >
+      {onRemove ? (
+        // A condition is taken off from the pill that says it is on, rather than
+        // by reopening the dialog that put it there: by the time a game master
+        // is looking at the word, they have already decided it is over.
+        //
+        // Sized against the pill rather than against the page, so it stays a
+        // mark on a word instead of a control the word is attached to. Muted
+        // until it is pointed at or focused, for the same reason — a row of
+        // conditions should read as words, not as a row of crosses.
+        <button
+          type="button"
+          onClick={onRemove}
+          // The row a pill sits in is a drag source, and a press here is a press.
+          onPointerDown={(event) => event.stopPropagation()}
+          title={removeLabel}
+          aria-label={removeLabel}
+          className="-ml-0.5 cursor-pointer text-[0.85em] opacity-60 transition-opacity hover:opacity-100 focus-visible:opacity-100"
+        >
+          <Icon icon={faXmark} className="h-[0.85em] w-[0.85em]" />
+        </button>
+      ) : null}
       {label}
     </span>
   );

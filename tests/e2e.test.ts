@@ -575,8 +575,10 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     await gm.getByRole("button", { name: "Stunned", exact: true }).click();
     await gm.getByRole("button", { name: "Close" }).click();
 
-    await strahd.getByTitle("Prone").waitFor({ timeout: 5000 });
-    await strahd.getByTitle(/Stunned/).waitFor({ timeout: 5000 });
+    // `exact`, because the pill's own close control is titled "Remove Prone
+    // from Strahd" and would otherwise answer to the same substring.
+    await strahd.getByTitle("Prone", { exact: true }).waitFor({ timeout: 5000 });
+    await strahd.getByTitle(/^Stunned/).waitFor({ timeout: 5000 });
 
     // And the player's scene follows without a reload.
     const theirStrahd = player.getByRole("listitem").filter({ hasText: "Strahd" });
@@ -587,6 +589,33 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     await gm.getByRole("button", { name: "Prone", exact: true }).click();
     await gm.getByRole("button", { name: "Close" }).click();
     await theirStrahd.getByTitle("Prone").waitFor({ state: "detached", timeout: 5000 });
+  }, 60_000);
+
+  test("a condition can be taken off from the pill that says it is on", async () => {
+    if (!browser) return;
+    const { page: gm, code, campaignName } = await gmWithSession();
+    const player = await playerIn(code, "Pen", campaignName);
+
+    const strahd = gm.getByRole("listitem").filter({ hasText: "Strahd" });
+    await strahd.getByRole("button", { name: "Set Strahd's status" }).click();
+    await gm.getByRole("button", { name: "Prone", exact: true }).click();
+    await gm.getByRole("button", { name: "Close" }).click();
+    await strahd.getByTitle("Prone", { exact: true }).waitFor({ timeout: 5000 });
+
+    // The close control on the pill itself, rather than a second trip through
+    // the dialog. Its name carries the character, so one row's Prone is not the
+    // next row's.
+    await strahd.getByRole("button", { name: "Remove Prone from Strahd" }).click();
+
+    await strahd.getByTitle("Prone", { exact: true })
+      .waitFor({ state: "detached", timeout: 5000 });
+    // And it went at the table, not just on the console.
+    await player.getByRole("listitem").filter({ hasText: "Strahd" })
+      .getByTitle("Prone").waitFor({ state: "detached", timeout: 5000 });
+
+    // A player reading somebody else's row gets the word alone: the conditions
+    // on a character they are not playing are not theirs to take off.
+    expect(await player.getByRole("button", { name: /^Remove .* from Strahd$/ }).count()).toBe(0);
   }, 60_000);
 
   test("a player sets their own character's condition, and only theirs", async () => {
@@ -604,13 +633,15 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     await player.getByRole("button", { name: "Close" }).click();
 
     // A typed tag keeps its word — on their own panel, on their row in the scene
-    // beside it, and on the game master's row.
+    // beside it, and on the game master's row. Asked for exactly wherever the
+    // pill carries a close control, since that control's own title names the
+    // condition too ("Remove On fire from Thorin").
     await player.locator("section", { hasText: /My character/ })
-      .getByTitle("On fire").waitFor({ timeout: 5000 });
+      .getByTitle("On fire", { exact: true }).waitFor({ timeout: 5000 });
     await player.getByRole("listitem").filter({ hasText: "Thorin" })
       .getByTitle("On fire").waitFor({ timeout: 5000 });
     await gm.getByRole("listitem").filter({ hasText: "Thorin" })
-      .getByTitle("On fire").waitFor({ timeout: 5000 });
+      .getByTitle("On fire", { exact: true }).waitFor({ timeout: 5000 });
   }, 60_000);
 
   test("taking a played character out of the scene asks first", async () => {

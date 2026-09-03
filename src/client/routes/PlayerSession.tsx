@@ -487,7 +487,11 @@ export function PlayerSession({
                       character={myCharacter}
                       onOpen={() => setTaggingOpen(true)}
                     />
-                    <StatusTagPills tags={myCharacter.statusTags} />
+                    <StatusTagPills
+                      tags={myCharacter.statusTags}
+                      subject={myCharacter.name}
+                      onRemove={(tag) => void setStatusTag(myCharacter.id, tag, false)}
+                    />
                   </div>
 
                   {/*
