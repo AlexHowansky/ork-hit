@@ -265,17 +265,32 @@ const VARIANTS = {
 } as const;
 
 /**
- * `btn-sm` rather than daisyUI's default size: these screens are dense — lists
- * with a row of controls on every line — and the full-size button is built for a
- * page with more room than any of them have. A caller wanting the bigger one
- * says so with `btn-md`, which comes after this in the class list and wins.
+ * The two sizes a button comes in. `sm` is the default because these screens are
+ * dense — lists with a row of controls on every line — and daisyUI's full-size
+ * button is built for a page with more room than any of them have. `md` is that
+ * full size, and it is what a button standing beside an `input` wants: daisyUI
+ * sizes both off `--size-field`, and a field is the `md` multiple of it.
+ *
+ * A prop rather than a class the caller adds, because adding one does not work:
+ * `.btn-sm` comes *after* `.btn-md` in daisyUI's stylesheet, so a button carrying
+ * both is small whatever order they are written in. Emitting exactly one is the
+ * only way to say which is meant — the same hazard `Vitals`' `wrap` documents.
  */
+const SIZES = {
+  sm: "btn-sm",
+  md: "btn-md",
+} as const;
+
 export function Button({
   variant = "secondary",
+  size = "sm",
   className = "",
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: keyof typeof VARIANTS }) {
-  return <button {...props} className={`btn btn-sm ${VARIANTS[variant]} ${className}`} />;
+}: ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant?: keyof typeof VARIANTS;
+  size?: keyof typeof SIZES;
+}) {
+  return <button {...props} className={`btn ${SIZES[size]} ${VARIANTS[variant]} ${className}`} />;
 }
 
 /**

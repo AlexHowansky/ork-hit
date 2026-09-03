@@ -104,9 +104,8 @@ export function bandFor(current: number, max: number): VitalBand {
  * Alphabetical, and drawn in this order wherever more than one is showing, so a
  * row's badges do not reshuffle when another is added.
  *
- * Icons are deliberately not here. This module is read by the server as well as
- * the browser, and FontAwesome is the browser's business: the picture for each
- * of these lives in `src/client/components/StatusTags.tsx`.
+ * No pictures anywhere: a condition is drawn as its word, on the pills and on
+ * the buttons that set them alike. See `src/client/components/StatusTags.tsx`.
  */
 export const STATUS_TAGS = [
   "dead",

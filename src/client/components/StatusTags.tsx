@@ -1,37 +1,26 @@
 /**
  * What condition a character on the stage is in.
  *
- * Three pieces that belong together: the picture for each of the conditions the
- * app knows by name, the pills that read them off a row, and the dialog that
- * sets them.
+ * Two pieces that belong together: the pills that read a character's conditions
+ * off a row, and the dialog that sets them.
  *
- * The names themselves are in `src/lib/hero.ts`, which the server shares; only
- * the pictures are here, because FontAwesome is the browser's business. A tag
- * that is not one of the named ones is one the table typed for itself, and is
- * drawn with a generic mark and its own word — there is no icon for "On fire"
- * that anybody would read as on fire.
+ * Every one of them is its word, named or typed alike. The eight the app knows
+ * each had a picture once, and it earned nothing: a glyph for "Suppressed" is a
+ * puzzle where the word is not, a typed tag never had one that meant anything,
+ * and a pill carrying both spent width saying one thing twice.
+ *
+ * The names themselves are in `src/lib/hero.ts`, which the server shares, so a
+ * log line and a pill call a condition the same thing.
  */
 
 import { useState, type FormEvent } from "react";
-import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
-import {
-  faBatteryQuarter,
-  faFaceDizzy,
-  faLink,
-  faMoon,
-  faPersonFalling,
-  faSkull,
-  faSun,
-  faTag,
-  faWeightHanging,
-} from "@fortawesome/free-solid-svg-icons";
+import { faTag } from "@fortawesome/free-solid-svg-icons";
 import {
   isKnownTag,
   normalizeTag,
   STATUS_TAG_HINTS,
   STATUS_TAG_MAX_LENGTH,
   STATUS_TAGS,
-  type StatusTag,
   tagLabel,
 } from "../../lib/hero.ts";
 import {
@@ -46,39 +35,21 @@ import {
 } from "./ui.tsx";
 import type { SessionCharacter } from "../types.ts";
 
-/**
- * The picture for each condition.
- *
- * `faBed` is deliberately not the sleeping one: `Vitals.tsx` already uses it for
- * the rest control, which sits inches away on the same row, and one picture
- * meaning two things that close together is worse than a less obvious moon.
- */
-const STATUS_TAG_ICONS: Record<StatusTag, IconDefinition> = {
-  dead: faSkull,
-  drained: faBatteryQuarter,
-  entangled: faLink,
-  flashed: faSun,
-  prone: faPersonFalling,
-  sleeping: faMoon,
-  stunned: faFaceDizzy,
-  suppressed: faWeightHanging,
-};
-
-/** What to draw and what to call it, for a named condition or a typed one. */
-function present(tag: string): { icon: IconDefinition; label: string; hint?: string } {
+/** What to call a condition, and what to add under the pointer. */
+function present(tag: string): { label: string; hint?: string } {
   return isKnownTag(tag)
-    ? { icon: STATUS_TAG_ICONS[tag], label: tagLabel(tag), hint: STATUS_TAG_HINTS[tag] }
-    : { icon: faTag, label: tagLabel(tag) };
+    ? { label: tagLabel(tag), hint: STATUS_TAG_HINTS[tag] }
+    : { label: tagLabel(tag) };
 }
 
 /**
  * The conditions a character is in, as pills beside their name.
  *
- * A named one is its picture alone: a row already carries a name, a kind, a
- * count and four characteristics, and eight spelled-out conditions would be
- * wider than all of it. The word is in the tooltip and in a hidden span, so it
- * is there for a screen reader and for anybody who does not know the picture.
- * A typed tag keeps its word, since its picture says nothing.
+ * The word, and nothing else. A named tag used to be a picture alone, on the
+ * grounds that a row is already crowded — but a condition nobody can read
+ * without hovering is one that gets missed in a fight. The pills truncate rather
+ * than push the row about, and each carries the same word the picker's button
+ * does, so the two never disagree about what a condition is called.
  *
  * The colours are solid rather than faint on purpose: a row whose character has
  * no phase this segment is drawn at `opacity-60`, and opacity on a parent cannot
@@ -90,17 +61,14 @@ export function StatusTagPills({ tags }: { tags: string[] }) {
   return (
     <>
       {tags.map((tag) => {
-        const { icon, label, hint } = present(tag);
+        const { label, hint } = present(tag);
         return (
           <span
             key={tag}
             title={hint ? `${label} — ${hint}` : label}
-            className="badge badge-xs badge-primary badge-soft max-w-32 gap-1 font-semibold"
+            className="badge badge-xs badge-primary badge-soft max-w-32 truncate font-semibold"
           >
-            <Icon icon={icon} className="h-3 w-3" />
-            {isKnownTag(tag) ? <span className="sr-only">{label}</span> : (
-              <span className="truncate">{label}</span>
-            )}
+            {label}
           </span>
         );
       })}
@@ -118,7 +86,7 @@ function TagToggle({
   on: boolean;
   onToggle: (active: boolean) => void;
 }) {
-  const { icon, label, hint } = present(tag);
+  const { label, hint } = present(tag);
   return (
     <button
       type="button"
@@ -127,9 +95,11 @@ function TagToggle({
       onClick={() => onToggle(!on)}
       // Pressed is a filled background as well as a colour, so the state is not
       // carried by hue alone.
-      className={`btn justify-start gap-2 ${on ? "btn-primary" : ""}`}
+      // Centred, which is `btn`'s own default: the glyph these used to lead with
+      // is what wanted them left-aligned, so that a column of buttons lined its
+      // pictures up. A column of words reads better down the middle.
+      className={`btn ${on ? "btn-primary" : ""}`}
     >
-      <Icon icon={icon} />
       <span className="truncate">{label}</span>
     </button>
   );
@@ -182,7 +152,7 @@ export function StatusTagPicker({
 
       {custom.length > 0 ? (
         <>
-          <p className={`mt-5 mb-1 text-xs ${PANEL_CAPTION}`}>This table's own</p>
+          <p className={`mt-5 mb-1 text-xs ${PANEL_CAPTION}`}>Custom</p>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {custom.map((tag) => (
               <TagToggle key={tag} tag={tag} on onToggle={(active) => onToggle(tag, active)} />
@@ -202,7 +172,14 @@ export function StatusTagPicker({
             onChange={(event) => setTyped(event.target.value)}
           />
         </div>
-        <Button type="submit" className="mb-px">
+        {/*
+          Full size, so the button is exactly as tall as the field it submits:
+          daisyUI sizes both off `--size-field`, and `sm` against a field was 8
+          of it against 10. It also matches the condition buttons above, which is
+          the same press. Nothing to nudge with once the heights agree — the
+          form's `items-end` lands the two on one line by itself.
+        */}
+        <Button type="submit" size="md">
           Add
         </Button>
       </form>
