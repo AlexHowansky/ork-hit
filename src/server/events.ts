@@ -69,6 +69,12 @@ export const gmReassigned = (character: string, from: string, to: string): strin
 
 export const gmKicked = (name: string): string => `The game master kicked ${name}`;
 
+/**
+ * Written *after* the log is emptied, so a cleared log says who emptied it
+ * rather than coming back as a blank drawer that reads like a fault.
+ */
+export const LOG_CLEARED = "The game master cleared the log";
+
 export const gmAddedToScene = (character: string): string =>
   `The game master added ${character} to the scene`;
 

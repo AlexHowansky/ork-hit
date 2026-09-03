@@ -191,6 +191,23 @@ export function GmSessionConsole({ onSignOut }: { onSignOut: () => void }) {
     );
   };
 
+  /**
+   * Empties the log.
+   *
+   * It asks first because it is the only control on the console that destroys a
+   * record rather than changing state: everything else the game master presses
+   * can be pressed back, and this cannot.
+   */
+  const clearLog = async () => {
+    const ok = await confirm({
+      title: "Clear the log?",
+      body: "Everything the log remembers about this session is thrown away. The fight itself — the turn, the stage, what everybody has left — is untouched.",
+      confirmLabel: "Clear",
+    });
+    if (!ok) return;
+    void mutate(() => api.post<{ snapshot: Snapshot }>(`/api/sessions/${sessionId}/log/clear`));
+  };
+
   const setVitals = (slotId: string, patch: VitalsPatch) =>
     mutate(() =>
       api.patchJson<{ snapshot: Snapshot }>(
@@ -389,7 +406,12 @@ export function GmSessionConsole({ onSignOut }: { onSignOut: () => void }) {
         exactly what it was before the drawer existed.
       */}
       <div className="flex flex-col lg:flex-row lg:items-start wide:min-h-0 wide:flex-1 wide:items-stretch">
-        <LogDrawer events={snapshot?.events ?? []} open={logOpen} onClose={toggleLog} />
+        <LogDrawer
+          events={snapshot?.events ?? []}
+          open={logOpen}
+          onClose={toggleLog}
+          onClear={() => void clearLog()}
+        />
 
       {/*
         Two columns here and three on the dashboard, with a handle standing in each

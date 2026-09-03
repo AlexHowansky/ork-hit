@@ -943,6 +943,18 @@ export const sessionEvents = {
       LIMIT $limit
     `).all({ sessionId, limit }).reverse();
   },
+
+  /**
+   * Throws a session's log away.
+   *
+   * All of it, rather than the two hundred lines a snapshot carries: what the
+   * drawer shows is the tail of the log, and clearing what somebody can see
+   * while leaving the rest behind would be a lie the next scroll uncovers.
+   */
+  clear(sessionId: string): void {
+    db.query("DELETE FROM session_events WHERE game_session_id = $sessionId")
+      .run({ sessionId });
+  },
 };
 
 /* ------------------------------------------------------------------- players */

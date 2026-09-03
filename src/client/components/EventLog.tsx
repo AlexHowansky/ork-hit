@@ -18,7 +18,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { faRectangleList, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faRectangleList, faTrash, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { splitMarkedTags } from "../../lib/hero.ts";
 import { StatusPill } from "./StatusTags.tsx";
 import { Button, EmptyState, Icon, Panel, TEXT_MUTED } from "./ui.tsx";
@@ -116,10 +116,16 @@ export function LogDrawer({
   events,
   open,
   onClose,
+  onClear,
 }: {
   events: SessionEvent[];
   open: boolean;
   onClose: () => void;
+  /**
+   * Empties the log. Absent on a player's screen: they read the log, and what
+   * the table remembers is not one reader's to throw away.
+   */
+  onClear?: () => void;
 }) {
   const listRef = useRef<HTMLOListElement>(null);
 
@@ -203,14 +209,30 @@ export function LogDrawer({
           scroll
           className="min-h-0 flex-1"
           actions={
-            <Button
-              variant="ghost"
-              onClick={onClose}
-              aria-label="Close the log"
-              title="Close the log"
-            >
-              <Icon icon={faXmark} />
-            </Button>
+            // Two controls at the head of the drawer, and only one of them is
+            // about the log itself. Clearing comes first because closing is the
+            // one that belongs to the corner — the same place every other layer
+            // in the app is dismissed from.
+            <div className="flex items-center gap-1">
+              {onClear ? (
+                <Button
+                  variant="ghost"
+                  onClick={onClear}
+                  aria-label="Clear the log"
+                  title="Clear the log"
+                >
+                  <Icon icon={faTrash} /> Clear
+                </Button>
+              ) : null}
+              <Button
+                variant="ghost"
+                onClick={onClose}
+                aria-label="Close the log"
+                title="Close the log"
+              >
+                <Icon icon={faXmark} />
+              </Button>
+            </div>
           }
         >
           {events.length === 0 ? (

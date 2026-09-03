@@ -40,6 +40,7 @@ import {
 } from "../../lib/hero.ts";
 import {
   GAME_MASTER,
+  LOG_CLEARED,
   SESSION_STARTED,
   actionHeld,
   actionTaken,
@@ -758,6 +759,33 @@ export const sessionRoutes = {
         // segment the log last named.
         sessionEvents.record(session.id, segmentBegan(1, OPENING_SEGMENT));
         logger.info("turn restarted", { sessionId: session.id });
+
+        return publish(session.id);
+      },
+    ),
+  },
+
+  /**
+   * Empties the log.
+   *
+   * The game master's alone: a player reads the log, and one reader deciding the
+   * table has no history is not a thing to hand out. It is also the only control
+   * in the app that destroys a record rather than changing state, which is why
+   * the console asks before pressing it.
+   *
+   * The one line written back is the clearing itself, so the drawer says what
+   * happened rather than opening blank — a log that empties itself silently
+   * reads as a fault, and the next thing anybody asks is whether it is still
+   * recording.
+   */
+  "/api/sessions/:id/log/clear": {
+    POST: handler(
+      (request: BunRequest<"/api/sessions/:id/log/clear">, { logger }: RequestContext) => {
+        const { session } = requireOwnedActiveSession(request, request.params.id);
+
+        sessionEvents.clear(session.id);
+        sessionEvents.record(session.id, LOG_CLEARED);
+        logger.info("log cleared", { sessionId: session.id });
 
         return publish(session.id);
       },
