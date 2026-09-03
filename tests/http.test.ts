@@ -29,6 +29,7 @@ import {
   segmentBegan,
   tagsAdded,
   tagsRemoved,
+  actionHeld,
   GAME_MASTER,
 } from "../src/server/events.ts";
 
@@ -650,6 +651,196 @@ describe("what a character has left", () => {
       // Nothing about the character changed, so the log has nothing to say.
       expect(await messages(cookie, session.id)).toEqual(before);
     });
+  });
+});
+
+describe("holding an action", () => {
+  const patchHold = (cookie: string, sessionId: string, slotId: string, held: boolean) =>
+    fetch(
+      `${base}/api/sessions/${sessionId}/stage/${slotId}/hold`,
+      authed(cookie, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ held }),
+      }),
+    );
+
+  const step = (cookie: string, sessionId: string, direction: "next" | "prev" = "next") =>
+    fetch(
+      `${base}/api/sessions/${sessionId}/turn/advance`,
+      authed(cookie, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ direction }),
+      }),
+    ).then((response) => response.json());
+
+  const stageOf = async (cookie: string, sessionId: string) => {
+    const { snapshot } = await (
+      await fetch(`${base}/api/sessions/${sessionId}`, authed(cookie))
+    ).json();
+    return snapshot as {
+      session: { activeSlotId: string | null };
+      characters: { id: string; characterId: string; name: string; isHeld: boolean }[];
+    };
+  };
+
+  test("the game master may hold a slot, and the snapshot carries it", async () => {
+    const { cookie } = await signIn();
+    const { session, pc, npc } = await makeTable(cookie);
+    const before = await stageOf(cookie, session.id);
+    const [first, second] = before.characters;
+
+    expect((await patchHold(cookie, session.id, first!.id, true)).status).toBe(200);
+
+    const held = await stageOf(cookie, session.id);
+    expect(held.characters.map((row) => row.isHeld)).toEqual([true, false]);
+
+    // Idempotent, and the second press is not a second line in the log.
+    expect((await patchHold(cookie, session.id, first!.id, true)).status).toBe(200);
+    expect((await stageOf(cookie, session.id)).characters[0]!.isHeld).toBe(true);
+    expect(await messages(cookie, session.id)).toEqual([
+      ...opening(npc),
+      actionHeld(GAME_MASTER, pc.name),
+    ]);
+    expect(second!.isHeld).toBe(false);
+  });
+
+  test("holding from your own phase passes it, and the clock steps on", async () => {
+    const { cookie } = await signIn();
+    const { session, npc } = await makeTable(cookie);
+    const stage = await stageOf(cookie, session.id);
+    const [first, second] = stage.characters;
+
+    // The first character is up, and declines the phase.
+    expect((await step(cookie, session.id)).snapshot.session.activeSlotId).toBe(first!.id);
+    const passing = await (await patchHold(cookie, session.id, first!.id, true)).json();
+
+    expect(passing.snapshot.session.activeSlotId).toBe(second!.id);
+    expect(passing.snapshot.characters[0]!.isHeld).toBe(true);
+
+    // The log reads in the order it happened, and the clock's own line is only
+    // written when a segment is left behind — this step stayed in segment 12.
+    expect(await messages(cookie, session.id)).toEqual([
+      ...opening(npc),
+      actionHeld(GAME_MASTER, first!.name),
+    ]);
+  });
+
+  test("holding a character who is not up leaves the marker where it is", async () => {
+    const { cookie } = await signIn();
+    const { session } = await makeTable(cookie);
+    const stage = await stageOf(cookie, session.id);
+    const [first, second] = stage.characters;
+
+    expect((await step(cookie, session.id)).snapshot.session.activeSlotId).toBe(first!.id);
+
+    // Saying what the second character will do when their phase comes must not
+    // cost the first character the phase they are in.
+    const marked = await (await patchHold(cookie, session.id, second!.id, true)).json();
+    expect(marked.snapshot.session.activeSlotId).toBe(first!.id);
+  });
+
+  test("a held character still gets stopped on at their own place in the order", async () => {
+    const { cookie } = await signIn();
+    const { session } = await makeTable(cookie);
+    const stage = await stageOf(cookie, session.id);
+    const [first, second] = stage.characters;
+
+    await patchHold(cookie, session.id, second!.id, true);
+
+    // Both characters are SPD 12, so the segment holds them in DEX order and
+    // holding changes nothing about who the marker walks onto.
+    expect((await step(cookie, session.id)).snapshot.session.activeSlotId).toBe(first!.id);
+    expect((await step(cookie, session.id)).snapshot.session.activeSlotId).toBe(second!.id);
+  });
+
+  test("taking a held action cuts in, and the turn goes back to whoever was up", async () => {
+    const { cookie } = await signIn();
+    const { session } = await makeTable(cookie);
+    const stage = await stageOf(cookie, session.id);
+    const [first, second] = stage.characters;
+
+    // The second character waits; the first opens the segment.
+    await patchHold(cookie, session.id, second!.id, true);
+    expect((await step(cookie, session.id)).snapshot.session.activeSlotId).toBe(first!.id);
+
+    // Then cuts back in, which gives them the turn and clears the hold.
+    const taken = await (await patchHold(cookie, session.id, second!.id, false)).json();
+    expect(taken.snapshot.session.activeSlotId).toBe(second!.id);
+    expect(taken.snapshot.characters.every((row: { isHeld: boolean }) => !row.isHeld)).toBe(true);
+
+    // And the phase the interjection came out of is handed back rather than
+    // walked past: the first character had not finished theirs.
+    const back = await step(cookie, session.id);
+    expect(back.snapshot.session.activeSlotId).toBe(first!.id);
+    expect(back.snapshot.session.segment).toBe(12);
+
+    // Only then does the order carry on.
+    const on = await step(cookie, session.id);
+    expect(on.snapshot.session.activeSlotId).toBe(second!.id);
+  });
+
+  test("stepping back out of an interjection returns to it too", async () => {
+    const { cookie } = await signIn();
+    const { session } = await makeTable(cookie);
+    const stage = await stageOf(cookie, session.id);
+    const [first, second] = stage.characters;
+
+    await patchHold(cookie, session.id, second!.id, true);
+    await step(cookie, session.id);
+    await patchHold(cookie, session.id, second!.id, false);
+
+    const back = await step(cookie, session.id, "prev");
+    expect(back.snapshot.session.activeSlotId).toBe(first!.id);
+    expect(back.snapshot.session.segment).toBe(12);
+  });
+
+  test("restarting the fight leaves nobody waiting", async () => {
+    const { cookie } = await signIn();
+    const { session } = await makeTable(cookie);
+    const stage = await stageOf(cookie, session.id);
+
+    await patchHold(cookie, session.id, stage.characters[0]!.id, true);
+    await fetch(
+      `${base}/api/sessions/${session.id}/turn/restart`,
+      authed(cookie, { method: "POST" }),
+    );
+
+    const after = await stageOf(cookie, session.id);
+    expect(after.characters.every((row) => !row.isHeld)).toBe(true);
+  });
+
+  test("a player may hold their own character, and only theirs", async () => {
+    const { cookie } = await signIn();
+    const { session, pc, npc } = await makeTable(cookie);
+    const player = await joinAs(session.code, "Wren");
+
+    await fetch(
+      `${base}/api/sessions/${session.id}/claim`,
+      authed(player, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ characterId: pc.id }),
+      }),
+    );
+
+    const stage = await stageOf(cookie, session.id);
+    const mine = stage.characters.find((row) => row.characterId === pc.id)!;
+    const theirs = stage.characters.find((row) => row.characterId === npc.id)!;
+
+    expect((await patchHold(player, session.id, mine.id, true)).status).toBe(200);
+    expect((await patchHold(player, session.id, theirs.id, true)).status).toBe(403);
+
+    // Their own doing is in their name, and the refusal is nobody's doing.
+    const after = await stageOf(cookie, session.id);
+    expect(after.characters.find((row) => row.id === theirs.id)!.isHeld).toBe(false);
+    expect(await messages(cookie, session.id)).toEqual([
+      ...opening(npc),
+      playerJoined("Wren"),
+      playerSelected("Wren", pc.name),
+      actionHeld("Wren", pc.name),
+    ]);
   });
 });
 

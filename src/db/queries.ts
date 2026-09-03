@@ -482,6 +482,19 @@ export const gameSessions = {
       "UPDATE game_sessions SET active_slot_id = $slotId, turn = $turn, segment = $segment WHERE id = $id",
     ).run({ id, slotId, turn, segment });
   },
+
+  /**
+   * Whose phase a held action cut into, for the clock to hand back to. Null
+   * clears it.
+   *
+   * Written apart from `setTurn` rather than with it, because the two change
+   * independently: releasing a hold sets both, and the step that spends this
+   * moves the marker while clearing it.
+   */
+  setResume(id: string, slotId: string | null): void {
+    db.query("UPDATE game_sessions SET resume_slot_id = $slotId WHERE id = $id")
+      .run({ id, slotId });
+  },
 };
 
 /* --------------------------------------------------------- session membership */
@@ -533,7 +546,8 @@ export const sessionCharacters = {
   list(sessionId: string): SessionCharacterRow[] {
     return db.query<SessionCharacterRow, { sessionId: string }>(`
       SELECT c.*, sc.id AS slot_id, sc.copy_number, sc.position,
-             sc.cur_endurance AS cur_endurance, sc.cur_stun AS cur_stun, sc.cur_body AS cur_body
+             sc.cur_endurance AS cur_endurance, sc.cur_stun AS cur_stun, sc.cur_body AS cur_body,
+             sc.held AS held
       FROM session_characters sc
       JOIN characters c ON c.id = sc.character_id
       WHERE sc.game_session_id = $sessionId
@@ -722,6 +736,37 @@ export const sessionCharacters = {
     return row !== null;
   },
 
+  /* ----------------------------------------------------------- held actions */
+
+  /**
+   * Holds this slot's action, or takes the hold off it.
+   *
+   * The desired state rather than a flip, for the same reason `setTag` takes
+   * one, and through `session_characters` for the same reason too: a slot id
+   * belonging to another session writes nothing at all.
+   */
+  setHeld(sessionId: string, slotId: string, held: boolean): void {
+    db.query(`
+      UPDATE session_characters SET held = $held
+      WHERE game_session_id = $sessionId AND id = $slotId
+    `).run({ sessionId, slotId, held: held ? 1 : 0 });
+  },
+
+  /** Whether a slot is holding its action. */
+  isHeld(sessionId: string, slotId: string): boolean {
+    const row = db.query<{ held: number }, { sessionId: string; slotId: string }>(`
+      SELECT held FROM session_characters
+      WHERE game_session_id = $sessionId AND id = $slotId
+    `).get({ sessionId, slotId });
+    return row?.held === 1;
+  },
+
+  /** Takes every hold off the stage, for a fight starting over. */
+  clearHeld(sessionId: string): void {
+    db.query("UPDATE session_characters SET held = 0 WHERE game_session_id = $sessionId")
+      .run({ sessionId });
+  },
+
   /**
    * Puts every player character in the campaign into the session at once.
    *
@@ -843,6 +888,13 @@ export const sessionCharacters = {
 
     db.query(
       "UPDATE game_sessions SET active_slot_id = NULL WHERE id = $sessionId AND active_slot_id = $slotId",
+    ).run({ sessionId, slotId });
+
+    // And the place the clock was told to carry on from, if it was this one: a
+    // resume point naming a slot that has left the stage would send the next
+    // step back to the start of the segment.
+    db.query(
+      "UPDATE game_sessions SET resume_slot_id = NULL WHERE id = $sessionId AND resume_slot_id = $slotId",
     ).run({ sessionId, slotId });
   }),
 };

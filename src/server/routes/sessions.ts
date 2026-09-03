@@ -41,6 +41,8 @@ import {
 import {
   GAME_MASTER,
   SESSION_STARTED,
+  actionHeld,
+  actionTaken,
   gmAddedToScene,
   gmAssigned,
   gmKicked,
@@ -210,6 +212,18 @@ function advanceTurn(sessionId: string, direction: "next" | "prev"): boolean {
     session.turn === 1 &&
     session.segment === OPENING_SEGMENT
   ) {
+    return false;
+  }
+
+  // A held action taken out of order is an interruption, and the step out of one
+  // is back to whoever it interrupted — in either direction, because the marker
+  // is standing on the holder rather than anywhere in the order. The character
+  // who was up had not finished their phase when the holder cut in, so the fight
+  // returns to them rather than walking on past them; the step after that is an
+  // ordinary one, from where the order really was.
+  if (session.resume_slot_id) {
+    gameSessions.setTurn(sessionId, session.resume_slot_id, session.turn, session.segment);
+    gameSessions.setResume(sessionId, null);
     return false;
   }
 
@@ -584,6 +598,94 @@ export const sessionRoutes = {
     ),
   },
 
+  /**
+   * A held action: the character waits, and cuts back in when they choose.
+   *
+   * The third thing both roles may change, and for the same reason as the
+   * numbers and the conditions — waiting is a decision about your own character.
+   * The body carries the state the hold should end in rather than an instruction
+   * to flip it, so a double press leaves one held character rather than none.
+   *
+   * Both halves move the fight. Holding from your own phase is declining it, so
+   * the clock steps on to whoever is next — the table said "I'll wait", and
+   * waiting for the button to be pressed again would be the same sentence
+   * twice. Taking the hold off cuts back in: whoever is up is noted, the holder
+   * is given the turn where they stand, and the next step of the clock hands it
+   * back to the character they interrupted.
+   *
+   * A hold put on a character who is not up changes nothing about the marker.
+   * That is a game master saying what somebody will do when their phase comes,
+   * and it must not cost whoever is actually up theirs — and a held character is
+   * still stopped on at their own place, which is the cue to ask whether they
+   * are still waiting.
+   */
+  "/api/sessions/:id/stage/:slotId/hold": {
+    PATCH: handler(
+      async (
+        request: BunRequest<"/api/sessions/:id/stage/:slotId/hold">,
+        { logger }: RequestContext,
+      ) => {
+        const { session, asPlayer, player } = requireSlotAccess(request);
+        const { held } = await parseJsonBody(request, schemas.setHold);
+        const { slotId } = request.params;
+
+        // Asked before the write, as the tags route does: a press that changes
+        // nothing is not something to write down, and must not move the marker.
+        const changed = sessionCharacters.isHeld(session.id, slotId) !== held;
+
+        sessionCharacters.setHeld(session.id, slotId, held);
+
+        if (changed && !held) {
+          // Whose turn it is, so the next step can hand it back to them. Only
+          // when nothing is pending already: two holders cutting in one after
+          // the other still leave one phase to return to, and it is the one
+          // that was interrupted first.
+          if (
+            session.active_slot_id &&
+            session.active_slot_id !== slotId &&
+            !session.resume_slot_id
+          ) {
+            gameSessions.setResume(session.id, session.active_slot_id);
+          }
+          gameSessions.setTurn(session.id, slotId, session.turn, session.segment);
+        }
+
+        // Before the clock moves, so the log reads in the order it happened: the
+        // hold, and then wherever the fight went next.
+        const named = sceneName(session.id, slotId);
+        if (changed && named) {
+          const line = held ? actionHeld : actionTaken;
+          sessionEvents.record(session.id, line(player ? player.name : GAME_MASTER, named));
+        }
+
+        // Holding is declining the phase you are in, so the fight moves on
+        // without waiting to be told twice. Only from the character's own phase:
+        // a game master marking somebody further down the order as waiting is
+        // saying what that character will do when their turn comes, and must not
+        // cost whoever is up their phase.
+        const passed = changed && held && session.active_slot_id === slotId;
+        const recovered = passed ? advanceTurn(session.id, "next") : false;
+
+        logger.info("hold set", {
+          sessionId: session.id,
+          slotId,
+          held,
+          changed,
+          passed,
+          by: asPlayer ? "player" : "gm",
+        });
+
+        const response = publish(session.id);
+
+        // After the snapshot, as the advance route does it: a screen has the
+        // recovered numbers in hand before it is told why they moved.
+        if (recovered) broadcastSessionNotice(session.id, POST_SEGMENT_12_NOTICE);
+
+        return response;
+      },
+    ),
+  },
+
   /* ----------------------------------------------------------- turn marker */
 
   "/api/sessions/:id/turn": {
@@ -645,6 +747,11 @@ export const sessionRoutes = {
         const { session } = requireOwnedActiveSession(request, request.params.id);
 
         gameSessions.setTurn(session.id, null, 1, OPENING_SEGMENT);
+        // A fight starting over has nobody waiting and nothing to carry on from:
+        // both are about where this fight had got to, and this is the state a
+        // brand new session is in.
+        gameSessions.setResume(session.id, null);
+        sessionCharacters.clearHeld(session.id);
         // The same line a new session writes, because this is the same state:
         // the fight is back at its opening segment with nobody yet up, and the
         // events after this one belong to that segment rather than to whatever

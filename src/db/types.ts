@@ -68,6 +68,13 @@ export interface GameSessionRow {
   code: string;
   status: SessionStatus;
   active_slot_id: string | null;
+  /**
+   * Whose phase a character cut into when they took a held action. The next step
+   * of the clock hands the turn back to them rather than walking on from the
+   * interruption, and clears this. Null whenever nothing is pending, which is
+   * nearly always.
+   */
+  resume_slot_id: string | null;
   turn: number;
   /** Which of the twelve segments of that turn the session has reached. */
   segment: number;
@@ -103,6 +110,8 @@ export interface SessionCharacterRow extends CharacterRow {
   cur_endurance: number;
   cur_stun: number;
   cur_body: number;
+  /** Whether this copy is holding its action. 0 or 1, as SQLite keeps a flag. */
+  held: number;
 }
 
 /**

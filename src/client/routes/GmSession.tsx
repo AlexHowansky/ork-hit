@@ -209,6 +209,13 @@ export function GmSessionConsole({ onSignOut }: { onSignOut: () => void }) {
       api.post<{ snapshot: Snapshot }>(`/api/sessions/${sessionId}/stage/${slotId}/rest`),
     );
 
+  const setHold = (slotId: string, held: boolean) =>
+    mutate(() =>
+      api.patchJson<{ snapshot: Snapshot }>(`/api/sessions/${sessionId}/stage/${slotId}/hold`, {
+        held,
+      }),
+    );
+
   const setStatusTag = (slotId: string, tag: string, active: boolean) =>
     mutate(() =>
       api.patchJson<{ snapshot: Snapshot }>(`/api/sessions/${sessionId}/stage/${slotId}/tags`, {
@@ -429,6 +436,7 @@ export function GmSessionConsole({ onSignOut }: { onSignOut: () => void }) {
               onRecover={(id) => void recover(id)}
               onRest={(id) => void rest(id)}
               onToggleTag={(id, tag, active) => void setStatusTag(id, tag, active)}
+              onToggleHold={(id, held) => void setHold(id, held)}
               onSetTurn={(id) => void setTurn(id)}
               onRemove={(id) => void removeCharacter(id)}
             />

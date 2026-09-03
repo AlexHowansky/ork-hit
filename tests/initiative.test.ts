@@ -252,6 +252,75 @@ describe("advancing the turn", () => {
     expect(clock()).toEqual({ turn: 1, segment: 12, on: "Slow" });
   });
 
+  describe("and a held action taken out of order", () => {
+    /**
+     * What the hold route leaves behind: the holder on turn, and the place the
+     * order had reached kept as the resume point. The route itself, and who may
+     * press the button, are covered in `http.test.ts`; this is the half of it
+     * the clock does.
+     */
+    const takeHeldAction = (name: string) => {
+      const session = gameSessions.byId(sessionId)!;
+      // Whose turn it is, kept so the clock can hand it back after the cut-in.
+      const holder = sessionCharacters.list(sessionId).find((row) => row.name === name)!;
+      gameSessions.setResume(sessionId, session.active_slot_id);
+      gameSessions.setTurn(sessionId, holder.slot_id, session.turn, session.segment);
+    };
+
+    test("the next step hands the turn back to whoever was interrupted", () => {
+      // Segment 12: Ace, then Swift, then Slow.
+      next();
+      expect(clock()).toEqual({ turn: 1, segment: 12, on: "Ace" });
+
+      // Slow was waiting, and cuts into Ace's phase.
+      takeHeldAction("Slow");
+      expect(clock()).toEqual({ turn: 1, segment: 12, on: "Slow" });
+
+      // Back to Ace, whose phase the interjection came out of rather than
+      // finished, and only then on down the order.
+      next();
+      expect(clock()).toEqual({ turn: 1, segment: 12, on: "Ace" });
+      next();
+      expect(clock()).toEqual({ turn: 1, segment: 12, on: "Swift" });
+    });
+
+    test("the phase to return to is spent by the step that uses it", () => {
+      next();
+      takeHeldAction("Slow");
+      next();
+
+      expect(gameSessions.byId(sessionId)!.resume_slot_id).toBeNull();
+      // And the step after it is an ordinary one, walking on from Ace.
+      next();
+      expect(clock()).toEqual({ turn: 1, segment: 12, on: "Swift" });
+    });
+
+    test("stepping back out of an interjection returns to it too", () => {
+      next();
+      next();
+      expect(clock()).toEqual({ turn: 1, segment: 12, on: "Swift" });
+
+      takeHeldAction("Ace");
+      prev();
+
+      // The marker was standing on Ace rather than anywhere in the order, so
+      // there is nowhere to walk backwards to but the phase they cut into.
+      expect(clock()).toEqual({ turn: 1, segment: 12, on: "Swift" });
+      expect(gameSessions.byId(sessionId)!.resume_slot_id).toBeNull();
+    });
+
+    test("a holder cutting in with nobody on turn leaves nothing to resume from", () => {
+      // Straight off a Restart: no marker, so there is no place to go back to,
+      // and the fight simply starts from the holder and walks on normally.
+      const ace = sessionCharacters.list(sessionId).find((row) => row.name === "Ace")!;
+      gameSessions.setTurn(sessionId, ace.slot_id, 1, 12);
+
+      expect(gameSessions.byId(sessionId)!.resume_slot_id).toBeNull();
+      next();
+      expect(clock()).toEqual({ turn: 1, segment: 12, on: "Swift" });
+    });
+  });
+
   test("segment 1 is where the turn counter goes up", () => {
     for (let i = 0; i < 3; i += 1) next();
     expect(clock()).toEqual({ turn: 1, segment: 12, on: "Slow" });

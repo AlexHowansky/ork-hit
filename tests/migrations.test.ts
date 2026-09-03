@@ -45,7 +45,7 @@ describe("one active session per campaign", () => {
     addActiveSession(target, "mid", "2026-01-01T11:00:00.000Z");
     addActiveSession(target, "new", "2026-01-01T12:00:00.000Z");
 
-    expect(migrate(target)).toBe(9);
+    expect(migrate(target)).toBe(10);
 
     const statuses = Object.fromEntries(
       target.query<{ id: string; status: string }, []>(
@@ -264,5 +264,38 @@ describe("upload paths", () => {
         ).all().map((row) => [row.id, row.disk_path]),
       ),
     ).toEqual({ u1: "images/u1", u2: "sheets/u2" });
+  });
+});
+
+describe("held actions", () => {
+  test("nobody is waiting and the clock has nothing pending", () => {
+    const target = atInitialSchema();
+    addActiveSession(target, "only", "2026-01-01T10:00:00.000Z");
+
+    migrate(target);
+
+    // The stage is filled after the run rather than before it: 003 rebuilds
+    // `session_characters` to give a slot an id, so a row written at the initial
+    // schema does not survive to be read here. What this is about is the two new
+    // columns being there with the state a fight already running was in.
+    target.exec(`
+      INSERT INTO uploads
+        VALUES ('u1', 'sheet', 'sheets/u1', 'text/html', 1, 'x', 'sheet.html', '2026-01-01T00:00:00.000Z');
+      INSERT INTO characters (id, campaign_id, kind, name, sheet_upload_id, created_at, updated_at)
+        VALUES ('ch1', 'c1', 'npc', 'Goblin', 'u1', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z');
+      INSERT INTO session_characters (id, game_session_id, character_id, copy_number, position, added_at)
+        VALUES ('slot1', 'only', 'ch1', 1, 0, '2026-01-01T00:00:00.000Z');
+    `);
+
+    // Holding is something nobody has done yet, and the clock has nothing to
+    // resume from — which is what every row written before the feature means.
+    expect(
+      target.query<{ held: number }, []>("SELECT held FROM session_characters").get()!.held,
+    ).toBe(0);
+    expect(
+      target.query<{ resume_slot_id: string | null }, []>(
+        "SELECT resume_slot_id FROM game_sessions WHERE id = 'only'",
+      ).get()!.resume_slot_id,
+    ).toBeNull();
   });
 });

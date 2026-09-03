@@ -102,6 +102,19 @@ export const tagsAdded = (actor: string, tags: string[], character: string): str
 export const tagsRemoved = (actor: string, tags: string[], character: string): string =>
   `${actor} removed ${marked(tags)} from ${character}`;
 
+/**
+ * A held action, and the taking of it.
+ *
+ * Two lines rather than one about "holding": what a table looks back for is the
+ * moment somebody cut in, and a line only at the start would leave the log
+ * saying a character was waiting with no record of them ever going.
+ */
+export const actionHeld = (actor: string, character: string): string =>
+  `${actor} held ${character}'s action`;
+
+export const actionTaken = (actor: string, character: string): string =>
+  `${actor} took ${character}'s held action`;
+
 /* ------------------------------------------------------------- the clock's */
 
 /**

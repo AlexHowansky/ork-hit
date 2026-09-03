@@ -20,6 +20,7 @@ import { useSessionSocket } from "../useSessionSocket.ts";
 import { useColumnSplit } from "../useColumnSplit.ts";
 import {
   AppPage,
+  bareIcon,
   Button,
   CARD_CAPTION_FRAMED,
   CARD_GRID,
@@ -42,7 +43,7 @@ import { LogDrawer, LogToggle, useLogDrawer } from "../components/EventLog.tsx";
 import { SegmentFilterToggle, useSegmentFilter } from "../components/SegmentFilter.tsx";
 import { StatLine } from "../components/StatLine.tsx";
 import { Vitals, type VitalsPatch } from "../components/Vitals.tsx";
-import { faRightFromBracket, faShieldHalved } from "@fortawesome/free-solid-svg-icons";
+import { faOctagon, faRightFromBracket, faShieldHalved } from "@fortawesome/free-solid-svg-icons";
 import { TurnControls } from "../components/TurnControls.tsx";
 import { SheetOverlay } from "../components/SheetFrame.tsx";
 import { ThemeToggle } from "../components/ThemeToggle.tsx";
@@ -248,6 +249,18 @@ export function PlayerSession({
       const { snapshot: next } = await api.patchJson<{ snapshot: Snapshot }>(
         `/api/sessions/${sessionId}/stage/${slotId}/tags`,
         { tag, active },
+      );
+      applySnapshot(next);
+    } catch (error) {
+      toast.showError(error);
+    }
+  };
+
+  const setHold = async (slotId: string, held: boolean) => {
+    try {
+      const { snapshot: next } = await api.patchJson<{ snapshot: Snapshot }>(
+        `/api/sessions/${sessionId}/stage/${slotId}/hold`,
+        { held },
       );
       applySnapshot(next);
     } catch (error) {
@@ -466,6 +479,33 @@ export function PlayerSession({
                     character={myCharacter}
                     onOpen={() => setTaggingOpen(true)}
                   />
+                  {/*
+                    Waiting is this player's decision as much as spending their
+                    own END is, so the control is here beside the conditions
+                    rather than only on the game master's console. Taking the
+                    hold off cuts them back into the order and gives them the
+                    turn, which is why the label promises that rather than
+                    describing the state — the badge in the scene below says the
+                    state.
+                  */}
+                  <button
+                    type="button"
+                    onClick={() => void setHold(myCharacter.id, !myCharacter.isHeld)}
+                    className={bareIcon(myCharacter.isHeld ? "danger" : "muted")}
+                    title={
+                      myCharacter.isHeld
+                        ? "Take your held action now"
+                        : "Hold your action"
+                    }
+                    aria-label={
+                      myCharacter.isHeld
+                        ? "Take your held action now"
+                        : "Hold your action"
+                    }
+                    aria-pressed={myCharacter.isHeld}
+                  >
+                    <Icon icon={faOctagon} />
+                  </button>
                   {myCharacter.statusTags.length > 0 ? (
                     <StatusTagPills tags={myCharacter.statusTags} />
                   ) : (

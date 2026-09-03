@@ -19,7 +19,7 @@
 
 import { useState } from "react";
 import type { SessionCharacter } from "../types.ts";
-import { faPlay, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faOctagon, faPlay, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { actsIn } from "../../lib/hero.ts";
 import { StatLine } from "./StatLine.tsx";
 import { StatusTagButton, StatusTagPicker, StatusTagPills } from "./StatusTags.tsx";
@@ -72,6 +72,12 @@ interface RowProps {
    * prone is what the table is looking at when it decides what to do next.
    */
   onToggleTag?: (tag: string, active: boolean) => void;
+  /**
+   * Lets this reader hold the character's action, or take the held one. Absent
+   * on a row they may only read, exactly as the conditions are — the badge is
+   * drawn either way, since who is waiting is half of what the order means.
+   */
+  onToggleHold?: (held: boolean) => void;
   onSetTurn?: () => void;
   onRemove?: () => void;
 }
@@ -88,6 +94,7 @@ function Row({
   onRecover,
   onRest,
   onToggleTag,
+  onToggleHold,
   onSetTurn,
   onRemove,
 }: RowProps) {
@@ -106,7 +113,9 @@ function Row({
 
   // Whether this reader has anything to press. A player's list is given none of
   // these, and an empty cluster would still take the gap beside the numbers.
-  const hasControls = Boolean(onToggleTag || (editable && onSetTurn) || onRecover || onRest);
+  const hasControls = Boolean(
+    onToggleTag || onToggleHold || (editable && onSetTurn) || onRecover || onRest,
+  );
 
   return (
     <li
@@ -191,6 +200,15 @@ function Row({
               {/* Both audiences, whoever may change them: what condition a character
                   is in is what the table reads the row for. */}
               <StatusTagPills tags={character.statusTags} />
+              {character.isHeld ? (
+                // Written like the `Unclaimed` badge above rather than like a
+                // condition: holding is a fact about the order, not about the
+                // character, and the two states that colour a row red should
+                // look like each other.
+                <span className="badge badge-xs badge-error badge-soft font-semibold tracking-wide uppercase">
+                  Held
+                </span>
+              ) : null}
             </div>
 
             {/*
@@ -299,6 +317,31 @@ function Row({
                 <StatusTagButton character={character} onOpen={() => setTaggingOpen(true)} bare />
               ) : null}
               <VitalActions character={character} onRecover={onRecover} onRest={onRest} bare />
+              {onToggleHold ? (
+                // Red while it is holding, which is the same red the badge above
+                // takes. The label says what the press will do rather than what
+                // the state is — the badge and the colour already say that, and
+                // a control's name is the promise it makes when pressed.
+                <button
+                  type="button"
+                  onClick={() => onToggleHold(!character.isHeld)}
+                  onPointerDown={(event) => event.stopPropagation()}
+                  className={bareIcon(character.isHeld ? "danger" : "muted")}
+                  title={
+                    character.isHeld
+                      ? `Take ${copyLabel}'s held action now`
+                      : `Hold ${copyLabel}'s action`
+                  }
+                  aria-label={
+                    character.isHeld
+                      ? `Take ${copyLabel}'s held action now`
+                      : `Hold ${copyLabel}'s action`
+                  }
+                  aria-pressed={character.isHeld}
+                >
+                  <Icon icon={faOctagon} />
+                </button>
+              ) : null}
               {editable && onSetTurn ? (
                 // Icon-only, like the three beside it: the play arrow is what a
                 // game master reaches for mid-fight, and three words of label
@@ -343,6 +386,7 @@ export function InitiativeList({
   onRecover,
   onRest,
   onToggleTag,
+  onToggleHold,
   onSetTurn,
   onRemove,
 }: {
@@ -372,6 +416,12 @@ export function InitiativeList({
    * panel, exactly as with the numbers.
    */
   onToggleTag?: (slotId: string, tag: string, active: boolean) => void;
+  /**
+   * Lets this reader hold a row's action, or take the held one. The game master
+   * passes it for every row; a player passes nothing here and holds their own
+   * character on their own panel, exactly as with the numbers and the conditions.
+   */
+  onToggleHold?: (slotId: string, held: boolean) => void;
   onSetTurn?: (slotId: string) => void;
   onRemove?: (slotId: string) => void;
 }) {
@@ -409,6 +459,7 @@ export function InitiativeList({
         onToggleTag={
           onToggleTag ? (tag, active) => onToggleTag(character.id, tag, active) : undefined
         }
+        onToggleHold={onToggleHold ? (held) => onToggleHold(character.id, held) : undefined}
         onSetTurn={onSetTurn ? () => onSetTurn(character.id) : undefined}
         onRemove={onRemove ? () => onRemove(character.id) : undefined}
       />

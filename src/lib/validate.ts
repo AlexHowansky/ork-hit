@@ -124,6 +124,9 @@ export const schemas = {
     active: z.boolean(),
   }),
 
+  /** The state the hold should end in, not an instruction to flip it. */
+  setHold: z.object({ held: z.boolean() }),
+
   sessionStart: z.object({
     campaignId: z.string().min(1).max(64),
   }),

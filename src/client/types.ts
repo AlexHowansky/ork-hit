@@ -53,6 +53,8 @@ export interface SessionCharacter extends Character {
    * then any the table typed. Per slot, like the numbers above.
    */
   statusTags: string[];
+  /** Whether this copy is holding its action, waiting to cut back into the order. */
+  isHeld: boolean;
   claimedByPlayerId: string | null;
   claimedByPlayerName: string | null;
 }

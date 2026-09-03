@@ -62,6 +62,12 @@ export interface SessionSnapshot {
      * than absent when there is nothing on them.
      */
     statusTags: string[];
+    /**
+     * Whether this copy is holding its action, waiting to cut back into the
+     * order. Per slot like the rest of them, and on the wire because both
+     * screens draw it: the console's control, and the badge every reader sees.
+     */
+    isHeld: boolean;
     claimedByPlayerId: string | null;
     claimedByPlayerName: string | null;
   })[];
@@ -126,6 +132,7 @@ export function buildSnapshot(sessionId: string): SessionSnapshot | null {
         currentStun: row.cur_stun,
         currentBody: row.cur_body,
         statusTags: tags.get(row.slot_id) ?? [],
+        isHeld: row.held === 1,
         claimedByPlayerId: holder?.id ?? null,
         claimedByPlayerName: holder?.name ?? null,
       };
