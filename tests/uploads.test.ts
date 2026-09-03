@@ -16,6 +16,7 @@ import {
   deleteUpload,
   findStrayFiles,
   portraitFromSheet,
+  requireTotalWithinLimit,
   storeImage,
   storeSheet,
   uploadPath,
@@ -75,7 +76,7 @@ describe("character sheets", () => {
   });
 
   test("are capped in size", async () => {
-    const tooBig = "x".repeat(limits.sheetBytes + 1);
+    const tooBig = "x".repeat(limits.uploadBytes + 1);
     await expect(storeSheet(file("big.html", tooBig))).rejects.toThrow(/limit/i);
   });
 
@@ -102,9 +103,23 @@ describe("card images", () => {
   });
 
   test("are capped in size", async () => {
-    const big = new Uint8Array(limits.imageBytes + 1);
+    const big = new Uint8Array(limits.uploadBytes + 1);
     big.set(PNG);
     await expect(storeImage(file("big.png", big))).rejects.toThrow(/limit|MB/i);
+  });
+});
+
+describe("a submission carrying more than one file", () => {
+  /** Just over half the limit: one fits, two do not. */
+  const half = () => file("half.html", "x".repeat(Math.floor(limits.uploadBytes / 2) + 1024));
+
+  test("is measured as a whole", () => {
+    expect(() => requireTotalWithinLimit(half(), half())).toThrow(/together/i);
+  });
+
+  test("passes when the files fit between them", () => {
+    expect(() => requireTotalWithinLimit(half(), null)).not.toThrow();
+    expect(() => requireTotalWithinLimit(null, null)).not.toThrow();
   });
 });
 

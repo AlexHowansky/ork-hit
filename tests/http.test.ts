@@ -2451,3 +2451,64 @@ describe("a character is refiled by being moved to another campaign", () => {
     expect((await response.json()).character.name).toBe(renamed);
   });
 });
+
+describe("the upload limit covers a whole submission", () => {
+  /** Half the limit, plus a little: two of these are over it, one is not. */
+  function half(): string {
+    return "x".repeat(Math.floor(limits.uploadBytes / 2) + 1024);
+  }
+
+  test("a sheet and a picture together cannot exceed it", async () => {
+    const { cookie } = await signIn();
+    const campaignForm = new FormData();
+    campaignForm.set("name", unique("Campaign"));
+    const campaign = (
+      await (
+        await fetch(`${base}/api/campaigns`, authed(cookie, { method: "POST", body: campaignForm }))
+      ).json()
+    ).campaign;
+
+    const picture = new Uint8Array(Math.floor(limits.uploadBytes / 2) + 1024);
+    picture.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+
+    const form = new FormData();
+    form.set("campaignId", campaign.id);
+    form.set("kind", "npc");
+    form.set("name", unique("Heavy"));
+    form.set("sheet", new File([half()], "sheet.html"));
+    form.set("card", new File([picture], "card.png", { type: "image/png" }));
+
+    const response = await fetch(
+      `${base}/api/characters`,
+      authed(cookie, { method: "POST", body: form }),
+    );
+
+    // Each file is inside the per-file ceiling; together they are not, and the
+    // app says so itself rather than leaving it to whatever sits in front.
+    expect(response.status).toBe(413);
+    expect((await response.json()).error.message).toMatch(/together/i);
+  });
+
+  test("either one alone still goes through", async () => {
+    const { cookie } = await signIn();
+    const campaignForm = new FormData();
+    campaignForm.set("name", unique("Campaign"));
+    const campaign = (
+      await (
+        await fetch(`${base}/api/campaigns`, authed(cookie, { method: "POST", body: campaignForm }))
+      ).json()
+    ).campaign;
+
+    const form = new FormData();
+    form.set("campaignId", campaign.id);
+    form.set("kind", "npc");
+    form.set("name", unique("Heavy"));
+    form.set("sheet", new File([half()], "sheet.html"));
+
+    const response = await fetch(
+      `${base}/api/characters`,
+      authed(cookie, { method: "POST", body: form }),
+    );
+    expect(response.status).toBe(201);
+  });
+});

@@ -16,6 +16,7 @@ import {
   collectOrphanedUploads,
   fileField,
   portraitFromSheet,
+  requireTotalWithinLimit,
   storeImage,
   storeSheet,
 } from "../uploads.ts";
@@ -106,10 +107,11 @@ export const characterRoutes = {
 
       const sheetFile = fileField(form, "sheet");
       if (!sheetFile) throw errors.badRequest("Please choose an HTML character sheet to upload.");
-      const sheet = await storeSheet(sheetFile);
-
       // An image the game master chose wins; otherwise the sheet may carry one.
       const imageFile = fileField(form, "card");
+      requireTotalWithinLimit(sheetFile, imageFile);
+
+      const sheet = await storeSheet(sheetFile);
       const card = imageFile
         ? await storeImage(imageFile)
         : await portraitOrNone(sheet, logger);
@@ -180,10 +182,12 @@ export const characterRoutes = {
         }
 
         const sheetFile = fileField(form, "sheet");
+        const imageFile = fileField(form, "card");
+        requireTotalWithinLimit(sheetFile, imageFile);
+
         const sheet = sheetFile ? await storeSheet(sheetFile) : null;
         if (sheet) changes.sheetUploadId = sheet.id;
 
-        const imageFile = fileField(form, "card");
         if (imageFile) {
           changes.cardUploadId = (await storeImage(imageFile)).id;
         } else if (form.get("removeCard") === "true") {

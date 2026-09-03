@@ -134,13 +134,38 @@ async function readWithLimit(file: File, maxBytes: number, label: string): Promi
   return bytes;
 }
 
+/**
+ * Holds a submission carrying more than one file to the same ceiling the files
+ * are held to individually.
+ *
+ * `UPLOAD_LIMIT_BYTES` is documented to an operator as the size of an upload, and
+ * the only route that takes two files at once is a character's — a sheet and a
+ * picture, in one submission. Without this, that request could carry twice the
+ * configured limit, and a reverse proxy sized to the setting would cut it off
+ * with a generic error of its own instead of the message below.
+ *
+ * Sizes come from the parsed multipart body, so they are the bytes that actually
+ * arrived rather than anything the client asserted; each file is still measured
+ * on its own as it is read.
+ */
+export function requireTotalWithinLimit(...files: (File | null)[]): void {
+  const total = files.reduce((sum, file) => sum + (file?.size ?? 0), 0);
+  if (total > limits.uploadBytes) {
+    throw errors.tooLarge(
+      `Those files are ${(total / 1024 / 1024).toFixed(1)} MB together. The limit is ${
+        Math.round(limits.uploadBytes / 1024 / 1024)
+      } MB.`,
+    );
+  }
+}
+
 /** Stores an uploaded character sheet. */
 export async function storeSheet(file: File): Promise<UploadRow> {
   const name = file.name ?? "sheet.html";
   if (!/\.x?html?$/i.test(name)) {
     throw errors.badRequest("Character sheets must be .html files.");
   }
-  const bytes = await readWithLimit(file, limits.sheetBytes, "character sheet");
+  const bytes = await readWithLimit(file, limits.uploadBytes, "character sheet");
   if (bytes.byteLength === 0) throw errors.badRequest("That character sheet file was empty.");
   return await persist(bytes, SHEET_DIR, "sheet", "text/html", name);
 }
@@ -245,7 +270,7 @@ async function persistImage(bytes: Uint8Array, originalName: string): Promise<Up
 
 /** Stores a card image, verifying the format by its magic bytes. */
 export async function storeImage(file: File): Promise<UploadRow> {
-  const bytes = await readWithLimit(file, limits.imageBytes, "image");
+  const bytes = await readWithLimit(file, limits.uploadBytes, "image");
   const stored = await persistImage(bytes, file.name ?? "image");
   if (!stored) {
     throw errors.badRequest("That image must be a PNG, JPEG, GIF or WebP file.");
@@ -339,11 +364,11 @@ export async function portraitFromSheet(sheet: UploadRow): Promise<UploadRow | n
       const size = encoding.size(run);
 
       // Both ends first, on the length alone: nothing is decoded to find out
-      // that it is a thumbnail, or larger than an upload may be. With today's
-      // limits a sheet cannot hold one that large — encoding costs at least a
-      // third again — but the two ceilings are separate knobs, so this does not
-      // assume they stay in step.
-      if (size < MIN_PORTRAIT_BYTES || size > limits.imageBytes) continue;
+      // that it is a thumbnail, or larger than an upload may be. A sheet cannot
+      // in fact hold one that large — it is held to the same ceiling, and
+      // encoding costs at least a third again — but the check is cheap and says
+      // plainly what the range of interest is.
+      if (size < MIN_PORTRAIT_BYTES || size > limits.uploadBytes) continue;
       // Nor is anything decoded that cannot beat what we already have.
       if (best && size <= best.bytes.byteLength) continue;
 

@@ -184,8 +184,20 @@ export const config = {
 
 /** Upload limits, enforced during multipart intake. */
 export const limits = {
-  sheetBytes: 5 * 1024 * 1024,
-  imageBytes: 5 * 1024 * 1024,
+  /**
+   * How large an upload may be, in bytes.
+   *
+   * One ceiling covers both a character sheet and a card image: a sheet with a
+   * portrait embedded in it is much the same thing as the picture on its own, and
+   * a deployment that wants to allow bigger files wants to allow bigger files.
+   * It is the size of an upload rather than of a file: the one route that takes
+   * two at once holds their total to it as well (`requireTotalWithinLimit`), so a
+   * proxy in front can be sized to this number and not to a multiple of it.
+   *
+   * Clamped to something a request can plausibly carry — below 64 KB no real
+   * sheet fits, and past 512 MB the proxy in front will refuse it first.
+   */
+  uploadBytes: whole(process.env.UPLOAD_LIMIT_BYTES, 10 * 1024 * 1024, 64 * 1024, 512 * 1024 * 1024),
   /**
    * The shorter side a stored image is scaled down to.
    *
