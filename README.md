@@ -313,12 +313,13 @@ are.
 **Every card is printed in a frame.** `assets/character-pc-card-template.webp`,
 `assets/character-npc-card-template.webp`
 and `assets/campaign-card-template.webp`
-are 300×420 — the same five by seven the card is — so the art lays over a card
+are 350×490 — the same five by seven the card is — so the art lays over a card
 with nothing to crop or letterbox. Its window is transparent and the picture
 shows through it; its lower panel is what the name is drawn on. `CardFrame`
 (`ui.tsx`) is the overlay, `pointer-events-none` because `hover-3d`'s hover zones
 sit beneath it and the tilt would otherwise stop, and `CARD_CAPTION_FRAMED` puts
-the name on the artwork's panel (67.8%–96.2% of the card's height) rather than in
+the name on the artwork's panel (72.7%–96.5% of the card's height, the part every
+frame draws panel behind) rather than in
 the card's own bottom two sevenths, which would leave it astride the frame's
 lower border. `CARD_WINDOW` does the same job for the corner controls, which are
 pinned to the square well otherwise and would sit across the gold divider the art
@@ -330,7 +331,7 @@ the same corner and there is one arrangement in `HoverCard` rather than a choice
 kind (`"pc"`, `"npc"` or `"campaign"`) and adds `.card-frame-npc` or
 `.card-frame-campaign` to the same overlay, a PC being the bare `.card-frame` —
 so the kinds still tell themselves apart at a glance, while every measurement
-above is shared because all three frames are cut to the same 300×420. They are
+above is shared because all three frames are cut to the same 350×490. They are
 separate files, routes and variables all the way down, so redrawing any one is a
 file swap rather than a code change.
 

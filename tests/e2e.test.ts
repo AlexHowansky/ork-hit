@@ -1301,12 +1301,14 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     expect(frameBox.width).toBeCloseTo(cardBox.width - 2 * border, 0);
     expect(frameBox.height).toBeCloseTo(cardBox.height - 2 * border, 0);
 
-    // And the name sits on the panel the art paints, whose centre is 82% of the
-    // way down the card — not in the card's own bottom two sevenths, which would
-    // put it over the frame's lower border.
+    // And the name sits centred on the panel the art paints — not in the card's
+    // own bottom two sevenths, which would put it over the frame's lower border.
+    // The panel runs 72.7% to 96.5% of the card's height, so its centre is 84.6%;
+    // what lands here is a whisker above that because the strip is inside the
+    // tile, which is inset from this box by the card's hairline border.
     const name = (await card.getByText("Framed", { exact: true }).boundingBox())!;
     const centre = (name.y + name.height / 2 - cardBox.y) / cardBox.height;
-    expect(centre).toBeCloseTo(0.82, 1);
+    expect(centre).toBeCloseTo(0.843, 2);
 
     // No kind badge on a library card: the frame says which kind it is, so the
     // pill would only repeat the artwork over the top of it.

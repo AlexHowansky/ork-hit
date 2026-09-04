@@ -186,11 +186,22 @@ export const CARD_WINDOW_CONTROLS =
  * The name's strip on a card that carries the frame, which is not the same box.
  *
  * The card's own division puts the bottom two sevenths under the picture.
- * The artwork draws its panel somewhere slightly different — measured off the
- * asset, it runs from 67.8% to 96.2% of the card's height, with the gold divider
- * above it and the frame's outer border below — so this is positioned against the
- * art instead, and centred in the panel the art actually draws. Get this wrong
- * and the name sits on the divider or over the border rather than on the panel.
+ * The artwork draws its panel somewhere slightly different — so this is
+ * positioned against the art instead, and is the panel the art actually draws.
+ * Get this wrong and the name sits on the divider or over the border rather than
+ * on the panel.
+ *
+ * Measured off all three assets, since one box serves them: the pale panel runs
+ * 72.7% to 97.8% of the card's height on the PC frame, 72.7% to 97.1% on the
+ * NPC's and 71.6% to 96.5% on the campaign's, with the divider above it and the
+ * frame's outer border below. What they share is 72.7% to 96.5%, which is what
+ * this is — the box every frame draws panel behind, rather than a compromise
+ * that hangs over the border on one of them.
+ *
+ * The name is then centred in it by the flex box and nothing else. It used to be
+ * pushed low with a `padding-top` on `.card-name`, because this box began well
+ * above the panel and centring in it put the name on the divider; the box is the
+ * panel now, so centring in it is centring on the panel.
  *
  * No background: the artwork is the background now — `.card-caption` in
  * `styles.css` clears the one daisyUI would otherwise paint here, and says why.
@@ -205,7 +216,7 @@ export const CARD_WINDOW_CONTROLS =
  * Callers pass the attribute with this class — see `CharacterCard`.
  */
 export const CARD_CAPTION_FRAMED =
-  "card-caption absolute inset-x-0 top-[67.8%] bottom-[3.8%] z-20 flex items-center justify-center px-[8%]";
+  "card-caption absolute inset-x-0 top-[72.7%] bottom-[3.5%] z-20 flex items-center justify-center px-[8%]";
 
 /** The modifier each kind adds to `.card-frame`; a PC is the bare class. */
 const CARD_FRAME_KIND: Record<CharacterKind | "campaign", string> = {
@@ -217,7 +228,7 @@ const CARD_FRAME_KIND: Record<CharacterKind | "campaign", string> = {
 /**
  * The frame a card is printed in: `styles.css` holds the artwork (see
  * `--card-frame-pc` there). `kind` picks between the PC, NPC and campaign art,
- * all three cut to the same 300x420 and so sharing every measurement here and in
+ * all three cut to the same 350x490 and so sharing every measurement here and in
  * `CARD_CAPTION_FRAMED`. Each is one cut for both themes, which is why the name
  * over it carries a theme of its own.
  *

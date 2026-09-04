@@ -179,16 +179,18 @@ body {
 
     0.09 is the fraction that lands on the 16px this has always been at the
     default 176px card, so nothing moves for a table that never touches the
-    slider. The panel the name sits on is about 28% of the card's height, which
-    is two of these lines and their padding with room to spare, and not three.
+    slider. The panel the name sits on is about 24% of the card's height, which
+    is two of these lines with room to spare, and not three — which is the number
+    `line-clamp-2` cuts at.
 
-    `em` on the padding, so it goes on scaling with the type rather than needing
-    a second number kept in step. It is what sits the name low on the panel the
-    frame paints rather than centred in it.
+    There is no padding here any more. There used to be a `padding-top` sitting
+    the name low, because `CARD_CAPTION_FRAMED` was a box that began above the
+    panel and a name centred in it landed on the divider. That box is the panel
+    itself now, so the centring does the work and a nudge on top of it would only
+    push the name back off centre.
   */
   font-size: calc(var(--card-image-size) * 0.09);
   line-height: 1.5;
-  padding-top: 0.75em;
 }
 
 /*
@@ -196,7 +198,7 @@ body {
 
   `assets/character-pc-card-template.webp`,
   `assets/character-npc-card-template.webp` and
-  `assets/campaign-card-template.webp` are 300x420 — five by seven,
+  `assets/campaign-card-template.webp` are 350x490 — five by seven,
   the same shape the card is — so the art lays over a card with nothing to crop
   or letterbox. Its window is transparent and the picture shows through it; its
   lower panel is what the name is drawn on (see `CARD_CAPTION_FRAMED`).
