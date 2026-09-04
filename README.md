@@ -392,8 +392,18 @@ happened to make its strip. The strip's padding is horizontal only, the name
 centred in it both ways: at the smallest card the setting allows, a fixed 12px
 above and below would be taller than the whole strip. Centring is two rules
 rather than one — the caption centres the name as a box, and `CARD_NAME` carries
-`text-center` for the case where the name is too long and that box fills the
-strip, so a truncated name reads centred alongside a short one. An icon button
+`text-center` so the lines inside that box are centred too, which is what a
+wrapped name needs and what a name filling the strip needed before it wrapped.
+
+A long name **wraps to a second line** and is cut short only past that, which is
+why the name's type scales with the card (`.card-name`, a fraction of
+`--card-image-size`) rather than sitting at a flat 16px: the panel holds exactly
+two of those lines at every size the card-size setting allows, where a fixed size
+held two on a large card and one on a small one. The fraction is chosen to land
+on the 16px it has always been at the default card, so nothing moves for a table
+that never touches the slider — and as a side effect the name is now the same
+size relative to its card everywhere, instead of shouting on a small one and
+whispering on a large one. An icon button
 always carries a label — it is the tooltip and the only thing a screen reader has
 to go on. Every hover rule is paired with a `focus-within` one, because a card is
 a box of buttons and a keyboard user would otherwise get no feedback at all.

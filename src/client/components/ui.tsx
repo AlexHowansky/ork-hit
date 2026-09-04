@@ -94,17 +94,26 @@ export const FIELD_CAPTION = "mb-1 block text-sm font-medium";
 export const PANEL_CAPTION = `font-semibold tracking-wide uppercase ${TEXT_MUTED}`;
 
 /**
- * A card's name, in the strip under its picture. Truncates rather than wraps.
+ * A card's name, in the strip under its picture. Wraps to two lines, and is cut
+ * short only past that.
  *
- * `card-name` is the hook for the deployment's own font, if it set one — see
- * `styles.css`, which falls back to `inherit` when it did not.
+ * Two lines because two is what the strip holds at every size a card can be
+ * drawn: the name's type scales with the card (`.card-name` in `styles.css`), so
+ * the arithmetic is the same on a 100px card as on a 350px one, and a third line
+ * would not fit on either. `line-clamp-2` brings the ellipsis with it, so a name
+ * long enough to beat two lines still ends in one — wrapping first and cutting
+ * last, rather than cutting at the first opportunity.
  *
- * `text-center` is for the truncated case alone: a name that fits is a shrink-
- * to-fit box that `CARD_CAPTION_FRAMED` centres itself, but one that is cut short
- * fills the strip, and without this its ellipsis would sit against the right edge
- * with the text left-aligned under a centred neighbour.
+ * `break-words` is for the name that is one long word: without it a single
+ * unbreakable run overflows the strip sideways instead of wrapping, and the
+ * clamp — which only counts lines — would not save it.
+ *
+ * `text-center` for every case now. It used to be for the cut-short one alone,
+ * since a name that fitted was a shrink-to-fit box that `CARD_CAPTION_FRAMED`
+ * centred itself; a wrapped name is a full-width box whose lines need centring of
+ * their own.
  */
-export const CARD_NAME = "card-name truncate text-center font-medium";
+export const CARD_NAME = "card-name line-clamp-2 break-words text-center font-medium";
 
 /**
  * The shape shared by every card in the library — the tile itself, without the
@@ -119,8 +128,9 @@ export const CARD_NAME = "card-name truncate text-center font-medium";
  * rather than by a second number to keep in step. The name is laid over that
  * room rather than filling it (`CARD_CAPTION_FRAMED`), since it is drawn on the
  * panel the frame paints. A row of cards therefore lines up whatever the names
- * are, and a name too long for its strip is cut short rather than allowed to
- * make one card taller than its neighbours.
+ * are, and a name too long for its strip wraps to a second line and is cut short
+ * past that, rather than being allowed to make one card taller than its
+ * neighbours.
  *
  * `aspect-[5/7]` measures the border box, so five by seven is the card including
  * its frame; the picture inside is that less the hairline border on each side.

@@ -198,6 +198,28 @@ body {
 */
 .card-name {
   font-family: var(--card-font-family, inherit);
+
+  /*
+    Type that scales with the card it is printed on.
+
+    It used to be a flat 16px whatever size the cards were drawn at, which is a
+    name that shouts on a small card and whispers on a large one — and, once the
+    name wraps rather than truncating, it is also a strip that holds two lines at
+    one card size and one at another. As a fraction of the picture both problems
+    go: the name is the same size *relative to its card* everywhere, and two
+    lines fit at every size the setting allows.
+
+    0.09 is the fraction that lands on the 16px this has always been at the
+    default 176px card, so nothing moves for a table that never touches the
+    slider. The panel the name sits on is about 28% of the card's height, which
+    is two of these lines and their padding with room to spare, and not three.
+
+    `em` on the padding, so it goes on scaling with the type rather than needing
+    a second number kept in step. It is what sits the name low on the panel the
+    frame paints rather than centred in it.
+  */
+  font-size: calc(var(--card-image-size) * 0.09);
+  line-height: 1.5;
   padding-top: 0.75em;
 }
 
