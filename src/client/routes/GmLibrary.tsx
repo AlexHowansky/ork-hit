@@ -493,7 +493,36 @@ function CampaignCard({
   });
   const inviting = over && takes !== null;
 
-  return (
+  // The campaign whose characters are on the panel, lit like a card that is in
+  // play rather than merely outlined.
+  //
+  // daisyUI's `aura` is a wrapper that paints behind whatever it holds, so this
+  // is a `div` around the card rather than a class on it. Three things make it
+  // sit right in the grid.
+  //
+  // `block`, because the component is `inline-block` and an inline box would sit
+  // on the text baseline with a descender's gap under it.
+  //
+  // A wider band than the component's own. Every size daisyUI ships is a hairline
+  // — `aura-xl` is four pixels — and a hairline is lost behind a card whose
+  // artwork is already a printed gold frame. 6px is wide enough to read as a glow
+  // around this card rather than a highlight on its edge, and still leaves most
+  // of the grid's `gap-4` between it and the card beside it. Only one card is
+  // ever lit, so the spill is one-sided.
+  //
+  // And the negative margin, which is exactly that padding pulled back out again.
+  // Without it the lit card would be twelve pixels narrower than every card
+  // beside it — the aura would take the difference out of a fixed grid track —
+  // and a row of cards that change size as they are picked is worse than no glow
+  // at all. Pulled back, the glow spills into the gap instead.
+  const lit = (card: ReactNode) =>
+    selected
+      ? (
+        <div className="aura aura-gold block -m-1.5 [--aura-padding:0.375rem]">{card}</div>
+      )
+      : card;
+
+  return lit(
     // The picture used to carry a full-bleed button of its own; `HoverCard`'s
     // zones sit over it, so the whole card is the select control instead. The
     // ring stays out on the frame rather than on the tile: it is the answer to
@@ -505,12 +534,12 @@ function CampaignCard({
       label={`Select ${campaign.name}`}
       onClick={onSelect}
       pressed={selected}
+      // A ring for one thing only: "may this campaign take what you are
+      // dragging". Being selected used to draw a fainter ring in the same colour
+      // and it is the aura's to say now — two answers to one question, in colours
+      // that did not love each other.
       className={
-        inviting
-          ? "rounded-xl ring-2 ring-primary ring-offset-2 ring-offset-base-200"
-          : selected
-            ? "rounded-xl ring-2 ring-primary/30"
-            : ""
+        inviting ? "rounded-xl ring-2 ring-primary ring-offset-2 ring-offset-base-200" : ""
       }
       cardClassName={`${inviting || selected ? "border-primary" : HAIRLINE} bg-base-100`}
       actions={
@@ -539,7 +568,7 @@ function CampaignCard({
       <div className={CARD_CAPTION_FRAMED}>
         <h3 className={CARD_NAME}>{campaign.name}</h3>
       </div>
-    </HoverCard>
+    </HoverCard>,
   );
 }
 

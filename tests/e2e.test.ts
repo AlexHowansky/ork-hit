@@ -2253,3 +2253,55 @@ describe("a sheet fills the characteristics in for you", () => {
     await page.close();
   }, 60_000);
 });
+
+describe("the campaign being worked on is lit", () => {
+  test("the selected card wears the aura, and only that card", async () => {
+    if (!browser) return;
+    const page = await signedInGm();
+
+    const [first, second] = [unique("First"), unique("Second")];
+    for (const name of [first, second]) {
+      await page.getByRole("button", { name: "New", exact: true }).click();
+      await page.getByLabel("Campaign name").fill(name);
+      await page.getByRole("button", { name: "Create campaign" }).click();
+      await page.getByText(`Characters in ${name}`).waitFor();
+    }
+
+    /** The aura wrapper around a campaign's card, if it has one. */
+    const auraOn = (name: string) =>
+      page.locator(`.aura:has(button[aria-label="Select ${name}"])`);
+
+    // Creating a campaign selects it, so the second one is the lit one.
+    await auraOn(second).waitFor({ timeout: 5000 });
+    expect(await auraOn(first).count()).toBe(0);
+
+    await page.getByRole("button", { name: `Select ${first}` }).click();
+    await auraOn(first).waitFor({ timeout: 5000 });
+    expect(await auraOn(second).count()).toBe(0);
+
+    // The glow is the two blurred copies behind the card, which is the half of
+    // this component that the development server used to drop on the floor: with
+    // the pseudo-elements gone the aura is a gold hairline and reads as nothing.
+    const glow = await auraOn(first).evaluate((el) => ({
+      before: getComputedStyle(el, "::before").filter,
+      after: getComputedStyle(el, "::after").filter,
+    }));
+    expect(glow.before).toContain("blur");
+    expect(glow.after).toContain("blur");
+
+    // And a lit card is exactly as wide as an unlit one. The aura pads outward,
+    // so without the negative margin that pulls it back the selected card would
+    // be narrower than its neighbours and the row would jump as cards are picked.
+    // Off the cards and given time to settle: `hover-3d` tilts whatever the
+    // pointer is over, and a tilted card's bounding box is wider than the card.
+    await page.mouse.move(5, 5);
+    await page.waitForTimeout(500);
+    const widthOf = async (name: string) =>
+      Math.round((await page.locator(
+        `article:has(button[aria-label="Select ${name}"]) .card`,
+      ).first().boundingBox())!.width);
+    expect(await widthOf(first)).toBe(await widthOf(second));
+
+    await page.close();
+  }, 60_000);
+});

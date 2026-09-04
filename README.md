@@ -566,20 +566,21 @@ there. Where a colour has to carry meaning *and* be read, the tone goes on the
 border and the wash and the text stays `base-content` — see `TONES` in
 `Vitals.tsx` and the unclaimed row in `InitiativeList.tsx`.
 
-**Three of its components are restored rather than trusted.** The development
+**Four of its components are restored rather than trusted.** The development
 server rewrites daisyUI's stylesheet into rules nested under a pseudo-element —
 `.range { &::-webkit-slider-thumb { @layer … { & { … } } } }` — and a rule nested
 under a pseudo-element is not something a browser resolves, so those declarations
 are dropped entirely. The production build flattens the same source correctly,
 which is why this is invisible until somebody opens the app they are building.
-Three components are drawn with pseudo-elements and so come out half-made: the
-range's track and thumb, the toggle's knob, and the file field's "Choose File"
-button. A range was a dot on no rail, a toggle an empty pill that did not
-visibly move, and a file field the browser's own bare label sitting in daisyUI's
-box.
+Four components are drawn with pseudo-elements and so come out half-made: the
+range's track and thumb, the toggle's knob, the file field's "Choose File"
+button, and the aura's glow. A range was a dot on no rail, a toggle an empty pill
+that did not visibly move, a file field the browser's own bare label sitting in
+daisyUI's box, and an aura a gold hairline near enough to nothing that it read as
+a change that had not taken.
 
 `styles.css` carries flat copies of those rules at the bottom, written against
-daisyUI's own `--range-*`, `--toggle-*` and `--btn-*` properties so the themes
+daisyUI's own `--range-*`, `--toggle-*`, `--btn-*` and `--aura-*` properties so the themes
 still decide the colours and a version bump carries most of the way. What is left
 out is decoration — the noise texture, the depth highlights. Unlayered, so they
 beat daisyUI's own; the values are the same, so development and production render
@@ -869,15 +870,39 @@ an empty picture but never replaces an existing one, and a failed scan is logged
 and forgotten rather than failing the upload, since a portrait nobody asked for
 is not worth an error.
 
+**The campaign being worked on is lit rather than merely outlined.** The card of
+the selected campaign — the one whose characters fill the panel beside it — wears
+daisyUI's `aura` in `aura-gold`, a conic gradient that turns behind the card with
+two blurred copies of itself for the glow. It is a wrapper element rather than a
+class on the card, so `CampaignCard` puts a `div` around the whole `HoverCard`
+when it is selected.
+
+Three classes make it sit right in the grid. `block`, because the component is
+`inline-block` and an inline box would sit on the text baseline with a
+descender's gap under it. A `--aura-padding` of its own, because every size
+daisyUI ships is a hairline — `aura-xl` is four pixels — and a hairline is lost
+behind a card whose artwork is already a printed gold frame; 6px reads as a glow
+around the card rather than a highlight on its edge, and still leaves most of the
+grid's `gap-4` between it and its neighbour. And `-m-1.5`, which is exactly that
+padding pulled back out: without it the lit card would be twelve pixels narrower
+than every card beside it, since the aura would take the difference out of a fixed
+grid track — and a row of cards that change size as they are picked is worse than
+no glow at all. Pulled back, the glow spills into the gap instead.
+`tests/e2e.test.ts` measures a lit card against an unlit one for exactly that
+reason.
+
+The aura is also the *only* thing that says a campaign is selected. It replaced a
+faint ring in the primary colour, which alongside the glow was two answers to one
+question in colours that did not agree.
+
 **A picture can be filed by dropping it on the card itself**, in the library, on
 either kind of card: the `PATCH` that goes up carries only the picture, so the
 server applies it exactly as it would from the dialog, and the card is redrawn
 from what comes back. It is the one edit worth doing without a dialog at all —
 the card is right there, and what it should look like is the whole of the
 decision. The invitation is drawn *inside the well*, over the picture, rather
-than as a ring around the card: a campaign card already wears one ring for a
-character being refiled onto it and another for being selected, and a third would
-read as one of those. The well says what a drop would actually replace. A card
+than as a ring around the card: a campaign card already wears a ring for a
+character being refiled onto it, and a second would read as that one. The well says what a drop would actually replace. A card
 also sits inside the panel that files a dropped sheet as a new character, so
 `useDropTarget` stops a drop it has claimed from travelling any further — the
 innermost target that wants a file is the one that gets it, and one drop never
