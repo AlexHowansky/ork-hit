@@ -1,0 +1,22 @@
+-- Whether a game master's session library reaches past the campaign it belongs to.
+--
+-- A campaign's library is the right default: the console is running one
+-- campaign's fight, and the list of who can be brought into it is that
+-- campaign's cast. But monsters are not cast. A game master who built a good
+-- ogre for one campaign has a good ogre, and wanting it in tonight's fight is not
+-- a mistake to be protected from — it is the whole reason the ogre was worth
+-- building. So this opens the library to every NPC the game master owns.
+--
+-- Only NPCs, and that is the point of the name rather than an implementation
+-- detail: a player character belongs to a player, in a campaign, and turning up
+-- in another campaign's fight is a thing that happens to heroes in stories rather
+-- than in initiative order. The setting says `NPCs` because that is what it does.
+--
+-- Off by default, so a console that has always shown one campaign goes on showing
+-- one campaign until somebody asks otherwise.
+--
+-- On `gms` beside the card size, for the same reason: it is a fact about how this
+-- game master likes to work, and it should follow them to whichever machine they
+-- sign in on.
+
+ALTER TABLE gms ADD COLUMN show_all_npcs INTEGER NOT NULL DEFAULT 0;

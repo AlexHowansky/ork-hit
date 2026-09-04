@@ -422,13 +422,29 @@ export const sessionRoutes = {
         const { characterId } = await parseJsonBody(request, schemas.stageAdd);
 
         const character = characters.byId(characterId);
-        // A session belongs to one campaign, so only that campaign's characters
-        // can be brought into it.
-        if (!character || character.campaign_id !== session.campaign_id) {
-          throw errors.notFound("We couldn't find that character in this campaign.");
-        }
+        if (!character) throw errors.notFound("We couldn't find that character.");
+
+        // Whose it is decides everything: a character belonging to another game
+        // master is not one this session may borrow, and saying "not found"
+        // rather than "not yours" is what keeps one library from being probed
+        // through another's console.
         const campaign = campaigns.byId(character.campaign_id);
         if (campaign?.gm_id !== gm.id) throw errors.notFound("We couldn't find that character.");
+
+        // Then which campaign. A session runs one campaign, and its heroes are
+        // that campaign's: a player character turning up in another campaign's
+        // fight is a thing that happens in stories rather than in initiative
+        // order, and the claim a player holds is on a character in a campaign.
+        //
+        // Monsters are not cast that way. A good ogre is a good ogre, and a game
+        // master who has one filed under last year's campaign should be able to
+        // bring it into tonight's — which is what `Show All NPCs` puts in front
+        // of them, and this is the half of that setting the server has to agree
+        // to. Off, the console never offers a foreign NPC in the first place; on,
+        // the offer has to be one the server will honour.
+        if (character.campaign_id !== session.campaign_id && character.kind !== "npc") {
+          throw errors.notFound("We couldn't find that character in this campaign.");
+        }
 
         // A repeated PC comes back null and changes nothing, which is the same
         // no-op the old ON CONFLICT gave and needs no complaint of its own —

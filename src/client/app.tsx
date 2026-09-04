@@ -10,6 +10,7 @@ import { useCallback, useEffect, useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useNavigate } from "react-router";
 import { api } from "./api.ts";
 import { applyCardSize } from "./cardSize.ts";
+import { applyGmSettings } from "./gmSettings.ts";
 import { ConfirmProvider } from "./components/Confirm.tsx";
 import { LoadingNote } from "./components/ui.tsx";
 import { ToastProvider, useToast } from "./components/Toast.tsx";
@@ -31,7 +32,10 @@ function Shell() {
     void (async () => {
       try {
         const who = await api.get<Identity>("/api/auth/me");
-        if (who.kind === "gm") applyCardSize(who.gm.cardImagePx);
+        if (who.kind === "gm") {
+          applyCardSize(who.gm.cardImagePx);
+          applyGmSettings(who.gm);
+        }
         setIdentity(who);
       } catch {
         setIdentity({ kind: "anonymous" });
@@ -45,9 +49,10 @@ function Shell() {
     } catch (error) {
       toast.showError(error);
     }
-    // Back to the default: the next person to use this browser is not the one
-    // whose eyes the cards were sized for.
+    // Back to the defaults: the next person to use this browser is not the one
+    // whose eyes the cards were sized for, nor whose library this was.
     applyCardSize(null);
+    applyGmSettings(null);
     setIdentity({ kind: "anonymous" });
     navigate("/");
   }, [navigate, toast]);

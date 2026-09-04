@@ -6,7 +6,29 @@
  * other.
  */
 
-import type { CampaignRow, CharacterRow, GameSessionRow, PlayerRow } from "../db/types.ts";
+import type { CampaignRow, CharacterRow, GameSessionRow, GmRow, PlayerRow } from "../db/types.ts";
+
+/**
+ * A game master as their own console sees them: who they are, and how they have
+ * asked the app to behave.
+ *
+ * One shape for both the answer to signing in and the answer to "who am I",
+ * because arriving already signed in and signing in this minute should leave the
+ * console in the same state. The settings ride along with the identity rather
+ * than behind a call of their own, so they are in hand before the first render.
+ *
+ * Never a password hash, and never a timestamp nobody has asked for: this is a
+ * hand-written list rather than a spread of the row for exactly that reason.
+ */
+export function presentGm(gm: GmRow) {
+  return {
+    id: gm.id,
+    email: gm.email,
+    cardImagePx: gm.card_image_px,
+    // Stored as SQLite's 0 or 1; a boolean is what the browser wants.
+    showAllNpcs: gm.show_all_npcs === 1,
+  };
+}
 
 export function presentCampaign(campaign: CampaignRow) {
   return {

@@ -11,6 +11,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { api } from "../api.ts";
 import { useSessionSocket } from "../useSessionSocket.ts";
+import { useGmSettings } from "../gmSettings.ts";
 import { useColumnSplit } from "../useColumnSplit.ts";
 import {
   AppPage,
@@ -64,6 +65,9 @@ export function GmSessionConsole({ onSignOut }: { onSignOut: () => void }) {
   );
   const [session, setSession] = useState<GameSession | null>(null);
   const [library, setLibrary] = useState<Character[]>([]);
+  // Only the borrowed rows need one, so this is empty until the setting that
+  // borrows them is on.
+  const [campaignNames, setCampaignNames] = useState<Map<string, string>>(new Map());
   // A library character rather than a stage slot: sheets are opened from the
   // library panel, which lists the campaign's characters whether they are in the
   // scene or not, and a sheet belongs to the character rather than to the copy.
@@ -72,6 +76,9 @@ export function GmSessionConsole({ onSignOut }: { onSignOut: () => void }) {
   const [showActingOnly, toggleSegmentFilter] = useSegmentFilter(sessionId);
   const [logOpen, toggleLog] = useLogDrawer(sessionId);
   const [settingsOpen, toggleSettings] = useSettingsDrawer();
+  // Set in the drawer on this same screen, so the library below re-reads itself
+  // as it is switched rather than on the next visit.
+  const { showAllNpcs } = useGmSettings();
 
   // The console's columns start as equal shares and can be dragged to any others.
   // One split per boundary, each sizing the column to its left; the last column
@@ -104,19 +111,67 @@ export function GmSessionConsole({ onSignOut }: { onSignOut: () => void }) {
     void (async () => {
       try {
         const { sessions } = await api.get<{ sessions: GameSession[] }>("/api/sessions");
-        const found = sessions.find((entry) => entry.id === sessionId) ?? null;
-        setSession(found);
-        if (found) {
-          const { characters } = await api.get<{ characters: Character[] }>(
-            `/api/characters?campaignId=${encodeURIComponent(found.campaignId)}`,
-          );
-          setLibrary(characters);
-        }
+        setSession(sessions.find((entry) => entry.id === sessionId) ?? null);
       } catch (error) {
         toast.showError(error);
       }
     })();
   }, [sessionId, toast]);
+
+  /*
+   * Who can be brought into the fight — read again whenever that answer changes,
+   * which is why it is an effect of its own rather than part of the load above.
+   * The session is fetched once because a session's campaign does not move;
+   * `Show All NPCs` moves under the reader's hand, in the drawer beside this
+   * panel, and the list has to refill when it does.
+   *
+   * Off, the campaign's own characters, which is the whole of the old behaviour.
+   * On, everything this game master owns — and then the monsters are kept out of
+   * the campaign as well as in it, while the heroes are not. A player character
+   * belongs to a player in a campaign, and the server will refuse to stage one
+   * from anywhere else, so listing them here would be offering something that
+   * cannot be taken.
+   */
+  useEffect(() => {
+    if (!showAllNpcs) {
+      setCampaignNames(new Map());
+      return;
+    }
+    void (async () => {
+      try {
+        const { campaigns } = await api.get<{ campaigns: { id: string; name: string }[] }>(
+          "/api/campaigns",
+        );
+        setCampaignNames(new Map(campaigns.map((campaign) => [campaign.id, campaign.name])));
+      } catch {
+        // A borrowed monster reads as a monster without the campaign under it,
+        // which is worse than with — but it is still the row it was, and the
+        // library itself has already said whatever went wrong.
+      }
+    })();
+  }, [showAllNpcs]);
+
+  useEffect(() => {
+    const campaignId = session?.campaignId;
+    if (!campaignId) return;
+
+    void (async () => {
+      try {
+        const { characters } = await api.get<{ characters: Character[] }>(
+          showAllNpcs
+            ? "/api/characters"
+            : `/api/characters?campaignId=${encodeURIComponent(campaignId)}`,
+        );
+        setLibrary(
+          characters.filter(
+            (character) => character.campaignId === campaignId || character.kind === "npc",
+          ),
+        );
+      } catch (error) {
+        toast.showError(error);
+      }
+    })();
+  }, [session?.campaignId, showAllNpcs, toast]);
 
   /** Runs a mutation and applies the snapshot it returns. */
   const mutate = useCallback(
@@ -315,9 +370,16 @@ export function GmSessionConsole({ onSignOut }: { onSignOut: () => void }) {
   const libraryRank = (character: Character) =>
     (staged.has(character.id) ? 0 : 2) + (character.kind === "pc" ? 0 : 1);
 
+  /** Borrowed from another campaign, which only `Show All NPCs` puts here. */
+  const isBorrowed = (character: Character) => character.campaignId !== session?.campaignId;
+
   const libraryOrder = [...library].sort(
     (a, b) =>
       libraryRank(a) - libraryRank(b) ||
+      // Inside a block, this campaign's own before anything borrowed: the cast
+      // the console is actually running is what a game master is looking for
+      // first, and the rest is a shelf they went to on purpose.
+      Number(isBorrowed(a)) - Number(isBorrowed(b)) ||
       a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
   );
 
@@ -633,8 +695,17 @@ export function GmSessionConsole({ onSignOut }: { onSignOut: () => void }) {
                         kind={character.kind}
                         cardUrl={character.cardUrl}
                       />
-                      <span className="flex-1 truncate text-sm">
-                        {character.name}
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm">{character.name}</span>
+                        {/* Where it came from, and only when that is not here.
+                            Two campaigns with a `Goblin` in each are two
+                            identical rows otherwise, and which one a game master
+                            is about to bring on would be a coin toss. */}
+                        {isBorrowed(character) ? (
+                          <span className={`block truncate text-xs ${TEXT_MUTED}`}>
+                            {campaignNames.get(character.campaignId) ?? "Another campaign"}
+                          </span>
+                        ) : null}
                       </span>
                       {/* How many of this one are out there already. Only monsters
                           carry it: there is one of a given hero and never a second,

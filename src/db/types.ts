@@ -10,6 +10,8 @@ export interface GmRow {
   password_hash: string;
   /** How big this game master has asked for cards to be drawn, in CSS pixels. */
   card_image_px: number;
+  /** 1 when their session library should reach past the session's own campaign. */
+  show_all_npcs: number;
   created_at: string;
   updated_at: string;
 }

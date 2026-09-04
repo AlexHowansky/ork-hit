@@ -2032,3 +2032,69 @@ describe("how big cards are drawn is the reader's own setting", () => {
     await page.close();
   });
 });
+
+describe("the session library can reach past its own campaign", () => {
+  test("the setting fills it with every monster, and they can be brought on", async () => {
+    if (!browser) return;
+    const page = await signedInGm();
+
+    // A monster filed under a campaign this session has nothing to do with.
+    const elsewhere = unique("Elsewhere");
+    const ogre = unique("Ogre");
+    await page.getByRole("button", { name: "New", exact: true }).click();
+    await page.getByLabel("Campaign name").fill(elsewhere);
+    await page.getByRole("button", { name: "Create campaign" }).click();
+    await page.getByText(`Characters in ${elsewhere}`).waitFor();
+    await page.getByRole("button", { name: "Add", exact: true }).click();
+    await page.getByLabel("Name").fill(ogre);
+    await page.getByLabel(/Character sheet/).setInputFiles({
+      name: "ogre.html",
+      mimeType: "text/html",
+      buffer: Buffer.from(`<h1>${ogre}</h1>`),
+    });
+    await page.getByRole("button", { name: "Add character" }).last().click();
+    await page.getByRole("button", { name: ogre, exact: true }).waitFor();
+
+    // And tonight's campaign, with a session running.
+    const tonight = unique("Tonight");
+    await page.getByRole("button", { name: "New", exact: true }).click();
+    await page.getByLabel("Campaign name").fill(tonight);
+    await page.getByRole("button", { name: "Create campaign" }).click();
+    await page.getByText(`Characters in ${tonight}`).waitFor();
+    await page.getByRole("button", { name: /^Start/ }).click();
+    await page.waitForURL("**/gm/sessions/**");
+    await page.getByText("Stage").first().waitFor();
+
+    const libraryPanel = page.locator("section").filter({
+      has: page.getByRole("heading", { name: "Library" }),
+    });
+    const ogreRow = libraryPanel.locator("li").filter({ hasText: ogre });
+
+    // Off, the library is this campaign's own — which has nobody in it at all.
+    expect(await ogreRow.count()).toBe(0);
+
+    await page.getByRole("button", { name: "Settings" }).click();
+    await page.getByRole("checkbox", { name: "Show all NPCs" }).check();
+
+    // On, the monster is there without a reload, and the row says where it came
+    // from — two campaigns with the same monster in each would be two identical
+    // rows otherwise.
+    await ogreRow.waitFor({ timeout: 5000 });
+    expect(await ogreRow.textContent()).toContain(elsewhere);
+
+    // And it can actually be brought on, which is the half of this the server has
+    // to agree to.
+    await ogreRow.getByRole("button", { name: "Add", exact: true }).click();
+    const stage = page.locator("section").filter({
+      has: page.getByRole("heading", { name: "Stage" }),
+    });
+    await stage.getByText(ogre, { exact: true }).waitFor({ timeout: 5000 });
+
+    // Switched back off it leaves again, still without a reload.
+    await page.getByRole("checkbox", { name: "Show all NPCs" }).uncheck();
+    await page.waitForTimeout(500);
+    expect(await ogreRow.count()).toBe(0);
+
+    await page.close();
+  }, 60_000);
+});

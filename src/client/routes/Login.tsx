@@ -11,6 +11,7 @@ import { faDiceD20 } from "@fortawesome/free-solid-svg-icons";
 import { useNavigate, useSearchParams } from "react-router";
 import { api } from "../api.ts";
 import { applyCardSize } from "../cardSize.ts";
+import { applyGmSettings } from "../gmSettings.ts";
 import {
   Button,
   Field,
@@ -75,8 +76,9 @@ export function Login({ onIdentity }: { onIdentity: (identity: Identity) => void
         "/api/auth/gm/login",
         { email, password },
       );
-      // Their own card size, on the page before the library it sizes.
+      // Their own settings, in force before the screens that obey them render.
       applyCardSize(result.gm.cardImagePx);
+      applyGmSettings(result.gm);
       onIdentity({ kind: "gm", gm: result.gm });
       navigate("/gm");
     } catch (error) {

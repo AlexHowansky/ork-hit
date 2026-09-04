@@ -17,6 +17,7 @@ import { handler, json, type RequestContext } from "../http.ts";
 import { parseJsonBody, schemas } from "../../lib/validate.ts";
 import { requireGm } from "../middleware/auth.ts";
 import { gms } from "../../db/queries.ts";
+import { presentGm } from "../presenters.ts";
 
 export const settingsRoutes = {
   "/api/settings": {
@@ -29,8 +30,9 @@ export const settingsRoutes = {
 
       // What was actually saved, read back rather than echoed: a field the
       // schema dropped should not come home looking as though it had been kept.
-      const saved = gms.byId(gm.id)!;
-      return json({ settings: { cardImagePx: saved.card_image_px } });
+      // The identity's own shape, so a caller comparing the two is comparing
+      // like with like.
+      return json({ settings: presentGm(gms.byId(gm.id)!) });
     }),
   },
 };

@@ -803,6 +803,18 @@ one to remove. It outranks a portrait found in a sheet uploaded alongside it, an
 loses to a picture chosen in the same submission, so neither box nor file has to
 be undone by the other.
 
+**The session library can reach past its own campaign.** `Show All NPCs` — the
+other setting in the drawer — lists every monster a game master owns rather than
+only the campaign's, so an ogre built for last year's game can be brought into
+tonight's fight. Only monsters: a player character belongs to a player *in* a
+campaign, and the claim a player holds is on that, so heroes stay where they are.
+The server enforces exactly that (`routes/sessions.ts`, staging a character) —
+without which the setting would be an offer the console could not honour — and
+each borrowed row carries the name of the campaign it came from, since two
+campaigns with a `Goblin` in each are otherwise two identical rows. The console
+re-reads the library when the setting changes, so the list refills under the
+reader's hand rather than on the next visit.
+
 **How big a card is, is each game master's own setting.** It measures the
 *picture* on a card; the frame around it and the name underneath make the card
 itself larger — by a fixed amount, since the card is five by seven whatever the

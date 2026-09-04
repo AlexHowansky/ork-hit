@@ -46,7 +46,7 @@ describe("one active session per campaign", () => {
     addActiveSession(target, "mid", "2026-01-01T11:00:00.000Z");
     addActiveSession(target, "new", "2026-01-01T12:00:00.000Z");
 
-    expect(migrate(target)).toBe(11);
+    expect(migrate(target)).toBe(12);
 
     const statuses = Object.fromEntries(
       target.query<{ id: string; status: string }, []>(
@@ -298,6 +298,21 @@ describe("held actions", () => {
         "SELECT resume_slot_id FROM game_sessions WHERE id = 'only'",
       ).get()!.resume_slot_id,
     ).toBeNull();
+  });
+});
+
+describe("a game master's library reach", () => {
+  test("an existing account keeps the one campaign it has always seen", () => {
+    const target = atInitialSchema();
+
+    migrate(target);
+
+    // Off, so a console that has always listed one campaign goes on listing one
+    // campaign until somebody asks otherwise.
+    const flag = target.query<{ show_all_npcs: number }, []>(
+      "SELECT show_all_npcs FROM gms WHERE id = 'gm1'",
+    ).get()!.show_all_npcs;
+    expect(flag).toBe(0);
   });
 });
 

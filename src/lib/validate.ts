@@ -122,6 +122,7 @@ export const schemas = {
       .min(CARD_IMAGE_PX.min)
       .max(CARD_IMAGE_PX.max)
       .optional(),
+    showAllNpcs: z.boolean().optional(),
   }),
 
   /**

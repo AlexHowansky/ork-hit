@@ -2541,6 +2541,9 @@ describe("a game master's own settings", () => {
     const response = await patch(cookie, { cardImagePx: 320 });
     expect(response.status).toBe(200);
     expect((await response.json()).settings.cardImagePx).toBe(320);
+    // Every setting comes back, not only the one that moved: the reply is the
+    // identity's own shape.
+    expect((await meAs(cookie)).gm.showAllNpcs).toBe(false);
 
     // And it is on the identity the console reads at boot, which is the whole
     // reason it rides along there rather than behind a GET of its own.
@@ -2568,6 +2571,32 @@ describe("a game master's own settings", () => {
     expect((await meAs(cookie)).gm.cardImagePx).toBe(CARD_IMAGE_PX.default);
   });
 
+  test("the library's reach is remembered too", async () => {
+    const { cookie } = await signIn();
+
+    // Off for a new account, so a console that has always listed one campaign
+    // goes on listing one campaign.
+    expect((await meAs(cookie)).gm.showAllNpcs).toBe(false);
+
+    const response = await patch(cookie, { showAllNpcs: true });
+    expect(response.status).toBe(200);
+    expect((await response.json()).settings.showAllNpcs).toBe(true);
+    expect((await meAs(cookie)).gm.showAllNpcs).toBe(true);
+
+    // And it goes back off, which a flag stored as SQLite's 0 or 1 is the easiest
+    // thing in the world to get wrong in one direction only.
+    expect((await patch(cookie, { showAllNpcs: false })).status).toBe(200);
+    expect((await meAs(cookie)).gm.showAllNpcs).toBe(false);
+  });
+
+  test("anything but a flag is refused", async () => {
+    const { cookie } = await signIn();
+    for (const value of ["yes", 1, null]) {
+      expect((await patch(cookie, { showAllNpcs: value })).status).toBe(400);
+    }
+    expect((await meAs(cookie)).gm.showAllNpcs).toBe(false);
+  });
+
   test("an empty change is allowed and changes nothing", async () => {
     // Every field is optional, as on the vitals route: a panel that touches no
     // control sends no control, and that is not an error.
@@ -2585,5 +2614,77 @@ describe("a game master's own settings", () => {
     // A player is signed in, but not as an account — there is no row of theirs
     // for a setting to live on.
     expect((await patch(player, { cardImagePx: 320 })).status).toBe(401);
+  });
+});
+
+describe("a monster from another campaign", () => {
+  /** One character in a campaign of its own, belonging to `cookie`'s game master. */
+  const characterElsewhere = async (cookie: string, kind: "pc" | "npc") => {
+    const campaignForm = new FormData();
+    campaignForm.set("name", unique("Elsewhere"));
+    const campaign = (
+      await (
+        await fetch(`${base}/api/campaigns`, authed(cookie, { method: "POST", body: campaignForm }))
+      ).json()
+    ).campaign;
+
+    const form = new FormData();
+    form.set("campaignId", campaign.id);
+    form.set("kind", kind);
+    form.set("name", unique(kind));
+    form.set("sheet", new File(["<h1>sheet</h1>"], "sheet.html"));
+    return (
+      await (await fetch(`${base}/api/characters`, authed(cookie, { method: "POST", body: form })))
+        .json()
+    ).character;
+  };
+
+  const stage = (cookie: string, sessionId: string, characterId: string) =>
+    fetch(
+      `${base}/api/sessions/${sessionId}/stage`,
+      authed(cookie, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ characterId }),
+      }),
+    );
+
+  test("can be brought into this one's fight", async () => {
+    const { cookie } = await signIn();
+    const table = await makeTable(cookie);
+    const ogre = await characterElsewhere(cookie, "npc");
+
+    // The half of `Show All NPCs` the server has to agree to: a good ogre filed
+    // under last year's campaign is still a good ogre.
+    const response = await stage(cookie, table.session.id, ogre.id);
+    expect(response.status).toBe(200);
+
+    const staged = (await response.json()).snapshot.characters;
+    expect(staged.some((character: { characterId: string }) => character.characterId === ogre.id))
+      .toBe(true);
+  });
+
+  test("but a hero from another campaign cannot", async () => {
+    const { cookie } = await signIn();
+    const table = await makeTable(cookie);
+    const hero = await characterElsewhere(cookie, "pc");
+
+    // A player character belongs to a player in a campaign, and the claim they
+    // hold is on that. Borrowing one is not a thing the setting offers, and the
+    // server does not take it either.
+    expect((await stage(cookie, table.session.id, hero.id)).status).toBe(404);
+  });
+
+  test("and never another game master's, whatever kind it is", async () => {
+    const mine = await signIn();
+    const theirs = await signIn();
+    const table = await makeTable(mine.cookie);
+
+    for (const kind of ["npc", "pc"] as const) {
+      const stranger = await characterElsewhere(theirs.cookie, kind);
+      // "Not found" rather than "not yours": one library must not be probed
+      // through another's console.
+      expect((await stage(mine.cookie, table.session.id, stranger.id)).status).toBe(404);
+    }
   });
 });

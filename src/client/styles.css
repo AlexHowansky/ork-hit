@@ -628,3 +628,41 @@ body {
     0 0 0 2rem var(--range-thumb) inset,
     var(--range-fill-x) var(--range-fill-y) 0 var(--range-fill-spread);
 }
+
+/*
+  The toggle's knob.
+
+  daisyUI's own again, and here for the same reason the range's track and thumb
+  are: the development server rewrites the vendor stylesheet into rules nested
+  under a pseudo-element, which no browser resolves, and the knob of a toggle is
+  `:before`. Without this a toggle in development is an empty pill that does not
+  visibly move when it is pressed — which is worse than a control that is plainly
+  broken, because it looks like a control that did not take the press.
+
+  Two rules, because the knob has two states: where it sits, and where it slides
+  to. The slide itself is the grid, which is on `.toggle` and survives — only the
+  thing being slid was missing. `translate` and `inset-inline-start` are left to
+  daisyUI, since nothing here changes them.
+
+  Delete along with the range block above when Bun's dev pipeline stops nesting
+  under pseudo-elements.
+*/
+.toggle:before {
+  content: "";
+  grid-row-start: 1;
+  grid-column-start: 2;
+  width: 100%;
+  height: 100%;
+  aspect-ratio: 1;
+  border-radius: var(--radius-selector);
+  background-color: currentColor;
+  transition: background-color 0.1s, translate 0.2s, inset-inline-start 0.2s;
+}
+
+/* Checked, the pill takes the page's colour and the knob takes the ink, which is
+   the swap that reads as "on" at a glance. */
+.toggle:checked::before,
+.toggle[aria-checked="true"]::before,
+.toggle:has(> input:checked)::before {
+  background-color: currentColor;
+}

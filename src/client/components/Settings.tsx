@@ -14,11 +14,12 @@
  * player has no account to keep a setting against.
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { faGear, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { CARD_IMAGE_PX } from "../../lib/cards.ts";
 import { api } from "../api.ts";
 import { useCardSize } from "../cardSize.ts";
+import { useGmSetting } from "../gmSettings.ts";
 import { Button, Icon, Panel, PANEL_CAPTION, TEXT_MUTED } from "./ui.tsx";
 import { useToast } from "./Toast.tsx";
 
@@ -70,8 +71,65 @@ export function SettingsToggle({ open, onToggle }: { open: boolean; onToggle: ()
 /** How long a drag has to settle before it is worth a request. */
 const SAVE_DELAY_MS = 400;
 
-/** Ties the slider to its label. One drawer to a page, so one id will do. */
+/** Ties each control to its label. One drawer to a page, so one id each will do. */
 const CARD_SIZE_ID = "setting-card-size";
+const SHOW_ALL_NPCS_ID = "setting-show-all-npcs";
+
+/**
+ * Writes one setting, and says so when it cannot.
+ *
+ * The failure is worth a toast because these are quiet controls: what a reader
+ * changed is already on the page and will go on looking right for the rest of the
+ * visit, so a save that dropped on the floor would only be discovered on the next
+ * sign-in. What is on the page is deliberately left alone either way — taking
+ * their choice back off the screen would be a second surprise on top of the
+ * first.
+ */
+function useSaveSetting(): (changes: Record<string, unknown>) => void {
+  const toast = useToast();
+  return useCallback(
+    (changes) => {
+      void api.patchJson("/api/settings", changes).catch((error) => toast.showError(error));
+    },
+    [toast],
+  );
+}
+
+/**
+ * A setting's caption and its control, on one line with the explanation under
+ * them.
+ *
+ * A `label for` rather than a label wrapped around the lot: wrapping hands the
+ * control every word inside it as its accessible name — the reading, the units,
+ * the sentence underneath — which is a mouthful to hear read out, and matches
+ * half the other controls in the app when a test or a screen reader goes looking
+ * for one by name. `for` names it what it is called.
+ */
+function Setting({
+  id,
+  label,
+  control,
+  children,
+}: {
+  id: string;
+  label: string;
+  /** What sits at the end of the caption line: a reading, or the control itself. */
+  control: ReactNode;
+  /** The sentence under it, and the control where that is not the `control`. */
+  children: ReactNode;
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-3">
+        <label htmlFor={id} className={`text-sm ${PANEL_CAPTION}`}>
+          {label}
+        </label>
+        {control}
+      </div>
+      {children}
+    </div>
+  );
+}
 
 /**
  * How big this game master wants cards drawn.
@@ -90,7 +148,7 @@ const CARD_SIZE_ID = "setting-card-size";
  */
 function CardSize() {
   const [size, setSize] = useCardSize();
-  const toast = useToast();
+  const save = useSaveSetting();
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // A drag left in flight when the drawer closes — or when the page navigates —
@@ -102,30 +160,20 @@ function CardSize() {
   const choose = (px: number) => {
     setSize(px);
     if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => {
-      void api.patchJson("/api/settings", { cardImagePx: px }).catch((error) => {
-        toast.showError(error);
-      });
-    }, SAVE_DELAY_MS);
+    timer.current = setTimeout(() => save({ cardImagePx: px }), SAVE_DELAY_MS);
   };
 
   return (
-    // A `label for` rather than a label wrapped around the lot. Wrapping would
-    // hand the slider every word inside it as its accessible name — the reading,
-    // the units and the sentence underneath — which is a mouthful to hear read
-    // out and matches half the other controls in the app when a test or a screen
-    // reader goes looking for one by name. `for` names it "Card size", which is
-    // what it is called.
-    <div className="space-y-2">
-      <div className="flex items-baseline justify-between gap-3">
-        <label htmlFor={CARD_SIZE_ID} className={`text-sm ${PANEL_CAPTION}`}>
-          Card size
-        </label>
-        {/* The number the slider is on, in the unit the setting is measured in.
-            Tabular, so the reading does not jitter sideways as the digits change
-            under a drag. */}
+    <Setting
+      id={CARD_SIZE_ID}
+      label="Card size"
+      control={
+        // The number the slider is on, in the unit the setting is measured in.
+        // Tabular, so the reading does not jitter sideways as the digits change
+        // under a drag.
         <span className={`text-xs tabular-nums ${TEXT_MUTED}`}>{size}px</span>
-      </div>
+      }
+    >
       <input
         id={CARD_SIZE_ID}
         type="range"
@@ -140,7 +188,47 @@ function CardSize() {
         How large the picture on a card is drawn. The card itself comes out
         taller — its frame and the name underneath are extra.
       </p>
-    </div>
+    </Setting>
+  );
+}
+
+/**
+ * Whether the session library reaches past the session's own campaign.
+ *
+ * Saved the moment it is pressed, where the slider waits for a drag to settle: a
+ * toggle is one press and there is nothing to wait for.
+ *
+ * The console re-reads the library when this changes, so the list under it
+ * refills without a reload — which is the point of holding the setting in a store
+ * rather than only sending it to the server.
+ */
+function ShowAllNpcs() {
+  const [on, setOn] = useGmSetting("showAllNpcs");
+  const save = useSaveSetting();
+
+  const choose = (next: boolean) => {
+    setOn(next);
+    save({ showAllNpcs: next });
+  };
+
+  return (
+    <Setting
+      id={SHOW_ALL_NPCS_ID}
+      label="Show all NPCs"
+      control={
+        <input
+          id={SHOW_ALL_NPCS_ID}
+          type="checkbox"
+          className="toggle toggle-sm"
+          checked={on}
+          onChange={(event) => choose(event.target.checked)}
+        />
+      }
+    >
+      <p className={`text-xs ${TEXT_MUTED}`}>
+        Lists every NPC in your library, not just the ones in this campaign.
+      </p>
+    </Setting>
   );
 }
 
@@ -207,8 +295,9 @@ export function SettingsDrawer({ open, onClose }: { open: boolean; onClose: () =
             </Button>
           }
         >
-          <div className="space-y-4">
+          <div className="space-y-5">
             <CardSize />
+            <ShowAllNpcs />
           </div>
         </Panel>
       </div>

@@ -52,7 +52,12 @@ export const gms = {
 
   update(
     id: string,
-    changes: { email?: string; passwordHash?: string; cardImagePx?: number },
+    changes: {
+      email?: string;
+      passwordHash?: string;
+      cardImagePx?: number;
+      showAllNpcs?: boolean;
+    },
   ): void {
     if (changes.email !== undefined) {
       db.query("UPDATE gms SET email = $email, updated_at = $ts WHERE id = $id")
@@ -67,6 +72,12 @@ export const gms = {
     if (changes.cardImagePx !== undefined) {
       db.query("UPDATE gms SET card_image_px = $px, updated_at = $ts WHERE id = $id")
         .run({ id, px: changes.cardImagePx, ts: now() });
+    }
+    if (changes.showAllNpcs !== undefined) {
+      // SQLite has no boolean; the column is the 0 or 1 every other flag in this
+      // schema is written as.
+      db.query("UPDATE gms SET show_all_npcs = $on, updated_at = $ts WHERE id = $id")
+        .run({ id, on: changes.showAllNpcs ? 1 : 0, ts: now() });
     }
   },
 

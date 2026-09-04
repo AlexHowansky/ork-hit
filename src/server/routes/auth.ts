@@ -10,6 +10,7 @@ import { loginLimiter } from "../middleware/ratelimit.ts";
 import { currentGm, currentPlayer, endGmSession, endPlayerSession, startGmSession } from "../middleware/auth.ts";
 import { gms, players, sessionEvents } from "../../db/queries.ts";
 import { playerLeft } from "../events.ts";
+import { presentGm } from "../presenters.ts";
 import { broadcastSession } from "../ws.ts";
 import { limits } from "../../lib/config.ts";
 
@@ -49,7 +50,7 @@ export const authRoutes = {
 
       // The same shape `/api/auth/me` answers with, settings and all: signing in
       // and arriving already signed in should put the console in the same state.
-      return json({ gm: { id: gm.id, email: gm.email, cardImagePx: gm.card_image_px } });
+      return json({ gm: presentGm(gm) });
     }),
   },
 
@@ -97,14 +98,9 @@ export const authRoutes = {
   "/api/auth/me": {
     GET: handler((request: BunRequest) => {
       const gm = currentGm(request);
-      // The settings ride along with the identity: the console needs the card
-      // size before it draws a card, and this is the call it already makes.
-      if (gm) {
-        return json({
-          kind: "gm",
-          gm: { id: gm.id, email: gm.email, cardImagePx: gm.card_image_px },
-        });
-      }
+      // The settings ride along with the identity: the console needs them before
+      // it draws anything, and this is the call it already makes.
+      if (gm) return json({ kind: "gm", gm: presentGm(gm) });
 
       const player = currentPlayer(request);
       if (player) {
