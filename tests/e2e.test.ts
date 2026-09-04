@@ -1240,6 +1240,9 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     await gm.getByText(`Characters in ${campaignName}`).waitFor();
 
     await gm.getByRole("button", { name: "Add", exact: true }).click();
+    // Said out loud, because the dialog opens on NPC: this test is about the
+    // player character's frame and its foil, so it has to ask for one.
+    await gm.getByLabel("Type").selectOption("pc");
     await gm.getByLabel("Name").fill("Framed");
     await gm.getByLabel(/Character sheet/).setInputFiles({
       name: "sheet.html",

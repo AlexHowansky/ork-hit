@@ -700,7 +700,7 @@ dialog at all: sheets dropped anywhere on "Characters in …" are filed as
 characters there and then. Everything the dialog would have asked for is already
 known by the time the drop lands — the panel only exists while a campaign is
 selected, the filename names the character exactly as the dialog's own field
-would, and a dropped character is a PC until someone edits it — so the dialog
+would, and a dropped character is an NPC until someone edits it — so the dialog
 would have been a form with nothing left to fill in. A whole folder of sheets is
 therefore filed by dropping the folder: `fileSheets` (`GmLibrary.tsx`) posts one
 sheet at a time, since the server takes a portrait out of each and a dozen of

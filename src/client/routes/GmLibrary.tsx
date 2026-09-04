@@ -244,7 +244,14 @@ function CharacterForm({
 
       <label className="block">
         <span className={FIELD_CAPTION}>Type</span>
-        <select name="kind" defaultValue={character?.kind ?? "pc"} className="select w-full">
+        {/* A new character is an NPC until it is said otherwise. A campaign has a
+            handful of player characters, filed once at the start, and then a
+            monster every session for the rest of its life — so the default that
+            costs the fewest presses is the one the game master reaches for most,
+            and it is the safer way round besides: an NPC mistaken for a PC is a
+            character a player can claim. Editing keeps whatever the character
+            already is. */}
+        <select name="kind" defaultValue={character?.kind ?? "npc"} className="select w-full">
           <option value="pc">Player character</option>
           <option value="npc">Non-player character</option>
         </select>
@@ -618,8 +625,10 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
    *
    * Everything the add dialog would have asked for is already known: the panel
    * only exists while a campaign is selected, the file names the character the
-   * way the dialog's own name field would have, and a dropped character is a PC
-   * until it is edited. So the dialog would have been a form with nothing left
+   * way the dialog's own name field would have, and a dropped character is an NPC
+   * until it is edited — the same default the dialog offers, and for the same
+   * reason: a folder of sheets dropped on a campaign is a folder of monsters far
+   * more often than it is a party. So the dialog would have been a form with nothing left
    * to fill in, and a folder of sheets can be filed by dropping the folder.
    *
    * Every dropped file is filed, one request at a time — the server takes a
@@ -641,7 +650,7 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
         }
         const form = new FormData();
         form.set("campaignId", campaign.id);
-        form.set("kind", "pc");
+        form.set("kind", "npc");
         form.set("name", name);
         form.set("sheet", file);
         const { character } = await api.postForm<{ character: Character }>(
