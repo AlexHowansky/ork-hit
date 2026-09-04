@@ -455,6 +455,9 @@ export function Panel({
  */
 const HANDLE_SHOWN = {
   sm: "hidden sm:flex sm:items-stretch sm:justify-center",
+  // A boundary that exists on the two-column layout and stops existing on the
+  // three-column one, where the columns it divided are no longer neighbours.
+  smOnly: "hidden sm:flex sm:items-stretch sm:justify-center wide:hidden",
   lg: "hidden lg:flex lg:items-stretch lg:justify-center",
   wide: "hidden wide:flex wide:items-stretch wide:justify-center",
 } as const;

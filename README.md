@@ -642,9 +642,13 @@ replaced, so adding it moved nothing, and it is `hidden` below the breakpoint th
 puts its two columns side by side, where there is no boundary to drag and it stays
 out of the tab order.
 
-**The session console has two of them**, between its three columns on a dashboard
-and its two halves at `sm` — one hook per boundary, each sizing the column to its
-left, and the column at the far end absorbing what the others give up. Two things
+**The session console has three of them for two layouts**, because the two
+layouts share no boundary: at `sm` the one gutter is between the table's stuff on
+the left — the code, the players, the library — and the fight on the right, while
+the dashboard takes that stack apart and puts the fight between its halves, so its
+gutters are library-to-stage and stage-to-players. Each hook sizes the column to
+its left, the column at the far end absorbs what the others give up, and a handle
+is hidden on the layout whose columns it does not divide. Two things
 there are worth knowing. First, the split is measured off the **handles**, not off
 a column count the hook is told: a column runs from one handle to the next, so
 their rects describe every column between them — and that matters because the

@@ -82,17 +82,23 @@
 
 /*
   The widths of the GM session console's columns, on both layouts that have more
-  than one: the turn and its segment panel, and — on the dashboard alone — the
-  library between them and the players.
+  than one.
+
+  One property per column that can be dragged, and the two layouts share none of
+  them, because they share no boundary. At `sm` the console is the table's stuff
+  on the left — the code, the players, the library — and the fight on the right,
+  so `--console-side` is the left of those two. On the dashboard that stack comes
+  apart and the fight moves between its halves: the library first, then the turn
+  and the stage, then the players, which is `--console-library` and
+  `--console-turn` with the players as the column at the far end.
 
   Each defaults to an equal share, which is the console the app has always drawn:
   two halves at `sm` and three thirds on a dashboard. `useColumnSplit` overwrites
   one with a pixel width when its handle is dragged, and the last column, which
-  has no handle, is the `1fr` that absorbs the difference. `--console-library`
-  only appears in the dashboard's template, because that is the only layout where
-  the library is a column of its own rather than stacked under the players.
+  has no handle, is the `1fr` that absorbs the difference.
 */
 :root {
+  --console-side: minmax(0, 1fr);
   --console-turn: minmax(0, 1fr);
   --console-library: minmax(0, 1fr);
 }

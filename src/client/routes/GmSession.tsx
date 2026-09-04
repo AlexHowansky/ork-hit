@@ -75,10 +75,21 @@ export function GmSessionConsole({ onSignOut }: { onSignOut: () => void }) {
 
   // The console's columns start as equal shares and can be dragged to any others.
   // One split per boundary, each sizing the column to its left; the last column
-  // has no handle and absorbs what the others give up. The turn column's boundary
-  // exists on both multi-column layouts, the library's only on the dashboard —
-  // which is also the only layout where the library is a column of its own.
+  // has no handle and absorbs what the others give up.
+  //
+  // Three hooks for two layouts, because the two layouts do not share a boundary.
+  // At `sm` the console is the table's stuff on the left and the fight on the
+  // right, so the one boundary is between those two. On the dashboard the left
+  // stack comes apart into the library and the players, on either side of the
+  // fight, and neither of the boundaries that leaves is the one `sm` had — the
+  // library and the players are not even adjacent any more. So `sideSplit`
+  // belongs to the two-column layout and the other two to the three-column one,
+  // and each is hidden where its boundary does not exist.
   const consoleRef = useRef<HTMLDivElement | null>(null);
+  const sideSplit = useColumnSplit<HTMLDivElement>({
+    containerRef: consoleRef,
+    variable: "--console-side",
+  });
   const turnSplit = useColumnSplit<HTMLDivElement>({
     containerRef: consoleRef,
     variable: "--console-turn",
@@ -390,15 +401,23 @@ export function GmSessionConsole({ onSignOut }: { onSignOut: () => void }) {
       {/*
         Three panels' worth of console, in as many columns as the glass allows:
         one on a phone, two halves on anything wider, three thirds where the
-        screen is a dashboard. The turn belongs above the segment panel and
-        the width of it — it is the same fight — so the two travel together as
-        one column, and the library and the players share the other half until
-        there is room for each to have a column of its own.
+        screen is a dashboard. The turn belongs above the segment panel and the
+        width of it — it is the same fight — so the two travel together as one
+        column wherever they land.
+
+        Where they land is the fight in the middle of the dashboard, with the
+        library on one side of it and the players on the other: the library feeds
+        the stage, the stage is what the evening is about, and a game master
+        reading left to right meets the three in the order they are used. At `sm`
+        there is no middle to be in, so the fight takes the right-hand half and
+        everything about the table — the code, who has joined, and what there is
+        to bring on — stacks up on the left. Stacked on a phone the code comes
+        first, because a session's first minute is reading it out.
 
         The wrappers are `display: contents` until their column exists, so the
-        panels are items of one flow while stacked and `order` alone puts the
-        library between the order it feeds and the players, rather than a second
-        copy of the markup saying so.
+        panels are items of one flow while stacked, and `order` alone says where
+        each lands on each layout rather than a second copy of the markup saying
+        so.
 
         Nothing here grows: every panel is a flex item at its natural height, so
         a short list ends where its content does. `scroll` on the lists is the
@@ -428,11 +447,13 @@ export function GmSessionConsole({ onSignOut }: { onSignOut: () => void }) {
       */}
       <div
         ref={consoleRef}
-        className="flex min-w-0 flex-1 flex-col gap-2.5 sm:grid sm:grid-cols-[var(--console-turn)_auto_minmax(0,1fr)] sm:items-start sm:gap-x-0 wide:min-h-0 wide:grid-cols-[var(--console-turn)_auto_var(--console-library)_auto_minmax(0,1fr)] wide:items-stretch"
+        className="flex min-w-0 flex-1 flex-col gap-2.5 sm:grid sm:grid-cols-[var(--console-side)_auto_minmax(0,1fr)] sm:items-start sm:gap-x-0 wide:min-h-0 wide:grid-cols-[var(--console-library)_auto_var(--console-turn)_auto_minmax(0,1fr)] wide:items-stretch"
       >
+        {/* The fight: on the right at `sm`, in the middle on the dashboard, and
+            the third track of both templates either way. */}
         <div
           ref={turnSplit.panelRef}
-          className="contents sm:flex sm:min-w-0 sm:flex-col sm:gap-2.5 wide:order-1 wide:min-h-0"
+          className="contents sm:order-3 sm:flex sm:min-w-0 sm:flex-col sm:gap-2.5 wide:min-h-0"
         >
           <TurnControls
             className="sm:shrink-0"
@@ -477,22 +498,35 @@ export function GmSessionConsole({ onSignOut }: { onSignOut: () => void }) {
           </Panel>
         </div>
 
-        {/* The turn column's own boundary, which both multi-column layouts have:
-            stacked there is nothing beside it, at `sm` the rest of the console is
-            on the other side of it, and on the dashboard the library is. */}
+        {/* The two-column layout's only boundary, between the table's stuff and
+            the fight. It goes when the dashboard takes that stack apart, because
+            the two halves it divided are no longer either half of anything. */}
         <ColumnHandle
-          {...turnSplit.handleProps}
-          from="sm"
+          {...sideSplit.handleProps}
+          from="smOnly"
+          className="sm:order-2"
+          label="Resize the players and library column"
+        />
+
+        {/* The dashboard's first boundary, between the library and the fight it
+            feeds. */}
+        <ColumnHandle
+          {...librarySplit.handleProps}
           className="wide:order-2"
-          label="Resize the turn column"
+          label="Resize the library column"
         />
 
         {/*
-          The other half: who is here, then who could be added. On a wide screen
-          the two part company — the library belongs beside the order it feeds,
-          which puts the players last — so each takes a column of its own.
+          Everything about the table rather than about the fight: the code, who is
+          here, and who could be brought on. One stack on the left at `sm`; on the
+          dashboard it comes apart and the fight goes between its two halves, the
+          library on the near side of the stage it feeds and the players on the
+          far side.
         */}
-        <div className="contents sm:flex sm:min-w-0 sm:flex-col sm:gap-2.5 wide:contents">
+        <div
+          ref={sideSplit.panelRef}
+          className="contents sm:order-1 sm:flex sm:min-w-0 sm:flex-col sm:gap-2.5 wide:contents"
+        >
           <div className="contents wide:order-5 wide:flex wide:min-h-0 wide:min-w-0 wide:flex-col wide:gap-2.5">
           {invite}
 
@@ -546,7 +580,7 @@ export function GmSessionConsole({ onSignOut }: { onSignOut: () => void }) {
 
           <div
             ref={librarySplit.panelRef}
-            className="contents wide:order-3 wide:flex wide:min-h-0 wide:min-w-0 wide:flex-col"
+            className="contents wide:order-1 wide:flex wide:min-h-0 wide:min-w-0 wide:flex-col"
           >
           <Panel title="Library" scroll>
             {libraryOrder.length === 0 ? (
@@ -644,12 +678,12 @@ export function GmSessionConsole({ onSignOut }: { onSignOut: () => void }) {
           </div>
         </div>
 
-        {/* The library's own boundary. Only the dashboard splits the library from
-            the players, so this is the only layout with a second gutter. */}
+        {/* The dashboard's second boundary, between the fight and the players.
+            Only the dashboard has a second gutter at all. */}
         <ColumnHandle
-          {...librarySplit.handleProps}
+          {...turnSplit.handleProps}
           className="wide:order-4"
-          label="Resize the library column"
+          label="Resize the turn column"
         />
       </div>
 

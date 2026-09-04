@@ -880,12 +880,15 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     const library = panelWith("Library");
     const players = panelWith(/^Players/);
     const widthOf = async (panel: Locator) => (await panel.boundingBox())!.width;
+    // Left to right, which on the dashboard is the library, the fight it feeds,
+    // and the people playing it.
     const columns = async () =>
-      [await widthOf(turn), await widthOf(library), await widthOf(players)];
+      [await widthOf(library), await widthOf(turn), await widthOf(players)];
 
     const handles = {
-      turn: gm.getByRole("separator", { name: "Resize the turn column" }),
       library: gm.getByRole("separator", { name: "Resize the library column" }),
+      turn: gm.getByRole("separator", { name: "Resize the turn column" }),
+      side: gm.getByRole("separator", { name: "Resize the players and library column" }),
     };
     const drag = async (handle: Locator, by: number) => {
       const box = (await handle.boundingBox())!;
@@ -898,55 +901,63 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     };
 
     // Three columns, equal until somebody says otherwise.
-    const [wasTurn, wasLibrary, wasPlayers] = await columns();
-    expect(Math.abs(wasTurn! - wasLibrary!)).toBeLessThan(2);
-    expect(Math.abs(wasLibrary! - wasPlayers!)).toBeLessThan(2);
-    const total = wasTurn! + wasLibrary! + wasPlayers!;
+    const [wasLibrary, wasTurn, wasPlayers] = await columns();
+    expect(Math.abs(wasLibrary! - wasTurn!)).toBeLessThan(2);
+    expect(Math.abs(wasTurn! - wasPlayers!)).toBeLessThan(2);
+    const total = wasLibrary! + wasTurn! + wasPlayers!;
 
-    // The turn's boundary takes from everything to its right, which is still
-    // sharing what is left equally, so the two beyond it give up half each.
-    await drag(handles.turn, 140);
-    let [nowTurn, nowLibrary, nowPlayers] = await columns();
-    expect(nowTurn!).toBeCloseTo(wasTurn! + 140, -1);
-    expect(nowTurn! + nowLibrary! + nowPlayers!).toBeCloseTo(total, -1);
+    // The library's boundary is the first one, and takes from everything to its
+    // right — which is still sharing what is left equally, so the two beyond it
+    // give up half each.
+    await drag(handles.library, 140);
+    let [nowLibrary, nowTurn, nowPlayers] = await columns();
+    expect(nowLibrary!).toBeCloseTo(wasLibrary! + 140, -1);
+    expect(nowLibrary! + nowTurn! + nowPlayers!).toBeCloseTo(total, -1);
 
-    // The library's boundary is between the last two and leaves the first alone.
-    const beforeSecond = nowTurn!;
-    await drag(handles.library, 90);
-    [nowTurn, nowLibrary, nowPlayers] = await columns();
-    expect(nowTurn!).toBeCloseTo(beforeSecond, -1);
-    expect(nowLibrary!).toBeCloseTo(total - beforeSecond - nowPlayers!, -1);
+    // The turn's boundary is between the last two and leaves the first alone.
+    const beforeSecond = nowLibrary!;
+    await drag(handles.turn, 90);
+    [nowLibrary, nowTurn, nowPlayers] = await columns();
+    expect(nowLibrary!).toBeCloseTo(beforeSecond, -1);
+    expect(nowTurn!).toBeCloseTo(total - beforeSecond - nowPlayers!, -1);
     expect(nowPlayers!).toBeLessThan(wasPlayers!);
 
     // Dragged to the edge, the columns beyond keep their floor — a sixth of the
     // console each — rather than being crushed out of existence.
-    await drag(handles.turn, 2000);
-    [nowTurn, nowLibrary, nowPlayers] = await columns();
-    expect(nowLibrary!).toBeGreaterThan(total / 6 - 2);
+    await drag(handles.library, 2000);
+    [nowLibrary, nowTurn, nowPlayers] = await columns();
+    expect(nowTurn!).toBeGreaterThan(total / 6 - 2);
     expect(nowPlayers!).toBeGreaterThan(total / 6 - 2);
 
     // And each boundary gives its column back on a double-click.
-    await handles.turn.dblclick();
     await handles.library.dblclick();
+    await handles.turn.dblclick();
     await gm.waitForTimeout(150);
     const [again, andAgain] = await columns();
-    expect(again!).toBeCloseTo(wasTurn!, -1);
-    expect(andAgain!).toBeCloseTo(wasLibrary!, -1);
+    expect(again!).toBeCloseTo(wasLibrary!, -1);
+    expect(andAgain!).toBeCloseTo(wasTurn!, -1);
 
-    // Two halves rather than a dashboard: the turn's boundary is still there and
-    // still drags, and the library's — which only splits two of three columns —
-    // is not.
+    // Two halves rather than a dashboard, and not one of the dashboard's own
+    // boundaries survives it: the stack on the left is the code, the players and
+    // the library together, so neither of the gutters that stood between those
+    // three is a gutter any more. What is left is the one between that stack and
+    // the fight.
     await gm.setViewportSize({ width: 900, height: 1200 });
     await gm.waitForTimeout(200);
     expect(await handles.library.isVisible()).toBe(false);
-    const half = await widthOf(turn);
-    await drag(handles.turn, -80);
-    expect(await widthOf(turn)).toBeCloseTo(half - 80, -1);
+    expect(await handles.turn.isVisible()).toBe(false);
+    expect(await handles.side.isVisible()).toBe(true);
+
+    // The library is in that left-hand stack now, so it is how the stack is
+    // measured — and the boundary sizes the stack, not the fight beyond it.
+    const half = await widthOf(library);
+    await drag(handles.side, -80);
+    expect(await widthOf(library)).toBeCloseTo(half - 80, -1);
 
     // Stacked, there is nothing to resize at all.
     await gm.setViewportSize({ width: 500, height: 900 });
     await gm.waitForTimeout(200);
-    expect(await handles.turn.isVisible()).toBe(false);
+    expect(await handles.side.isVisible()).toBe(false);
   }, 60_000);
 
   test("the player screen's two columns can be dragged to a different balance", async () => {
