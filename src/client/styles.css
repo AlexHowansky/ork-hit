@@ -153,38 +153,6 @@ body {
 }
 
 /*
-  The label inside a file picker.
-
-  daisyUI draws `file-input` as a flex row and leans on its `::file-selector-button`
-  for both the inset that keeps "Choose File" off the border and the height that
-  centres it. Only part of that reaches the element here: the field gets its
-  border, radius and height, but the button rule does not land at all — the
-  bundler rewrites daisyUI's nested `@layer` and pseudo-element rules on the way
-  through, and that one comes out inert. So the browser's own label sat flush
-  against the left border and 6px above the field's centre, and `align-items`
-  did not move it: the shadow content Chrome puts in a file input is not a flex
-  item that centring reaches.
-
-  A line box is, which is what this uses instead — the field is laid out as a
-  block whose line is exactly as tall as its content box, so the label sits on
-  the same baseline an `input` of the same size would put text on, measured to
-  within half a pixel. The `calc` is what keeps that true at any size: `--size`
-  and `--border` are daisyUI's own, so `file-input-sm` and the rest follow along
-  without a second rule. The inset is the .75rem daisyUI already pads the far end
-  by, which is also `input`'s, so a file field and a text field above it line up.
-
-  Unlayered on purpose, as the card rules below are — daisyUI's own rules live in
-  a sublayer of `@layer utilities`, and an unlayered author rule beats every
-  layered one whatever its specificity.
-*/
-.file-input {
-  display: block;
-  padding-block: 0;
-  padding-inline-start: 0.75rem;
-  line-height: calc(var(--size) - 2 * var(--border));
-}
-
-/*
   The typeface a card's name is set in.
 
   A deployment can ask for one with CARD_FONT_URL and CARD_FONT_FAMILY; the
@@ -687,4 +655,58 @@ body {
 .toggle[aria-checked="true"]::before,
 .toggle:has(> input:checked)::before {
   background-color: currentColor;
+}
+
+/*
+  The file field's "Choose File" button.
+
+  The third of these, and the same story as the range's track and the toggle's
+  knob above: the development server rewrites daisyUI's stylesheet into rules
+  nested under a pseudo-element, browsers resolve none of them, and what is left
+  is the browser's own bare button sitting in daisyUI's box. The field still
+  works — it is a real `input type=file` either way — but in development it does
+  not look like the component the rest of the form is drawn from, which is the
+  one place a reader would notice.
+
+  daisyUI's own declarations, against its own properties, so the themes still
+  decide the colours and a version bump carries most of the way. The button is
+  pulled out over the field's border on three sides — that is what the negative
+  margins are — so it reads as one control with a divider rather than a button
+  floating inside a box. Left out: the noise texture and the depth shadows, which
+  are decoration.
+
+  Delete with the other two when Bun's dev pipeline stops nesting under
+  pseudo-elements.
+*/
+.file-input::file-selector-button {
+  cursor: pointer;
+  user-select: none;
+  height: calc(100% + var(--border) * 2);
+  margin-block: calc(var(--border) * -1);
+  margin-inline-start: calc(var(--border) * -1);
+  margin-inline-end: 1rem;
+  padding-inline: 1rem;
+  border-width: var(--border);
+  border-style: solid;
+  border-start-start-radius: calc(var(--radius-field) - var(--border));
+  border-end-start-radius: calc(var(--radius-field) - var(--border));
+  border-start-end-radius: 0;
+  border-end-end-radius: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  --btn-bg: var(--color-base-200);
+  --btn-fg: var(--color-base-content);
+  --btn-border: color-mix(in oklab, var(--btn-bg), #000 5%);
+  color: var(--btn-fg);
+  border-color: var(--btn-border);
+  background-color: var(--btn-bg);
+}
+
+/* A field that cannot be used should not offer a button that looks like it can. */
+.file-input:disabled::file-selector-button,
+.file-input:has(> input[disabled])::file-selector-button {
+  cursor: not-allowed;
+  --btn-bg: var(--color-base-200);
+  --btn-border: #0000;
+  --btn-fg: color-mix(in oklch, var(--color-base-content) 20%, #0000);
 }
