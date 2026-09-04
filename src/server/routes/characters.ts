@@ -205,9 +205,7 @@ export const characterRoutes = {
         const rawName = form.get("name");
         if (typeof rawName === "string") changes.name = parse(schemas.displayName, rawName);
 
-        for (const [field, value] of Object.entries(statsFromForm(form))) {
-          changes[field as keyof ReturnType<typeof statsFromForm>] = value;
-        }
+        const typed = statsFromForm(form);
 
         // Names are unique within a campaign, so the question is about the name and
         // the campaign this character is going to end up with — not about which of
@@ -228,13 +226,36 @@ export const characterRoutes = {
         const sheet = sheetFile ? await storeSheet(sheetFile) : null;
         if (sheet) changes.sheetUploadId = sheet.id;
 
+        // What the form said, over what the new sheet says about itself — the
+        // same order the create route uses, and for the same reason.
+        //
+        // The edit dialog sends all seven boxes, having read the sheet in the
+        // browser as it was chosen, so nothing here changes that path. This is
+        // for a sheet dropped on the character panel over a character that
+        // already exists: that sends the file and nothing else, and without this
+        // it would replace the sheet and leave the numbers as they were — stale
+        // against the very file that had just been dropped to update them.
+        const fromSheet = sheet ? withinBounds(await statsFromSheet(sheet)) : {};
+        for (const [field, value] of Object.entries({ ...fromSheet, ...typed })) {
+          changes[field as keyof ReturnType<typeof statsFromForm>] = value;
+        }
+
+        // Whether a portrait in the sheet may displace a picture the character
+        // already has. Off by default, and the dialog leaves it off: it carries a
+        // card-image field and a remove box, so a game master editing there has
+        // chosen the picture and a file must not overrule that choice.
+        //
+        // A sheet dropped on the panel turns it on, because that gesture means
+        // something else. There is nothing in it to say "keep the old picture" —
+        // the file is the whole of the intent, and the character it lands on
+        // should end up looking like the export that just arrived.
+        const portraitWins = form.get("portraitFromSheet") === "true";
+
         if (imageFile) {
           changes.cardUploadId = (await storeImage(imageFile)).id;
         } else if (form.get("removeCard") === "true") {
           changes.cardUploadId = null;
-        } else if (sheet && !character.card_upload_id) {
-          // A new sheet fills an empty picture, and only an empty one: a portrait
-          // found in a file must not displace the image a game master chose.
+        } else if (sheet && (portraitWins || !character.card_upload_id)) {
           const portrait = await portraitOrNone(sheet, logger);
           if (portrait) changes.cardUploadId = portrait.id;
         }

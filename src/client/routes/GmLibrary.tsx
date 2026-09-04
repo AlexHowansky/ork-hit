@@ -673,43 +673,88 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
    * more often than it is a party. So the dialog would have been a form with nothing left
    * to fill in, and a folder of sheets can be filed by dropping the folder.
    *
-   * Every dropped file is filed, one request at a time — the server takes a
+   * A name the campaign already has is that character being *updated*, not a
+   * collision. Re-exporting from HERO Designer and dropping the file back is how
+   * a sheet is kept current, and the alternative was finding each character,
+   * opening its dialog and picking the file by hand. So the file replaces the
+   * stored sheet, the characteristics inside it replace the character's, and the
+   * portrait inside it replaces the picture — the dropped file is the whole of
+   * the intent, and there is nothing in the gesture that could mean "but keep the
+   * old picture". What it leaves alone is the kind: a monster dropped over a hero
+   * does not make that hero a monster, and the dialog is where that is decided.
+   *
+   * Matched on the name the way the server matches it — its `COLLATE NOCASE`
+   * against `sensitivity: "base"` here, the same stand-in `insertByName` uses.
+   * The list is this page's own, so a character added in another tab since it
+   * loaded is not in it; that file takes the create path and gets the conflict it
+   * always did, which a reload puts right.
+   *
+   * Every dropped file is handled one request at a time — the server takes a
    * portrait out of each sheet, and a dozen of those at once is a dozen image
    * decodes racing each other for no gain. Each character appears as it lands,
    * in name order, so the panel fills in as the batch goes. One failure is
-   * reported and the rest carry on: a name the campaign already has stops that
-   * sheet, not the folder it arrived with.
+   * reported and the rest carry on.
    */
   const fileSheets = async (files: FileList, campaign: Campaign) => {
     const dropped = Array.from(files);
     setFiling(dropped.length);
-    let filed = 0;
+    let added = 0;
+    let updated = 0;
     for (const file of dropped) {
       try {
         const name = characterNameFor(file);
         if (!name) {
           throw new Error(`We couldn't work out a name for “${file.name}”.`);
         }
-        const form = new FormData();
-        form.set("campaignId", campaign.id);
-        form.set("kind", "npc");
-        form.set("name", name);
-        form.set("sheet", file);
-        const { character } = await api.postForm<{ character: Character }>(
-          "/api/characters",
-          form,
+
+        const existing = characters.find(
+          (entry) =>
+            entry.campaignId === campaign.id &&
+            entry.name.localeCompare(name, undefined, { sensitivity: "base" }) === 0,
         );
-        setCharacters((current) => insertByName(current, character));
-        filed += 1;
+
+        const form = new FormData();
+        form.set("sheet", file);
+
+        if (existing) {
+          // Neither the name nor the campaign, which are what found this
+          // character in the first place — and sending either would put the
+          // update through the server's own name check for no reason.
+          form.set("portraitFromSheet", "true");
+          const { character } = await api.patchForm<{ character: Character }>(
+            `/api/characters/${existing.id}`,
+            form,
+          );
+          setCharacters((current) =>
+            current.map((entry) => (entry.id === character.id ? character : entry)),
+          );
+          updated += 1;
+        } else {
+          form.set("campaignId", campaign.id);
+          form.set("kind", "npc");
+          form.set("name", name);
+          const { character } = await api.postForm<{ character: Character }>(
+            "/api/characters",
+            form,
+          );
+          setCharacters((current) => insertByName(current, character));
+          added += 1;
+        }
       } catch (error) {
         toast.showError(error);
       } finally {
         setFiling((remaining) => remaining - 1);
       }
     }
-    if (filed > 0) {
-      toast.show(filed === 1 ? "Added 1 character." : `Added ${filed} characters.`, "success");
-    }
+
+    // Said separately, because they are different things to have happened: a
+    // batch that quietly updated ten characters when the game master meant to add
+    // ten is worth noticing before the evening rather than during it.
+    const done = [
+      added > 0 ? `Added ${added} character${added === 1 ? "" : "s"}.` : null,
+      updated > 0 ? `Updated ${updated} character${updated === 1 ? "" : "s"}.` : null,
+    ].filter(Boolean).join(" ");
+    if (done) toast.show(done, "success");
   };
 
   const { over: sheetOver, dropProps: sheetDrop } = useFileDropTarget((files) => {

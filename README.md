@@ -732,8 +732,33 @@ sheet at a time, since the server takes a portrait out of each and a dozen of
 those at once is a dozen image decodes racing each other for no gain. Each card
 appears as its sheet lands — inserted in name order, which is the order the
 library arrives in — under a line saying how many are still to come, and one
-failure is reported without stopping the rest: a name the campaign already has
-stops that sheet, not the folder it came with. Both targets are the same three
+failure is reported without stopping the rest.
+
+**A name the campaign already has is that character being updated**, not a
+collision. Re-exporting from HERO Designer and dropping the file back is how a
+sheet is kept current, and refusing it left the game master finding each
+character, opening its dialog and picking the file by hand. So the drop replaces
+the stored sheet, the characteristics inside the file replace the character's, and
+the portrait inside it replaces the picture — the dropped file is the whole of the
+intent, and there is nothing in the gesture that could mean "but keep the old
+picture". The kind is what it leaves alone: a monster dropped over a hero does not
+make that hero a monster, and the dialog is where that is decided.
+
+`fileSheets` matches the name the way the server does — its `COLLATE NOCASE`
+against `sensitivity: "base"` in the browser, the same stand-in `insertByName`
+uses — and the list it searches is the page's own, so a character added in another
+tab since the page loaded takes the create path and gets the conflict it always
+did. That is also why the toast counts the two separately: a batch that quietly
+updated ten characters when the game master meant to add ten is worth noticing.
+
+The **portrait** rule is the one place the drop and the edit dialog differ, and
+the difference is a `portraitFromSheet` flag that only the drop sends. The dialog
+carries a card-image field and a remove box, so a picture there was chosen and a
+file must not overrule it; a bare drop has no way to express that, so the file
+wins. The Add-character dialog still refuses a duplicate name: creating a
+character is a deliberate act, and the conflict is a useful guard there.
+
+Both targets are the same three
 handlers — `useFileDropTarget` in `ui.tsx`. `Panel` learns nothing about files:
 it spreads unknown props onto its `<section>` the way `Button` does, and the highlight is a `ring`, since a
 border or background utility would fight the panel's own for the same property
