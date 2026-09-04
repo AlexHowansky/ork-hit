@@ -776,6 +776,45 @@ running cannot be moved at all: refiling it would leave it in the running sessio
 a campaign it no longer belongs to, which is not something the players could make
 sense of, so the drop is refused and says to end the session first.
 
+**A sheet often knows its own characteristics.** The exports this table uses come
+from [Ork HERO Templates](https://github.com/AlexHowansky/ork-hero-templates),
+which stamps a marker comment at the top of every file it writes and lays the
+characteristics out in a table with a known id. So SPD, DEX, REC, END, STUN and
+BODY are read off the file rather than typed in beside it, and INIT comes from the
+Lightning Reflexes in the talents table — a talent rather than a characteristic,
+which is why it is looked up separately.
+
+`statsFromSheetHtml` (`src/lib/sheet-stats.ts`) is the whole of it, in `lib/`
+because both sides call it: the browser reads the file as it is chosen so the
+dialog's boxes fill in, and the server reads the stored sheet for the characters
+filed by dropping a folder of them, which send no boxes at all. One parser, so the
+two cannot disagree about what a sheet says. The server puts the form first —
+whatever the dialog sent wins, since the browser has already read the sheet and
+the game master saw the numbers — and bounds anything it reads by the same
+`schemas.heroStat` a typed number passes through, dropping what will not fit
+rather than refusing the upload over a characteristic this table may never use.
+
+Four things in the real files decide how the table is read, and the tests in
+`tests/sheet-stats.test.ts` are named after them. The **marker is the licence**:
+without it, ids like `characteristics-collapse` are words that might mean this or
+might mean anything, and a wrong reading writes silently onto a character — so an
+unmarked sheet is left completely alone. The **last row is written back to front**
+(`Total Characteristic Points | 85`), which read by position alone invents a
+characteristic called `85`; requiring the second cell to name a characteristic
+*and* the first to be a whole number throws it out, along with the header row and
+every value HERO writes as a fraction, a pair or a distance. **SPD and BODY are
+printed twice** and the first printing wins. And **`Lightning Calculator` is a
+different talent** that shares a first word with the one that matters, so the
+whole phrase is matched, including the `All Actions` that separates a general
+initiative bonus from one bought for ranged attacks alone. A marked sheet with no
+Lightning Reflexes reads INIT 0, because in HERO that is an answer rather than a
+gap.
+
+Choosing a sheet **overwrites** what is in the boxes, including on a character
+being edited: choosing a sheet is choosing what the character is, and that is what
+uploading a replacement is for. It happens silently — the numbers appearing is the
+message — and they are still the game master's to correct before saving.
+
 **A sheet usually contains the portrait already.** Sheets are self-contained
 files, so the character's picture is already inside the HTML — and asking the
 game master to find and upload the same image a second time is work the app can

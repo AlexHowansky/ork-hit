@@ -17,6 +17,7 @@ import {
   fileField,
   portraitFromSheet,
   requireTotalWithinLimit,
+  statsFromSheet,
   storeImage,
   storeSheet,
 } from "../uploads.ts";
@@ -80,6 +81,32 @@ function statsFromForm(form: FormData): Partial<Record<HeroStatField, number>> {
   return stats;
 }
 
+/**
+ * The characteristics from a sheet that this app could actually store.
+ *
+ * A typed number is bounded by `schemas.heroStat` on the way in — SPD runs 0 to
+ * 12 — and a number read off a sheet has to clear the same bar, or an odd export
+ * would put a character on the stage that no form could have produced.
+ *
+ * What it does with a number that fails is where it parts company with the form:
+ * a game master who types 40 into the SPD box is told so and can fix it, but
+ * nobody typed this one. Failing the upload over it would refuse a sheet for a
+ * characteristic the game master may not even use, so the field is simply
+ * dropped, and it stays at the zero every unfilled characteristic starts at.
+ */
+function withinBounds(
+  stats: Partial<Record<HeroStatField, number>>,
+): Partial<Record<HeroStatField, number>> {
+  const kept: Partial<Record<HeroStatField, number>> = {};
+  for (const field of HERO_STAT_FIELDS) {
+    const value = stats[field];
+    if (value === undefined) continue;
+    const checked = schemas.heroStat[field].safeParse(value);
+    if (checked.success) kept[field] = checked.data;
+  }
+  return kept;
+}
+
 export const characterRoutes = {
   "/api/characters": {
     GET: handler((request: BunRequest) => {
@@ -116,18 +143,31 @@ export const characterRoutes = {
         ? await storeImage(imageFile)
         : await portraitOrNone(sheet, logger);
 
+      // What the form said, over what the sheet says about itself.
+      //
+      // The dialog sends all seven boxes, so for that path this changes nothing:
+      // the browser has already read the sheet and filled them in, and what
+      // arrives here is what the game master saw and could have corrected.
+      //
+      // The path this is for is a folder of sheets dropped on a campaign, which
+      // sends a name and a file and nothing else. Those characters were filed at
+      // zero across the board until now, and every number needed typing in
+      // afterwards — from the same file that was already on disk.
+      const typed = statsFromForm(form);
+      const stats = { ...withinBounds(await statsFromSheet(sheet)), ...typed };
       const character = characters.create({
         campaignId: input.campaignId,
         kind: input.kind,
         name: input.name,
         sheetUploadId: sheet.id,
         cardUploadId: card?.id ?? null,
-        stats: statsFromForm(form),
+        stats,
       });
       logger.info("character created", {
         characterId: character.id,
         kind: character.kind,
         portraitFromSheet: !imageFile && card !== null,
+        statsFromSheet: Object.keys(stats).length - Object.keys(typed).length,
       });
 
       return json({ character: presentCharacter(character) }, { status: 201 });

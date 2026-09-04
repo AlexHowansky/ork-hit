@@ -23,6 +23,7 @@ import {
   HERO_STAT_RANGES,
 } from "../../lib/hero.ts";
 import type { HeroStatField } from "../../lib/hero.ts";
+import { statsFromSheetHtml } from "../../lib/sheet-stats.ts";
 import { useSessionSocket } from "../useSessionSocket.ts";
 import { useLiveSessions } from "../useLiveSessions.ts";
 import { measureTrack, useCardFit } from "../useCardFit.ts";
@@ -184,6 +185,14 @@ function CharacterForm({
   const toast = useToast();
   const [busy, setBusy] = useState(false);
   const [name, setName] = useState(character?.name ?? "");
+  // Controlled, because a chosen sheet writes into them — see `readStatsFrom`.
+  // A character being edited starts at its own numbers, a new one at zeros, which
+  // is what an unfilled characteristic has always meant.
+  const [stats, setStats] = useState<Record<HeroStatField, number>>(() =>
+    Object.fromEntries(
+      HERO_STAT_FIELDS.map((field) => [field, character?.[field] ?? 0]),
+    ) as Record<HeroStatField, number>,
+  );
   // What the last uploaded sheet put in the name field. Anything else in there is
   // the game master's own typing, and a second upload must not overwrite it.
   const suggested = useRef<string | null>(null);
@@ -201,6 +210,33 @@ function CharacterForm({
     if (!stripped) return;
     suggested.current = stripped;
     setName(stripped);
+  };
+
+  /**
+   * Fills the characteristics in from the sheet, when the sheet is one that says
+   * what they are.
+   *
+   * Over whatever is in the boxes, including numbers the game master typed a
+   * moment ago and the ones a character being edited arrived with: choosing a
+   * sheet is choosing what this character is, and a sheet that knows its own SPD
+   * is a better authority on it than a box somebody filled from an older export.
+   * That is the whole point of uploading a replacement.
+   *
+   * Only what the sheet actually answered. A characteristic it does not give a
+   * usable number for is left exactly as it was, and an unmarked sheet — anyone
+   * else's export, or a page somebody wrote by hand — changes nothing at all.
+   *
+   * It says nothing when it works. The numbers appearing in the boxes is the
+   * message, and they are still the game master's to correct before saving.
+   */
+  const readStatsFrom = async (file: File) => {
+    try {
+      const found = statsFromSheetHtml(await file.text());
+      if (Object.keys(found).length > 0) setStats((current) => ({ ...current, ...found }));
+    } catch {
+      // An unreadable file is one the upload itself is about to complain about,
+      // and the boxes are still there to be typed into meanwhile.
+    }
   };
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -231,7 +267,10 @@ function CharacterForm({
         name="sheet"
         accept=".html,.htm,text/html"
         hint="Sheets keep their own scripts and styling. They are displayed in an isolated frame, so they cannot interact with the rest of this app. A picture inside a sheet becomes the character's card, and is taken out of the sheet rather than stored twice."
-        onFile={suggestNameFrom}
+        onFile={(file) => {
+          suggestNameFrom(file);
+          void readStatsFrom(file);
+        }}
       />
 
       <Field
@@ -293,7 +332,10 @@ function CharacterForm({
               inputMode="numeric"
               min={HERO_STAT_RANGES[field]?.min}
               max={HERO_STAT_RANGES[field]?.max}
-              defaultValue={character?.[field] ?? 0}
+              value={String(stats[field])}
+              onChange={(event) =>
+                setStats((current) => ({ ...current, [field]: Number(event.target.value) }))
+              }
             />
           ))}
         </div>

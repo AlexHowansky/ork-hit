@@ -23,6 +23,8 @@ import { config, limits } from "../lib/config.ts";
 import { errors } from "../lib/errors.ts";
 import { log } from "../lib/log.ts";
 import { newId } from "../lib/ids.ts";
+import { statsFromSheetHtml } from "../lib/sheet-stats.ts";
+import type { HeroStatField } from "../lib/hero.ts";
 import { uploads } from "../db/queries.ts";
 import type { UploadRow } from "../db/types.ts";
 
@@ -342,6 +344,33 @@ const ENCODINGS = [
  * to reach things only the server can see. A relative `src` has nothing to
  * resolve against in the first place, since a sheet is stored as one file.
  */
+/**
+ * The characteristics a stored sheet already knows, or nothing.
+ *
+ * The counterpart to `portraitFromSheet` above, and read the same way: the file
+ * is on disk by the time this runs, so it is re-read rather than kept in hand.
+ * What it says is decided by `lib/sheet-stats.ts`, which the browser uses too —
+ * the dialog fills its own boxes as a sheet is chosen, and this is for the
+ * characters filed by dropping a folder of sheets, which send no boxes at all.
+ *
+ * A sheet that cannot be read is not an error worth failing an upload over: the
+ * character is filed with whatever the form did say, exactly as before any of
+ * this existed.
+ */
+export async function statsFromSheet(
+  sheet: UploadRow,
+): Promise<Partial<Record<HeroStatField, number>>> {
+  try {
+    return statsFromSheetHtml(await Bun.file(uploadPath(sheet)).text());
+  } catch (error) {
+    log.warn("could not re-read sheet to look for characteristics", {
+      uploadId: sheet.id,
+      error,
+    });
+    return {};
+  }
+}
+
 export async function portraitFromSheet(sheet: UploadRow): Promise<UploadRow | null> {
   let html: string;
   try {
