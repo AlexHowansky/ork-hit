@@ -389,8 +389,12 @@ function Row({
           // The same bare control as the five in the cluster, in the one colour
           // that says what this one does.
           className={`absolute top-1.5 right-1.5 ${bareIcon("danger")}`}
-          title={`Remove ${copyLabel} from the session`}
-          aria-label={`Remove ${copyLabel} from the session`}
+          // "The stage" rather than "the session": the stage is the panel this
+          // control sits in and the word the console uses for who is in the
+          // fight, and a character taken off it is still in the campaign, still
+          // in the library below, and still one press from coming back on.
+          title={`Remove ${copyLabel} from the stage`}
+          aria-label={`Remove ${copyLabel} from the stage`}
         >
           <Icon icon={faXmark} />
         </button>
