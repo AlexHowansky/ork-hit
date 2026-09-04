@@ -37,20 +37,17 @@ const css =
   // stay in the stylesheet, and this only scales them.
   `  --card-sheen-strength: ${config.cardSheenPct / 100};\n` +
   // Where the cards' artwork lives — the PC frame, the NPC frame and the campaign
-  // one, each in both themes. Not a deployment choice like the rest of this — the
-  // files ship with the app — but it has to be written here all the same: Bun's
-  // bundler resolves every `url()` it can see in the stylesheet, inlining the
-  // frames as base64 when pointed at the files and refusing to build when
-  // pointed at these paths. This response is the server's own, so nothing
-  // rewrites it. `styles.css` picks a theme's cut of each.
-  `  --card-frame-pc-light: url("/frames/character-pc-light.webp");\n` +
-  `  --card-frame-pc-dark: url("/frames/character-pc-dark.webp");\n` +
-  `  --card-frame-npc-light: url("/frames/character-npc-light.webp");\n` +
-  `  --card-frame-npc-dark: url("/frames/character-npc-dark.webp");\n` +
-  `  --campaign-frame-light: url("/frames/campaign-light.webp");\n` +
-  `  --campaign-frame-dark: url("/frames/campaign-dark.webp");\n` +
-  // And the foil the well blends over a picture, which is one sheet for both
-  // themes and is written here for the same reason the frames are.
+  // one, each a single cut serving both themes. Not a deployment choice like the
+  // rest of this — the files ship with the app — but it has to be written here
+  // all the same: Bun's bundler resolves every `url()` it can see in the
+  // stylesheet, inlining the frames as base64 when pointed at the files and
+  // refusing to build when pointed at these paths. This response is the server's
+  // own, so nothing rewrites it.
+  `  --card-frame-pc: url("/frames/character-pc.webp");\n` +
+  `  --card-frame-npc: url("/frames/character-npc.webp");\n` +
+  `  --campaign-frame: url("/frames/campaign.webp");\n` +
+  // And the foil the well blends over a picture, which is written here for the
+  // same reason the frames are.
   `  --card-foil: url("/frames/sheen.webp");\n` +
   // Only when there is one. Unset, `styles.css` falls back to `inherit` and a
   // card's name keeps the interface font.

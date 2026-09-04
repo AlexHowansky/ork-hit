@@ -1215,7 +1215,7 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     await campaignFrame.waitFor();
     expect(
       await campaignFrame.evaluate((el) => getComputedStyle(el).backgroundImage),
-    ).toContain("/frames/campaign-light.webp");
+    ).toContain("/frames/campaign.webp");
   }, 60_000);
 
   test("an NPC card is printed in the NPC cut of the frame", async () => {
@@ -1246,8 +1246,8 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     // Asserted on the URL rather than on pixels: which file the card asks for is
     // what pins the wiring, and it stays true however the artwork is redrawn.
     const image = await frame.evaluate((el) => getComputedStyle(el).backgroundImage);
-    expect(image).toContain("/frames/character-npc-light.webp");
-    expect(image).not.toContain("/frames/character-pc-light.webp");
+    expect(image).toContain("/frames/character-npc.webp");
+    expect(image).not.toContain("/frames/character-pc.webp");
 
     // And it is plain stock: the foil is a player character's card alone, which
     // is the other way the two kinds tell themselves apart.
@@ -1284,7 +1284,7 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     // The artwork is actually resolved rather than left as an unset variable —
     // its address arrives from /appearance.css, so this fails if that is missing.
     const image = await frame.evaluate((el) => getComputedStyle(el).backgroundImage);
-    expect(image).toContain("/frames/character-pc-light.webp");
+    expect(image).toContain("/frames/character-pc.webp");
 
     // A player character's card, and so the one card that is printed on foil.
     expect(await card.locator(".card-foil").count()).toBe(1);
@@ -1344,6 +1344,30 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
       .getByRole("button", { name: /^Delete / })
       .evaluate((el) => getComputedStyle(el).backgroundColor);
     expect(fill).toBe("rgba(0, 0, 0, 0)");
+
+    // And the name is drawn in the same ink in both themes, because the panel it
+    // is drawn on is the same pale artwork in both. The strip carries a light
+    // theme of its own (`CARD_CAPTION_FRAMED`), so switching the page to dark
+    // must not touch the name — and must not paint the panel out from under it
+    // with that theme's own background either. Left until last, since switching
+    // theme reflows the page every measurement above was taken from.
+    const caption = card.locator(".card-caption");
+    const ink = async () => {
+      await gm.waitForTimeout(100);
+      return caption.evaluate((el) => {
+        const style = getComputedStyle(el);
+        return { colour: style.color, background: style.backgroundColor };
+      });
+    };
+
+    await gm.getByRole("button", { name: "Light", exact: true }).click();
+    const light = await ink();
+    await gm.getByRole("button", { name: "Dark", exact: true }).click();
+    const dark = await ink();
+
+    expect(dark.colour).toBe(light.colour);
+    expect(light.background).toBe("rgba(0, 0, 0, 0)");
+    expect(dark.background).toBe("rgba(0, 0, 0, 0)");
   }, 60_000);
 
   test("the corner controls tilt with the card, and still work while it is tilted", async () => {

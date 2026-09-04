@@ -194,55 +194,35 @@ body {
 /*
   The frames a card is printed in.
 
-  `assets/character-pc-card-template-{light,dark}.webp`,
-  `assets/character-npc-card-template-{light,dark}.webp` and
-  `assets/campaign-card-template-{light,dark}.webp` are 300x420 — five by seven,
+  `assets/character-pc-card-template.webp`,
+  `assets/character-npc-card-template.webp` and
+  `assets/campaign-card-template.webp` are 300x420 — five by seven,
   the same shape the card is — so the art lays over a card with nothing to crop
   or letterbox. Its window is transparent and the picture shows through it; its
   lower panel is what the name is drawn on (see `CARD_CAPTION_FRAMED`).
 
-  The two `url()`s themselves are not written here. Bun's bundler resolves every
-  url it can see: pointed at the files it inlined both as base64, taking this
+  One cut of each rather than a light and a dark twin: the art is painted stock,
+  and stock does not change colour when the room does. What that leaves is the
+  name, which is drawn on a panel that is pale in either theme — so it is set in
+  the light theme's ink whichever theme is running, which `CARD_CAPTION_FRAMED`
+  arranges rather than this file.
+
+  The `url()`s themselves are not written here. Bun's bundler resolves every
+  url it can see: pointed at the files it inlined them all as base64, taking this
   stylesheet from 60KB to 448KB — render-blocking, and refetched in full whenever
   any unrelated rule changed — and pointed at a server path it refused to build at
   all. So the addresses arrive from /appearance.css, which the server writes and
-  the bundler never sees, as the `--card-frame-pc-*`, `--card-frame-npc-*` and
-  `--campaign-frame-*` pairs; the images themselves come from
+  the bundler never sees, as `--card-frame-pc`, `--card-frame-npc` and
+  `--campaign-frame`; the images themselves come from
   `server/routes/frames.ts`. A page that never
   receives /appearance.css simply gets no frame, which is the same graceful
   nothing the other settings there fall back to.
-
-  Which of the two applies is decided here rather than in the component, so
-  switching theme neither re-renders a card nor needs the frame threaded through
-  as a prop. The three states are the ones the top of this file describes:
-  `winter` is what an untouched page gets, `night` applies under a dark system
-  preference unless `winter` is explicit, and an explicit `data-theme` wins over
-  both.
 
   All three kinds of card take a frame, and each takes its own: `.card-frame`
   alone is the PC's, and `.card-frame-npc` or `.card-frame-campaign` alongside it
   swaps in the other art. Which kind a card is remains legible from the art itself
   rather than from one tile being bare.
 */
-:root {
-  --card-frame-pc: var(--card-frame-pc-light);
-  --card-frame-npc: var(--card-frame-npc-light);
-  --campaign-frame: var(--campaign-frame-light);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="winter"]) {
-    --card-frame-pc: var(--card-frame-pc-dark);
-    --card-frame-npc: var(--card-frame-npc-dark);
-    --campaign-frame: var(--campaign-frame-dark);
-  }
-}
-
-:root[data-theme="night"] {
-  --card-frame-pc: var(--card-frame-pc-dark);
-  --card-frame-npc: var(--card-frame-npc-dark);
-  --campaign-frame: var(--campaign-frame-dark);
-}
 
 /*
   `100% 100%` rather than `cover`: the card and the art are the same 5:7, so this
@@ -262,6 +242,27 @@ body {
 
 .card-frame-campaign {
   background-image: var(--campaign-frame);
+}
+
+/*
+  The name's strip, which is a light-theme island on a dark-theme page.
+
+  The panel the frame paints is pale in both themes now that each frame is a
+  single cut, so the name has to be drawn in the light theme's ink whichever
+  theme is running. It is done by hanging `data-theme="winter"` on the strip
+  (`CARD_CAPTION_FRAMED`) rather than by naming a colour here: daisyUI answers
+  that attribute with the whole of winter's palette scoped to that element, so
+  `base-content` on the name goes on being the token it always was — and the day
+  the app's light theme changes, the card's name changes with it.
+
+  What that attribute also brings is a background: daisyUI paints every
+  `[data-theme]` element in its `base-100`, which on this one would be an opaque
+  white rectangle over the panel the strip is meant to be sitting on. So it is
+  cleared here. Unlayered on purpose — daisyUI's rule is in `@layer base`, and an
+  unlayered author rule beats every layered one whatever its specificity.
+*/
+.card-caption {
+  background-color: transparent;
 }
 
 /*

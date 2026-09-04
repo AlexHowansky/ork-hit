@@ -2170,24 +2170,18 @@ describe("the deployment's card size reaches the browser", () => {
     expect(css).toContain(`--card-sheen-strength: ${config.cardSheenPct / 100}`);
     // The card frames' addresses ride along here because the bundler rewrites
     // every url() it can see in the stylesheet itself.
-    expect(css).toContain(`--card-frame-pc-light: url("/frames/character-pc-light.webp")`);
-    expect(css).toContain(`--card-frame-pc-dark: url("/frames/character-pc-dark.webp")`);
-    expect(css).toContain(`--card-frame-npc-light: url("/frames/character-npc-light.webp")`);
-    expect(css).toContain(`--card-frame-npc-dark: url("/frames/character-npc-dark.webp")`);
-    expect(css).toContain(`--campaign-frame-light: url("/frames/campaign-light.webp")`);
-    expect(css).toContain(`--campaign-frame-dark: url("/frames/campaign-dark.webp")`);
-    // And the foil, which is one sheet for both themes.
+    expect(css).toContain(`--card-frame-pc: url("/frames/character-pc.webp")`);
+    expect(css).toContain(`--card-frame-npc: url("/frames/character-npc.webp")`);
+    expect(css).toContain(`--campaign-frame: url("/frames/campaign.webp")`);
+    // And the foil, which lies over a picture rather than framing it.
     expect(css).toContain(`--card-foil: url("/frames/sheen.webp")`);
   });
 
   test("and the frames themselves are served, cacheably, to anyone", async () => {
     for (const path of [
-      "/frames/character-pc-light.webp",
-      "/frames/character-pc-dark.webp",
-      "/frames/character-npc-light.webp",
-      "/frames/character-npc-dark.webp",
-      "/frames/campaign-light.webp",
-      "/frames/campaign-dark.webp",
+      "/frames/character-pc.webp",
+      "/frames/character-npc.webp",
+      "/frames/campaign.webp",
       "/frames/sheen.webp",
     ]) {
       // No cookie: a frame is the same for everyone and gives nothing away.

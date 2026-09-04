@@ -310,9 +310,9 @@ under it, on the panel the frame paints. That keeps the card mostly picture, and
 since every caption is built the same way a row still lines up whatever the names
 are.
 
-**Every card is printed in a frame.** `assets/character-pc-card-template-{light,dark}.webp`,
-`assets/character-npc-card-template-{light,dark}.webp`
-and `assets/campaign-card-template-{light,dark}.webp`
+**Every card is printed in a frame.** `assets/character-pc-card-template.webp`,
+`assets/character-npc-card-template.webp`
+and `assets/campaign-card-template.webp`
 are 300×420 — the same five by seven the card is — so the art lays over a card
 with nothing to crop or letterbox. Its window is transparent and the picture
 shows through it; its lower panel is what the name is drawn on. `CardFrame`
@@ -331,22 +331,31 @@ kind (`"pc"`, `"npc"` or `"campaign"`) and adds `.card-frame-npc` or
 `.card-frame-campaign` to the same overlay, a PC being the bare `.card-frame` —
 so the kinds still tell themselves apart at a glance, while every measurement
 above is shared because all three frames are cut to the same 300×420. They are
-separate files, routes and variables all the way down, so redrawing any one cut
-is a file swap rather than a code change.
+separate files, routes and variables all the way down, so redrawing any one is a
+file swap rather than a code change.
+
+**There is one cut of each, not a light and a dark twin.** The art is painted
+stock, and stock does not change colour when the room does. What does have to
+change is the name drawn on it: the panel under it is pale in either theme, so
+`base-content` alone would go white on white on a dark page. `CARD_CAPTION_FRAMED`
+hangs `data-theme="winter"` on the name's strip instead, which scopes the light
+theme's whole palette to that one element — so the name goes on asking for
+`base-content` and gets ink that belongs on a pale panel either way, and nothing
+in the app names a colour to do it. The attribute brings daisyUI's `base-100`
+background with it, which would be an opaque rectangle over the panel, so
+`.card-caption` in `styles.css` clears that.
 
 They are WebP rather than PNG. The window has to stay transparent, so the format
-has to carry alpha, and WebP does it in roughly a third of the bytes — about
-20KB a frame against 70KB, which is most of a cold load's image budget for
-artwork that every card on the page draws.
+has to carry alpha, and WebP does it in roughly a third of the bytes, which
+matters for artwork that every card on the page draws.
 
-Which cut applies is decided in CSS (`--card-frame-pc`, `--card-frame-npc` and
-`--campaign-frame` in `styles.css`), following the same three states the theme
-itself does, so switching theme neither re-renders a card nor threads the frame
-through as a prop. The `url()`s are *not* written there, though: Bun's bundler resolves
-every url it can see, and pointed at the files it inlined both as base64 — taking
-the stylesheet from 60KB to 448KB, render-blocking and refetched whenever any
-unrelated rule changed — while pointed at a server path it refused to build at
-all. So the addresses arrive from `/appearance.css`, which the server writes and
+The frames are named in CSS (`--card-frame-pc`, `--card-frame-npc` and
+`--campaign-frame` in `styles.css`), so which artwork a card takes is a class
+rather than a prop and switching theme never re-renders a card. The `url()`s are
+*not* written there, though: Bun's bundler resolves every url it can see, and
+pointed at the files it inlined them all as base64 — taking the stylesheet from
+60KB to 448KB, render-blocking and refetched whenever any unrelated rule changed
+— while pointed at a server path it refused to build at all. So the addresses arrive from `/appearance.css`, which the server writes and
 the bundler never sees, and the images themselves are served by
 `server/routes/frames.ts`: read once at startup, public, and revalidated with an
 ETag of their own contents.

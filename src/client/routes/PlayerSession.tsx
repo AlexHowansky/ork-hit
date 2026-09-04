@@ -325,7 +325,9 @@ export function PlayerSession({
                   {/* The same frame the library draws, so a player picks from the
                       cards the game master was looking at. */}
                   <CardFrame kind={character.kind} />
-                  <div className={CARD_CAPTION_FRAMED}>
+                  {/* Light-theme ink on the frame's pale panel, as in the
+                      library. */}
+                  <div className={CARD_CAPTION_FRAMED} data-theme="winter">
                     <p className={CARD_NAME}>
                       {character.name}
                     </p>

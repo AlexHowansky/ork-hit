@@ -53,8 +53,10 @@ document explains the requirements that must be adhered to.
   game master is looking at their library or a player is choosing who to play —
   with its picture showing
   through the frame's window and its name drawn on the panel the frame paints. The
-  frame is drawn for the light and the dark theme alike, so the name is legible on
-  it either way. The typeface a card's name is set in is a deployment setting,
+  frame is one piece of artwork rather than a light and a dark version of itself,
+  since it is painted card stock; the name on it is drawn in the light theme's ink
+  in either theme, because the panel it sits on is pale in both, so it is legible
+  either way. The typeface a card's name is set in is a deployment setting,
   since a display face suits a card in a way the interface font does not; unset,
   the name is drawn in the interface font like everything else. A campaign card
   is framed in artwork of its own rather than the character frame, which is one of

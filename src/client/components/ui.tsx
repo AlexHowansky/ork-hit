@@ -163,8 +163,8 @@ export const CARD_BASE =
  *
  * The controls stack down from the *top* right, and the right and top here are
  * pulled in from the window's own edges because that corner is bevelled — put in
- * the literal corner they would go under the frame. Measured on the dark template,
- * which is the tighter of the two: at x=95.5% the window does not begin until
+ * the literal corner they would go under the frame. Measured on the frames
+ * themselves: at x=95.5% the window does not begin until
  * y=5.0%, and its right edge only reaches 96.0% once past y=6.0%. Right 95.5% and
  * top 5.5% is the corner the stack fits into, and it is genuinely the corner: the
  * glyph clears the frame by about a pixel, and there is nowhere further to go.
@@ -174,7 +174,7 @@ export const CARD_BASE =
  * These are fractions of the card while the icons are a fixed 16px, so the two
  * scale against each other and the tight case is a *large* card, where the glyph
  * is a small enough fraction to sit right in the bevel's path. 4.4% is the value
- * that clears on both templates from a 112px card up to the 642px ceiling.
+ * that clears on every frame from a 112px card up to the 642px ceiling.
  *
  * The bottom is generous on purpose: the stack is laid out from the top, so this
  * only has to be far enough down not to squash it.
@@ -192,13 +192,20 @@ export const CARD_WINDOW_CONTROLS =
  * art instead, and centred in the panel the art actually draws. Get this wrong
  * and the name sits on the divider or over the border rather than on the panel.
  *
- * No background: the artwork is the background now. And no colour of its own —
- * the light frame's panel is pale and the dark frame's is navy, so `base-content`
- * is right on both, and the app's rule that nothing names a colour survives a
- * card that is mostly picture.
+ * No background: the artwork is the background now — `.card-caption` in
+ * `styles.css` clears the one daisyUI would otherwise paint here, and says why.
+ *
+ * And no colour of its own, still. The frame is a single cut in both themes, so
+ * the panel under the name is pale on a dark page as well as a light one, and
+ * `base-content` alone would go white on white there. `data-theme="winter"` is
+ * what fixes it: daisyUI scopes the light theme's whole palette to this element,
+ * so the name below goes on asking for `base-content` and gets the ink that
+ * belongs on a pale panel either way. Nothing here names a colour, which is the
+ * app's rule, and a card's name follows the light theme if it is ever changed.
+ * Callers pass the attribute with this class — see `CharacterCard`.
  */
 export const CARD_CAPTION_FRAMED =
-  "absolute inset-x-0 top-[67.8%] bottom-[3.8%] z-20 flex items-center justify-center px-[8%]";
+  "card-caption absolute inset-x-0 top-[67.8%] bottom-[3.8%] z-20 flex items-center justify-center px-[8%]";
 
 /** The modifier each kind adds to `.card-frame`; a PC is the bare class. */
 const CARD_FRAME_KIND: Record<CharacterKind | "campaign", string> = {
@@ -208,10 +215,11 @@ const CARD_FRAME_KIND: Record<CharacterKind | "campaign", string> = {
 };
 
 /**
- * The frame a card is printed in: `styles.css` holds the artwork and decides
- * which of the two themes' files to draw (see `--card-frame-pc` there). `kind`
- * picks between the PC, NPC and campaign art, all three cut to the same 300x420
- * and so sharing every measurement here and in `CARD_CAPTION_FRAMED`.
+ * The frame a card is printed in: `styles.css` holds the artwork (see
+ * `--card-frame-pc` there). `kind` picks between the PC, NPC and campaign art,
+ * all three cut to the same 300x420 and so sharing every measurement here and in
+ * `CARD_CAPTION_FRAMED`. Each is one cut for both themes, which is why the name
+ * over it carries a theme of its own.
  *
  * A PC is the default because it is the common card and the bare `.card-frame`
  * draws it; the other two add a modifier alongside.

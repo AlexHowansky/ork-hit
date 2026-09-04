@@ -1,13 +1,15 @@
 /**
  * The artwork a card is printed in.
  *
- * Six files — a PC frame, an NPC frame and a campaign frame, each in a light and
- * a dark cut — laid over a card by `styles.css`; see `--card-frame-pc`,
- * `--card-frame-npc` and `--campaign-frame` there, which decide between them.
- * A seventh, `sheen.webp`, is the foil: a sheet of soft rainbow the well blends
- * over a picture as the card tilts (`--card-foil`). It has no light and dark cut
- * because it is not painted on the card — it is light caught by it, and the same
- * light in either theme.
+ * Three files — a PC frame, an NPC frame and a campaign frame — laid over a card
+ * by `styles.css`; see `--card-frame-pc`, `--card-frame-npc` and
+ * `--campaign-frame` there. Each is one cut rather than a light and a dark twin:
+ * the art is painted stock, and stock does not change colour when the room does.
+ * The name drawn on it is what has to stay legible, and it does by being drawn in
+ * the light theme's ink in either theme (see `CARD_CAPTION_FRAMED` in `ui.tsx`).
+ * A fourth, `sheen.webp`, is the foil: a sheet of soft rainbow the well blends
+ * over a picture as the card tilts (`--card-foil`). It is not painted on the card
+ * either — it is light caught by it, and the same light in either theme.
  *
  * WebP rather than PNG: the window has to stay transparent and WebP carries the
  * alpha, at roughly a third of the bytes the PNGs cost.
@@ -38,21 +40,12 @@ async function load(name: string): Promise<{ bytes: ArrayBuffer; etag: string }>
 }
 
 const frames = {
-  pc: {
-    light: await load("character-pc-card-template-light.webp"),
-    dark: await load("character-pc-card-template-dark.webp"),
-  },
-  npc: {
-    light: await load("character-npc-card-template-light.webp"),
-    dark: await load("character-npc-card-template-dark.webp"),
-  },
-  campaign: {
-    light: await load("campaign-card-template-light.webp"),
-    dark: await load("campaign-card-template-dark.webp"),
-  },
+  pc: await load("character-pc-card-template.webp"),
+  npc: await load("character-npc-card-template.webp"),
+  campaign: await load("campaign-card-template.webp"),
 };
 
-/** The foil, which is one sheet rather than a pair. */
+/** The foil, which lies over a picture rather than framing it. */
 const sheen = await load("sheen.webp");
 
 /**
@@ -75,23 +68,14 @@ function serve(frame: { bytes: ArrayBuffer; etag: string }, request: Request): R
 }
 
 export const frameRoutes = {
-  "/frames/character-pc-light.webp": {
-    GET: handler(async (request: Request) => serve(frames.pc.light, request)),
+  "/frames/character-pc.webp": {
+    GET: handler(async (request: Request) => serve(frames.pc, request)),
   },
-  "/frames/character-pc-dark.webp": {
-    GET: handler(async (request: Request) => serve(frames.pc.dark, request)),
+  "/frames/character-npc.webp": {
+    GET: handler(async (request: Request) => serve(frames.npc, request)),
   },
-  "/frames/character-npc-light.webp": {
-    GET: handler(async (request: Request) => serve(frames.npc.light, request)),
-  },
-  "/frames/character-npc-dark.webp": {
-    GET: handler(async (request: Request) => serve(frames.npc.dark, request)),
-  },
-  "/frames/campaign-light.webp": {
-    GET: handler(async (request: Request) => serve(frames.campaign.light, request)),
-  },
-  "/frames/campaign-dark.webp": {
-    GET: handler(async (request: Request) => serve(frames.campaign.dark, request)),
+  "/frames/campaign.webp": {
+    GET: handler(async (request: Request) => serve(frames.campaign, request)),
   },
   "/frames/sheen.webp": {
     GET: handler(async (request: Request) => serve(sheen, request)),

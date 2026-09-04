@@ -59,7 +59,9 @@ export function CharacterCard({
           NPC are printed in different cuts of it. */}
       <CardFrame kind={character.kind} />
 
-      <div className={CARD_CAPTION_FRAMED}>
+      {/* The panel under the name is pale in both themes, so the strip carries
+          the light theme rather than the page's — see `CARD_CAPTION_FRAMED`. */}
+      <div className={CARD_CAPTION_FRAMED} data-theme="winter">
         <h3 className={CARD_NAME}>{character.name}</h3>
       </div>
     </HoverCard>

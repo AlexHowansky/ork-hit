@@ -565,7 +565,8 @@ function CampaignCard({
           campaign art is cut to the same shape, so the same boxes fit it. */}
       <CardFrame kind="campaign" />
 
-      <div className={CARD_CAPTION_FRAMED}>
+      {/* Light-theme ink on the frame's pale panel, as on a character card. */}
+      <div className={CARD_CAPTION_FRAMED} data-theme="winter">
         <h3 className={CARD_NAME}>{campaign.name}</h3>
       </div>
     </HoverCard>,
