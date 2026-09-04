@@ -384,6 +384,15 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     const library = gm
       .locator("section")
       .filter({ has: gm.getByRole("heading", { name: "Library" }) });
+
+    // One of them carries no count. The row being lit rather than dimmed already
+    // says the monster is in the fight, so a badge reading `1` would be that same
+    // sentence a second time — and on a stage of single monsters, a column of
+    // `1`s for the eye to learn to skip.
+    const strahdRow = library.getByRole("listitem").filter({ hasText: "Strahd" });
+    const strahdCount = strahdRow.locator('[title$="in the session"]');
+    expect(await strahdCount.count()).toBe(0);
+
     await library.getByRole("listitem").filter({ hasText: "Strahd" })
       .getByRole("button", { name: "Add" }).click();
     await stageCount(gm, 4);
@@ -395,7 +404,8 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     // says how many of it are out.
     const strahdCard = library.getByRole("listitem").filter({ hasText: "Strahd" });
     expect(await strahdCard.count()).toBe(1);
-    // The badge counts the copies already on the stage.
+    // Past one it earns its place, and counts the copies on the stage.
+    expect(await strahdCount.textContent()).toBe("3");
     expect((await strahdCard.innerText()).replace(/\s+/g, " ")).toContain("3");
 
     // Each copy is numbered, and the player sees the same numbers.
@@ -729,10 +739,14 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     expect(await add("Thorin").isDisabled()).toBe(true);
     expect(await add("Strahd").isDisabled()).toBe(false);
 
-    // The count of how many are out is a monster's badge alone — a hero is on the
-    // stage once, so a `1` beside them would be answering nothing.
-    expect(await rowFor("Thorin").innerText()).not.toContain("1");
-    expect(await rowFor("Strahd").innerText()).toContain("1");
+    // Nobody carries a count here, monster or hero. All three are on the stage
+    // exactly once, and a lit row already says a character is in the fight — a
+    // `1` beside it would be that same sentence again, on every row. The badge
+    // comes out at the second copy, which the multi-copy test above is where to
+    // see.
+    for (const name of ["Elara", "Thorin", "Strahd"]) {
+      expect(await rowFor(name).locator('[title$="in the session"]').count()).toBe(0);
+    }
 
     // How bright an element actually renders: opacity composites down the tree,
     // so a dimmed row means every ancestor's opacity multiplied together.

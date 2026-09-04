@@ -725,12 +725,19 @@ export function GmSessionConsole({ onSignOut }: { onSignOut: () => void }) {
                           </span>
                         ) : null}
                       </span>
-                      {/* How many of this one are out there already. Only monsters
-                          carry it: there is one of a given hero and never a second,
-                          so a badge reading `1` beside them would be answering a
-                          question nobody at the table can ask. Absent rather than
-                          zero when there are none out, so the row stays quiet. */}
-                      {character.kind === "npc" && staged.has(character.id) ? (
+                      {/* How many of this one are out there already, and only
+                          once that is a question worth answering.
+
+                          Two things keep it quiet. Only monsters carry it, since
+                          there is one of a given hero and never a second. And
+                          only a second copy brings it out: a row that is lit
+                          rather than dimmed already says the character is in the
+                          fight, so a badge reading `1` beside it is the same
+                          sentence twice — and on a stage of single monsters it is
+                          that sentence on every row, which is a column of `1`s
+                          for the eye to learn to skip. The number earns its place
+                          the moment it stops being one. */}
+                      {character.kind === "npc" && (staged.get(character.id) ?? 0) > 1 ? (
                         <CountBadge title={`${staged.get(character.id)} in the session`}>
                           {staged.get(character.id)}
                         </CountBadge>
