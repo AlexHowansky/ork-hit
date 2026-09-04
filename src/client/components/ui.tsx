@@ -534,21 +534,26 @@ export function ColumnHandle({
  * daisyUI's `z-index: 999`, and `Toast` sits deliberately above that.
  *
  * Escape closes it, which is ours to do for the same reason — the native handler
- * comes with `showModal()`. A click on the dimmed backdrop deliberately does not,
- * which is why there is no `modal-backdrop` form: these hold forms people are
- * part way through typing into, and losing that to a stray click is worse than
- * the extra press it costs to leave on purpose.
+ * comes with `showModal()`. A click on the dimmed backdrop does not, by default:
+ * these hold forms people are part way through typing into, and losing that to a
+ * stray click is worse than the extra press it costs to leave on purpose. Where
+ * the form is cheap to retype and leaving is the common move, `dismissable` turns
+ * the backdrop into a second way out; either way the pending edits are simply
+ * dropped, because nothing has been sent until Save.
  */
 export function Modal({
   title,
   onClose,
   children,
   wide = false,
+  dismissable = false,
 }: {
   title: string;
   onClose: () => void;
   children: ReactNode;
   wide?: boolean;
+  /** Whether a click on the dimmed backdrop closes it, abandoning the form. */
+  dismissable?: boolean;
 }) {
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -559,7 +564,20 @@ export function Modal({
   }, [onClose]);
 
   return (
-    <dialog open className="modal" aria-label={title}>
+    <dialog
+      open
+      className="modal"
+      aria-label={title}
+      // On mousedown rather than click, so that a selection dragged out of the
+      // box and released over the backdrop is not read as leaving.
+      onMouseDown={
+        dismissable
+          ? (event) => {
+              if (event.target === event.currentTarget) onClose();
+            }
+          : undefined
+      }
+    >
       <div
         className={`modal-box flex max-h-[90vh] flex-col overflow-hidden p-0 ${
           wide ? "max-w-5xl wide:max-w-7xl" : "max-w-lg"

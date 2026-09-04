@@ -1142,6 +1142,7 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
         <Modal
           title={characterDialog.editing ? "Edit character" : "Add character"}
           onClose={() => setCharacterDialog({ open: false, editing: null })}
+          dismissable
         >
           <CharacterForm
             campaigns={campaigns}
