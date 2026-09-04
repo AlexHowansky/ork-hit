@@ -226,7 +226,7 @@ function ShowAllNpcs() {
       }
     >
       <p className={`text-xs ${TEXT_MUTED}`}>
-        Lists every NPC in your library, not just the ones in this campaign.
+        Allow adding NPCs from your other campaigns to the stage.
       </p>
     </Setting>
   );
