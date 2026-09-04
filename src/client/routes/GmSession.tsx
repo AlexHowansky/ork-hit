@@ -373,6 +373,24 @@ export function GmSessionConsole({ onSignOut }: { onSignOut: () => void }) {
   /** Borrowed from another campaign, which only `Show All NPCs` puts here. */
   const isBorrowed = (character: Character) => character.campaignId !== session?.campaignId;
 
+  /*
+   * Monsters on this stage that only `Show All NPCs` could have put there.
+   *
+   * While there is one, the setting cannot be switched off — turning it off is
+   * what takes them out of the library, and a slot whose character the library no
+   * longer lists has no count beside it, no sheet to open from there, and no way
+   * to add a second copy. The server refuses it too, and has to: this console can
+   * only see its own fight, and a game master may be running another in the next
+   * tab.
+   */
+  const borrowedOnStage = (snapshot?.characters ?? []).filter(isBorrowed);
+  const showAllNpcsHeldOn = borrowedOnStage.length === 0
+    ? null
+    : `${borrowedOnStage.length === 1
+      ? `${borrowedOnStage[0]!.name} is`
+      : `${borrowedOnStage.length} characters are`
+    } on the stage from another campaign. Take them off to turn this back off.`;
+
   const libraryOrder = [...library].sort(
     (a, b) =>
       libraryRank(a) - libraryRank(b) ||
@@ -762,7 +780,11 @@ export function GmSessionConsole({ onSignOut }: { onSignOut: () => void }) {
             the markup so it lands on the right once the page has columns to
             push; the drawer itself moves back above the console on a phone,
             where there is no sideways to give. */}
-        <SettingsDrawer open={settingsOpen} onClose={toggleSettings} />
+        <SettingsDrawer
+          open={settingsOpen}
+          onClose={toggleSettings}
+          showAllNpcsHeldOn={showAllNpcsHeldOn}
+        />
       </div>
 
       {viewingSheet ? (

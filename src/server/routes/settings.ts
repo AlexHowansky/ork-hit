@@ -16,7 +16,8 @@ import type { BunRequest } from "bun";
 import { handler, json, type RequestContext } from "../http.ts";
 import { parseJsonBody, schemas } from "../../lib/validate.ts";
 import { requireGm } from "../middleware/auth.ts";
-import { gms } from "../../db/queries.ts";
+import { gms, sessionCharacters } from "../../db/queries.ts";
+import { errors } from "../../lib/errors.ts";
 import { presentGm } from "../presenters.ts";
 
 export const settingsRoutes = {
@@ -24,6 +25,24 @@ export const settingsRoutes = {
     PATCH: handler(async (request: BunRequest, { logger }: RequestContext) => {
       const gm = requireGm(request);
       const changes = await parseJsonBody(request, schemas.gmSettings);
+
+      // The one setting that cannot simply be set. Switching `Show All NPCs` off
+      // is what takes a borrowed monster out of the library, and doing that while
+      // one is standing in a fight would leave a slot whose character the library
+      // no longer lists. The console greys the control out for the fight it can
+      // see; this is the rule itself, which also covers the second console, the
+      // other browser, and the library page, none of which can see that fight.
+      if (changes.showAllNpcs === false) {
+        const borrowed = sessionCharacters.borrowedNpcsForGm(gm.id);
+        if (borrowed > 0) {
+          throw errors.conflict(
+            borrowed === 1
+              ? "A monster from another campaign is in a running session. Take it off the stage first."
+              : `${borrowed} monsters from other campaigns are in running sessions. ` +
+                "Take them off the stage first.",
+          );
+        }
+      }
 
       gms.update(gm.id, changes);
       logger.info("gm settings changed", { gmId: gm.id, fields: Object.keys(changes) });

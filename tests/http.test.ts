@@ -2639,6 +2639,9 @@ describe("a monster from another campaign", () => {
     ).character;
   };
 
+  const meAs = async (cookie: string) =>
+    await (await fetch(`${base}/api/auth/me`, authed(cookie))).json();
+
   const stage = (cookie: string, sessionId: string, characterId: string) =>
     fetch(
       `${base}/api/sessions/${sessionId}/stage`,
@@ -2662,6 +2665,49 @@ describe("a monster from another campaign", () => {
     const staged = (await response.json()).snapshot.characters;
     expect(staged.some((character: { characterId: string }) => character.characterId === ogre.id))
       .toBe(true);
+  });
+
+  test("pins the setting on while it is standing there", async () => {
+    const { cookie } = await signIn();
+    const table = await makeTable(cookie);
+    const ogre = await characterElsewhere(cookie, "npc");
+
+    const setting = (on: boolean) =>
+      fetch(`${base}/api/settings`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Origin: base, Cookie: cookie },
+        body: JSON.stringify({ showAllNpcs: on }),
+      });
+
+    expect((await setting(true)).status).toBe(200);
+    expect((await stage(cookie, table.session.id, ogre.id)).status).toBe(200);
+
+    // Switching it off is what takes the ogre out of the library it is standing
+    // on stage from, so the setting will not go off while it is there.
+    const refused = await setting(false);
+    expect(refused.status).toBe(409);
+    expect((await refused.json()).error.message).toMatch(/take it off the stage/i);
+    expect((await meAs(cookie)).gm.showAllNpcs).toBe(true);
+
+    // Switching it on again is never refused: only the way back out is closed.
+    expect((await setting(true)).status).toBe(200);
+
+    // Off the stage, and the setting is a setting again.
+    const slot = (await (await fetch(
+      `${base}/api/sessions/${table.session.id}`,
+      authed(cookie),
+    )).json()).snapshot.characters.find(
+      (character: { characterId: string }) => character.characterId === ogre.id,
+    );
+    expect(
+      (await fetch(
+        `${base}/api/sessions/${table.session.id}/stage/${slot.id}`,
+        authed(cookie, { method: "DELETE" }),
+      )).status,
+    ).toBe(200);
+
+    expect((await setting(false)).status).toBe(200);
+    expect((await meAs(cookie)).gm.showAllNpcs).toBe(false);
   });
 
   test("but a hero from another campaign cannot", async () => {

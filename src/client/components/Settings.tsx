@@ -202,7 +202,7 @@ function CardSize() {
  * refills without a reload — which is the point of holding the setting in a store
  * rather than only sending it to the server.
  */
-function ShowAllNpcs() {
+function ShowAllNpcs({ heldOn }: { heldOn: string | null }) {
   const [on, setOn] = useGmSetting("showAllNpcs");
   const save = useSaveSetting();
 
@@ -210,6 +210,12 @@ function ShowAllNpcs() {
     setOn(next);
     save({ showAllNpcs: next });
   };
+
+  // Held *on* rather than held: switching it on is always allowed, and a control
+  // that refused a press it is perfectly able to take would be making the wrong
+  // promise. Only the way back out is closed, and only while something is out
+  // there that depends on it.
+  const locked = heldOn !== null && on;
 
   return (
     <Setting
@@ -221,12 +227,17 @@ function ShowAllNpcs() {
           type="checkbox"
           className="toggle toggle-sm"
           checked={on}
+          disabled={locked}
           onChange={(event) => choose(event.target.checked)}
         />
       }
     >
       <p className={`text-xs ${TEXT_MUTED}`}>
-        Allow adding NPCs from your other campaigns to the stage.
+        {/* Why it will not move, in place of what it does. Somebody looking at a
+            control that has stopped taking presses is asking the first question,
+            not the second — and the setting is on, so its description is already
+            true in front of them. */}
+        {locked ? heldOn : "Allow adding NPCs from your other campaigns to the stage."}
       </p>
     </Setting>
   );
@@ -234,7 +245,23 @@ function ShowAllNpcs() {
 
 /* ------------------------------------------------------------------- drawer */
 
-export function SettingsDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function SettingsDrawer({
+  open,
+  onClose,
+  showAllNpcsHeldOn = null,
+}: {
+  open: boolean;
+  onClose: () => void;
+  /**
+   * Why `Show All NPCs` cannot be switched off just now, or null when it can.
+   *
+   * The console passes a sentence while a monster it borrowed is standing in its
+   * fight; the library page never does, because it is not looking at a stage. The
+   * rule itself lives on the server either way — this is only the half that tells
+   * a reader before they press rather than after.
+   */
+  showAllNpcsHeldOn?: string | null;
+}) {
   // Escape closes it, as it does every other layer in the app. Bound only while
   // it is open, so a stray Escape over the page is nobody's business.
   useEffect(() => {
@@ -297,7 +324,7 @@ export function SettingsDrawer({ open, onClose }: { open: boolean; onClose: () =
         >
           <div className="space-y-5">
             <CardSize />
-            <ShowAllNpcs />
+            <ShowAllNpcs heldOn={showAllNpcsHeldOn} />
           </div>
         </Panel>
       </div>

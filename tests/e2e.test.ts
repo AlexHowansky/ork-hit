@@ -2090,8 +2090,22 @@ describe("the session library can reach past its own campaign", () => {
     });
     await stage.getByText(ogre, { exact: true }).waitFor({ timeout: 5000 });
 
-    // Switched back off it leaves again, still without a reload.
-    await page.getByRole("checkbox", { name: "Show all NPCs" }).uncheck();
+    // And now it cannot be switched off, because switching it off is what would
+    // take that monster out of the library it is standing on stage from.
+    const toggle = page.getByRole("checkbox", { name: "Show all NPCs" });
+    expect(await toggle.isEnabled()).toBe(false);
+    // The drawer says why, in place of what the setting does.
+    expect(await page.locator('aside[aria-label="Settings"]').textContent())
+      .toContain("on the stage from another campaign");
+
+    // Off the stage, and the way back out opens.
+    await stage.getByRole("listitem").filter({ hasText: ogre })
+      .getByRole("button", { name: new RegExp(`Remove ${ogre}`) }).click();
+    // The stage arrives over the socket, so the control unlocks a beat later.
+    await page.locator("#setting-show-all-npcs:not([disabled])").waitFor({ timeout: 5000 });
+
+    // Switched back off it leaves the library again, still without a reload.
+    await toggle.uncheck();
     await page.waitForTimeout(500);
     expect(await ogreRow.count()).toBe(0);
 

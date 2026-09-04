@@ -815,6 +815,17 @@ campaigns with a `Goblin` in each are otherwise two identical rows. The console
 re-reads the library when the setting changes, so the list refills under the
 reader's hand rather than on the next visit.
 
+Switching it back **off** is the one setting change that can be refused. Turning
+it off is what takes a borrowed monster out of the library, and doing that while
+one is standing in a fight would leave a slot whose character the library no
+longer lists — no count beside it, no sheet to open from there, no second copy to
+add. So the server checks every running session of that game master first
+(`sessionCharacters.borrowedNpcsForGm`) and answers 409 while any is on a stage.
+The console greys the toggle out and says why in place of what the setting does,
+but it cannot be the whole rule: it can only see its own fight, and a game master
+may be running another in the next tab. Switching it *on* is never refused —
+only the way back out closes, and only while something out there depends on it.
+
 **How big a card is, is each game master's own setting.** It measures the
 *picture* on a card; the frame around it and the name underneath make the card
 itself larger — by a fixed amount, since the card is five by seven whatever the

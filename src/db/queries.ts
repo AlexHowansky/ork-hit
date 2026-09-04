@@ -550,6 +550,33 @@ const RECOVERY_UPDATE = `
 
 export const sessionCharacters = {
   /**
+   * How many monsters borrowed from another campaign are standing in one of this
+   * game master's running fights.
+   *
+   * The question `Show All NPCs` has to ask before it can be switched off: the
+   * setting is what puts a foreign monster within reach, and turning it off while
+   * one is on a stage would leave a slot whose character the library no longer
+   * lists — no count beside it, no sheet to open from there, no second copy to
+   * add. Rather than tidy that up behind the reader's back, the setting stays on
+   * until the stages are clear.
+   *
+   * Active sessions only. An ended fight is a record of what happened, not a
+   * thing anybody is looking at a library against.
+   */
+  borrowedNpcsForGm(gmId: string): number {
+    return db.query<{ count: number }, { gmId: string }>(`
+      SELECT COUNT(*) AS count
+      FROM session_characters sc
+      JOIN game_sessions gs ON gs.id = sc.game_session_id
+      JOIN characters c     ON c.id  = sc.character_id
+      WHERE gs.gm_id = $gmId
+        AND gs.status = 'active'
+        AND c.kind = 'npc'
+        AND c.campaign_id <> gs.campaign_id
+    `).get({ gmId })!.count;
+  },
+
+  /**
    * The stage in initiative order, each slot joined with the character in it.
    *
    * The order is derived rather than stored: HERO runs a segment in DEX order,
