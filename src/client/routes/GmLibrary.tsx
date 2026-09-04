@@ -28,6 +28,7 @@ import { useLiveSessions } from "../useLiveSessions.ts";
 import { measureTrack, useCardFit } from "../useCardFit.ts";
 import { useColumnSplit } from "../useColumnSplit.ts";
 import { ThemeToggle } from "../components/ThemeToggle.tsx";
+import { SettingsDrawer, SettingsToggle, useSettingsDrawer } from "../components/Settings.tsx";
 import {
   AppPage,
   Button,
@@ -515,6 +516,7 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
   /** Sheets from the current drop still to be filed, for the note the panel shows. */
   const [filing, setFiling] = useState(0);
   const [previewing, setPreviewing] = useState<Character | null>(null);
+  const [settingsOpen, toggleSettings] = useSettingsDrawer();
   /**
    * The character being dragged, if one is.
    *
@@ -811,172 +813,187 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
         </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />
+          {/* Between the theme and the sign-out, in the corner its drawer comes
+              out of — the same place, and the same gear, as on the console. */}
+          <SettingsToggle open={settingsOpen} onToggle={toggleSettings} />
           <Button onClick={onSignOut}>
             <Icon icon={faRightFromBracket} /> Sign out
           </Button>
         </div>
       </header>
 
-      {activeSessions.length > 0 ? (
-        <Panel title={`Sessions in progress (${activeSessions.length})`} className="shrink-0">
-          <ul className="space-y-2">
-            {activeSessions.map((session) => (
-              <li key={session.id}>
-                <SessionRow
-                  session={session}
-                  onOpen={() => navigate(`/gm/sessions/${session.id}`)}
-                  onEnd={() => void endSession(session)}
-                />
-              </li>
-            ))}
-          </ul>
-        </Panel>
-      ) : null}
+      {/*
+        The drawer pushes the library aside rather than covering it, exactly as
+        the log does on the console: this row is the push. Closed it has no
+        width, so the column below is the whole of the row and the page is
+        exactly what it was before the drawer existed.
+      */}
+      <div className="flex flex-col lg:flex-row lg:items-start wide:min-h-0 wide:flex-1 wide:items-stretch">
+        <div className="flex min-w-0 flex-1 flex-col gap-2.5 wide:min-h-0">
+          {activeSessions.length > 0 ? (
+            <Panel title={`Sessions in progress (${activeSessions.length})`} className="shrink-0">
+              <ul className="space-y-2">
+                {activeSessions.map((session) => (
+                  <li key={session.id}>
+                    <SessionRow
+                      session={session}
+                      onOpen={() => navigate(`/gm/sessions/${session.id}`)}
+                      onEnd={() => void endSession(session)}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </Panel>
+          ) : null}
 
-      <div
-        ref={containerRef}
-        // Three tracks rather than two: the handle is the middle one, and it is the
-        // gutter as well as the control, which is why there is no `gap` any more —
-        // it is exactly as wide as the gap it replaced.
-        className="space-y-3 wide:grid wide:min-h-0 wide:flex-1 wide:grid-cols-[var(--campaign-col)_auto_minmax(0,1.4fr)] wide:space-y-0"
-      >
-        <Panel
-          ref={panelRef}
-          title="Campaigns"
-          scroll
-          actions={
-            <Button
-              variant="primary"
-              onClick={() => setCampaignDialog({ open: true, editing: null })}
-            >
-              <Icon icon={faSquarePlus} /> New
-            </Button>
-          }
-        >
-          {campaigns.length === 0 ? (
-            <EmptyState>No campaigns yet. Create one to get started.</EmptyState>
-          ) : (
-            <div ref={gridRef} className={CARD_GRID}>
-              {campaigns.map((campaign) => (
-                <CampaignCard
-                  key={campaign.id}
-                  campaign={campaign}
-                  selected={campaign.id === selectedCampaignId}
-                  onSelect={() => setSelectedCampaignId(campaign.id)}
-                  onEdit={() => setCampaignDialog({ open: true, editing: campaign })}
-                  onDelete={() => void deleteCampaign(campaign)}
-                  takes={dragging && dragging.campaignId !== campaign.id ? dragging : null}
-                  onTake={(character) => void moveCharacter(character, campaign)}
-                  onPicture={(file) => void setCardImage(file, campaign)}
-                />
-              ))}
-            </div>
-          )}
-        </Panel>
-
-        {/* Between the two panels whether or not one is chosen, so the split does
-            not move as campaigns are selected and deselected. */}
-        <ColumnHandle {...handleProps} label="Resize the campaigns column" />
-
-        {selectedCampaign ? (
-          <Panel
-            scroll
-            {...sheetDrop}
-            // A ring rather than a border or a background tint: those would fight
-            // the panel's own `border-base-300` and `bg-base-100` for the same
-            // property, and which wins is down to stylesheet order.
-            className={sheetOver ? "ring-2 ring-primary" : ""}
-            title={`Characters in ${selectedCampaign.name}`}
-            actions={
-              <div className="flex gap-2">
+          <div
+            ref={containerRef}
+            // Three tracks rather than two: the handle is the middle one, and it is the
+            // gutter as well as the control, which is why there is no `gap` any more —
+            // it is exactly as wide as the gap it replaced.
+            className="space-y-3 wide:grid wide:min-h-0 wide:flex-1 wide:grid-cols-[var(--campaign-col)_auto_minmax(0,1.4fr)] wide:space-y-0"
+          >
+            <Panel
+              ref={panelRef}
+              title="Campaigns"
+              scroll
+              actions={
                 <Button
                   variant="primary"
-                  onClick={() => setCharacterDialog({ open: true, editing: null })}
+                  onClick={() => setCampaignDialog({ open: true, editing: null })}
                 >
-                  <Icon icon={faSquarePlus} /> Add
+                  <Icon icon={faSquarePlus} /> New
                 </Button>
-                {runningHere ? (
-                  <Button onClick={() => navigate(`/gm/sessions/${runningHere.id}`)}>
-                    <Icon icon={faPlay} /> Open
-                  </Button>
-                ) : (
-                  <Button onClick={() => void startSession()}>
-                    <Icon icon={faCirclePlay} /> Start
-                  </Button>
-                )}
-              </div>
-            }
-          >
-            {/*
-              A drop files its sheets one request at a time, and each card appears
-              as its sheet lands, so the line says what is still to come rather
-              than covering the panel with a spinner. `aria-live` because the
-              cards arriving underneath it are the only other announcement.
-            */}
-            {filing > 0 ? (
-              <p
-                className={`flex items-center gap-3 pb-3 text-sm ${TEXT_MUTED}`}
-                aria-live="polite"
-              >
-                <span className="loading loading-spinner loading-xs" aria-hidden="true" />
-                {filing === 1 ? "Filing 1 sheet…" : `Filing ${filing} sheets…`}
-              </p>
-            ) : null}
+              }
+            >
+              {campaigns.length === 0 ? (
+                <EmptyState>No campaigns yet. Create one to get started.</EmptyState>
+              ) : (
+                <div ref={gridRef} className={CARD_GRID}>
+                  {campaigns.map((campaign) => (
+                    <CampaignCard
+                      key={campaign.id}
+                      campaign={campaign}
+                      selected={campaign.id === selectedCampaignId}
+                      onSelect={() => setSelectedCampaignId(campaign.id)}
+                      onEdit={() => setCampaignDialog({ open: true, editing: campaign })}
+                      onDelete={() => void deleteCampaign(campaign)}
+                      takes={dragging && dragging.campaignId !== campaign.id ? dragging : null}
+                      onTake={(character) => void moveCharacter(character, campaign)}
+                      onPicture={(file) => void setCardImage(file, campaign)}
+                    />
+                  ))}
+                </div>
+              )}
+            </Panel>
 
-            {visibleCharacters.length === 0 && filing === 0 ? (
-              <EmptyState>
-                No characters in this campaign yet. Drop HTML sheets here to file them, or add
-                one with the button above.
-              </EmptyState>
-            ) : (
-              <div className={CARD_GRID}>
-                {visibleCharacters.map((character) => (
-                  <LibraryCharacterCard
-                    key={character.id}
-                    character={character}
-                    onOpen={() => setPreviewing(character)}
-                    onPicture={(file) => void setCardImage(file, character)}
-                    dragProps={{
-                      draggable: true,
-                      onDragStart: (event) => {
-                        event.dataTransfer.setData(CHARACTER_DRAG, character.id);
-                        event.dataTransfer.effectAllowed = "move";
-                        setDragging(character);
-                      },
-                      onDragEnd: () => setDragging(null),
-                    }}
-                    actions={
-                      <>
-                        {/* `bare` on all three: glyphs alone, so they can sit into
-                            the corner of the picture. The campaign cards above are
-                            drawn the same way. */}
-                        <IconButton
-                          bare
-                          label={`View ${character.name}'s sheet`}
-                          icon={<SheetIcon />}
-                          onClick={() => setPreviewing(character)}
-                        />
-                        <IconButton
-                          bare
-                          label={`Edit ${character.name}`}
-                          icon={<EditIcon />}
-                          onClick={() => setCharacterDialog({ open: true, editing: character })}
-                        />
-                        <IconButton
-                          bare
-                          label={`Delete ${character.name}`}
-                          icon={<DeleteIcon />}
-                          danger
-                          onClick={() => void deleteCharacter(character)}
-                        />
-                      </>
-                    }
-                  />
-                ))}
-              </div>
-            )}
-          </Panel>
-        ) : null}
+            {/* Between the two panels whether or not one is chosen, so the split does
+                not move as campaigns are selected and deselected. */}
+            <ColumnHandle {...handleProps} label="Resize the campaigns column" />
+
+            {selectedCampaign ? (
+              <Panel
+                scroll
+                {...sheetDrop}
+                // A ring rather than a border or a background tint: those would fight
+                // the panel's own `border-base-300` and `bg-base-100` for the same
+                // property, and which wins is down to stylesheet order.
+                className={sheetOver ? "ring-2 ring-primary" : ""}
+                title={`Characters in ${selectedCampaign.name}`}
+                actions={
+                  <div className="flex gap-2">
+                    <Button
+                      variant="primary"
+                      onClick={() => setCharacterDialog({ open: true, editing: null })}
+                    >
+                      <Icon icon={faSquarePlus} /> Add
+                    </Button>
+                    {runningHere ? (
+                      <Button onClick={() => navigate(`/gm/sessions/${runningHere.id}`)}>
+                        <Icon icon={faPlay} /> Open
+                      </Button>
+                    ) : (
+                      <Button onClick={() => void startSession()}>
+                        <Icon icon={faCirclePlay} /> Start
+                      </Button>
+                    )}
+                  </div>
+                }
+              >
+                {/*
+                  A drop files its sheets one request at a time, and each card appears
+                  as its sheet lands, so the line says what is still to come rather
+                  than covering the panel with a spinner. `aria-live` because the
+                  cards arriving underneath it are the only other announcement.
+                */}
+                {filing > 0 ? (
+                  <p
+                    className={`flex items-center gap-3 pb-3 text-sm ${TEXT_MUTED}`}
+                    aria-live="polite"
+                  >
+                    <span className="loading loading-spinner loading-xs" aria-hidden="true" />
+                    {filing === 1 ? "Filing 1 sheet…" : `Filing ${filing} sheets…`}
+                  </p>
+                ) : null}
+
+                {visibleCharacters.length === 0 && filing === 0 ? (
+                  <EmptyState>
+                    No characters in this campaign yet. Drop HTML sheets here to file them, or add
+                    one with the button above.
+                  </EmptyState>
+                ) : (
+                  <div className={CARD_GRID}>
+                    {visibleCharacters.map((character) => (
+                      <LibraryCharacterCard
+                        key={character.id}
+                        character={character}
+                        onOpen={() => setPreviewing(character)}
+                        onPicture={(file) => void setCardImage(file, character)}
+                        dragProps={{
+                          draggable: true,
+                          onDragStart: (event) => {
+                            event.dataTransfer.setData(CHARACTER_DRAG, character.id);
+                            event.dataTransfer.effectAllowed = "move";
+                            setDragging(character);
+                          },
+                          onDragEnd: () => setDragging(null),
+                        }}
+                        actions={
+                          <>
+                            {/* `bare` on all three: glyphs alone, so they can sit into
+                                the corner of the picture. The campaign cards above are
+                                drawn the same way. */}
+                            <IconButton
+                              bare
+                              label={`View ${character.name}'s sheet`}
+                              icon={<SheetIcon />}
+                              onClick={() => setPreviewing(character)}
+                            />
+                            <IconButton
+                              bare
+                              label={`Edit ${character.name}`}
+                              icon={<EditIcon />}
+                              onClick={() => setCharacterDialog({ open: true, editing: character })}
+                            />
+                            <IconButton
+                              bare
+                              label={`Delete ${character.name}`}
+                              icon={<DeleteIcon />}
+                              danger
+                              onClick={() => void deleteCharacter(character)}
+                            />
+                          </>
+                        }
+                      />
+                    ))}
+                  </div>
+                )}
+              </Panel>
+            ) : null}
+          </div>
+        </div>
+
+        <SettingsDrawer open={settingsOpen} onClose={toggleSettings} />
       </div>
 
       {campaignDialog.open ? (

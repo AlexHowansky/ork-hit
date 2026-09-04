@@ -201,6 +201,9 @@ export function LogDrawer({
    */
   return (
     <aside
+      // Named, because the console has two of these and an unnamed pair of
+      // complementary landmarks tells a reader moving between them nothing.
+      aria-label="Log"
       // Hidden from everything, not merely from the eye: a collapsed drawer is
       // still in the document, and a list nobody can see is not one a screen
       // reader should be reading out or a Tab should be landing in.

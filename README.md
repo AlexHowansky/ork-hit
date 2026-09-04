@@ -386,8 +386,8 @@ sevens the square picture and the bottom two the name under it. The ratio is
 declared once, as `aspect-[5/7]` on `CARD_BASE`, and the two parts divide it
 between them — the well takes its own width as a square and the caption takes
 what is left, which comes to two fifths of the width without a second number to
-keep in step with the first. So the deployment's `CARD_IMAGE_PX` still decides
-the size of a card, and the shape is no longer a matter of how tall a name
+keep in step with the first. So the reader's own card size still decides the
+size of a card, and the shape is no longer a matter of how tall a name
 happened to make its strip. The strip's padding is horizontal only, the name
 centred in it both ways: at the smallest card the setting allows, a fixed 12px
 above and below would be taller than the whole strip. Centring is two rules
@@ -799,20 +799,37 @@ one to remove. It outranks a portrait found in a sheet uploaded alongside it, an
 loses to a picture chosen in the same submission, so neither box nor file has to
 be undone by the other.
 
-**How big a card is, is a deployment setting.** `CARD_IMAGE_PX` (default 176)
-measures the *picture* on a card; the frame around it and the name underneath
-make the card itself larger — by a fixed amount, since the card is five by seven
-whatever the picture size is. Getting that number into the browser takes a small
-detour: the client is a bundle built when the server starts, so the value cannot
-be compiled in, and fetching it as JSON would draw the first cards at one size
-and then resize them. Instead the server serves a two-line stylesheet
-(`server/routes/appearance.ts`) declaring `--card-image-size`, which is what the
-card grid is measured in — so nothing needs to re-render when it lands, and no
-component has to know the setting exists. `styles.css` declares the same property
-with the default, so a page whose request for it fails is still laid out
-correctly. The link is attached by `client/appearance.ts` at startup rather than
-written into `index.html`, because Bun resolves the document's links at build
-time and this one only exists at run time.
+**How big a card is, is each game master's own setting.** It measures the
+*picture* on a card; the frame around it and the name underneath make the card
+itself larger — by a fixed amount, since the card is five by seven whatever the
+picture size is. It used to be `CARD_IMAGE_PX`, one number the deployment set for
+everybody, and it moved because it was never a fact about the deployment: a game
+master on a laptop beside the table and one casting to a television want
+different answers, and the server has no way to know which it is talking to.
+
+So it lives on the `gms` row (migration `012`), the range it may take is stated
+once in `lib/cards.ts` — the slider, the schema that checks what the slider sends
+and the stored-picture size all read it from there — and it is dragged in the
+settings drawer (`client/components/Settings.tsx`), which is on the game master's
+screens for exactly the reason it is stored where it is: a player has no account
+to keep a setting against, and their screens draw at the default.
+
+Getting the number onto the page is the interesting part. It arrives with the
+identity, on the `/api/auth/me` call the client already makes before it renders
+anything, so there is no second round trip and no first paint at the wrong size.
+`client/cardSize.ts` then writes it as an **inline** custom property on the
+document element — `--card-image-size`, which is what the card grid is measured
+in. Inline is what makes it win over the `:root` default in `styles.css` without
+a specificity argument, and it is the same move `useColumnSplit` makes for a
+dragged column: a value belonging to this page view, set on the page rather than
+described in a rule. Nothing re-renders when it changes, and no component has to
+know the setting exists — which is why dragging the slider reflows the library
+behind the drawer for free. Signing out removes the property, so the next person
+at that browser is not left with someone else's cards.
+
+`styles.css` declares the same property with the default (176px), so a signed-out
+page, a player's screen, and a game master whose settings never arrived are all
+laid out correctly.
 
 The grid track adds the card's border back on (`--card-border`), so the picture
 is the size that was asked for rather than two pixels short of it — the one place
@@ -820,11 +837,16 @@ those two variables meet, and the reason the border width is a variable at all.
 
 **Pictures are stored at the size they are looked at.** Every image the app shows
 — a campaign's, a character's, and the portrait lifted out of a sheet — ends up
-in a square card 176px across, so keeping the 4000px photograph that was uploaded
-costs a game master's phone several megabytes to draw a thumbnail. `fitToCard`
+in a square card, so keeping the 4000px photograph that was uploaded costs a game
+master's phone several megabytes to draw a thumbnail. `fitToCard`
 (`src/server/uploads.ts`, on the path every image upload takes) scales the
-**shorter** side down to `limits.storedImagePx` — twice `CARD_IMAGE_PX`, which
-covers a 2x screen exactly — since that is the side that has to cover a square. Nothing is cropped: the card takes its square at display time,
+**shorter** side down to `limits.storedImagePx` — twice the *largest* card anyone
+may ask for, which covers that card on a 2x screen exactly — since that is the
+side that has to cover a square. Twice the largest rather than twice the reader's
+own: a picture is stored once and looked at by game masters who have chosen
+different sizes, so the only size that keeps all of them sharp is the biggest of
+them. A table that never leaves the default pays for that in bytes, which is the
+better way round — a picture stored soft cannot be made sharp again. Nothing is cropped: the card takes its square at display time,
 and the rest of the picture is still in the file for anywhere it is shown
 differently. Nothing is enlarged either, and one whose bytes sharp cannot read is
 stored exactly as it arrived, since it passed the magic-byte check and a game

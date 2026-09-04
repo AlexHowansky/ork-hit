@@ -318,6 +318,19 @@ describe("images are stored at the size, and in the format, they are best kept i
     return new Uint8Array(await (format === "gif" ? image.gif() : image.png()).toBuffer());
   };
 
+  /**
+   * A shorter side comfortably over the limit, so every fixture here is a
+   * picture that actually has to be scaled.
+   *
+   * Derived rather than written out, because the limit is no longer a number
+   * anybody sets — it is twice the largest card the app allows (`lib/cards.ts`),
+   * and a fixture with a literal in it goes quietly stale the day that moves:
+   * `fitToCard` never enlarges, so a picture that has fallen under the limit
+   * passes straight through and every assertion about scaling stops testing
+   * anything.
+   */
+  const OVERSIZE = limits.storedImagePx + 120;
+
   const sizeOf = async (path: string) => {
     const { width, height, format } = await sharp(await Bun.file(path).arrayBuffer()).metadata();
     return { width, height, format };
@@ -338,21 +351,21 @@ describe("images are stored at the size, and in the format, they are best kept i
   });
 
   test("the shape of the picture is never changed", async () => {
-    const tall = await storeImage(file("tall.png", await picture(900, 2700)));
+    const tall = await storeImage(file("tall.png", await picture(OVERSIZE, OVERSIZE * 3)));
     const { width, height } = await sizeOf(uploadPath(tall));
 
     expect(width).toBe(limits.storedImagePx);
-    expect(height! / width!).toBeCloseTo(2700 / 900, 1);
+    expect(height! / width!).toBeCloseTo(3, 1);
   });
 
   test("nothing is cropped away", async () => {
     // A panorama keeps its panorama-ness: the card crops at display time, and the
     // rest of the picture is still in the file.
-    const wide = await storeImage(file("wide.png", await picture(4000, 800)));
+    const wide = await storeImage(file("wide.png", await picture(OVERSIZE * 5, OVERSIZE)));
     const { width, height } = await sizeOf(uploadPath(wide));
 
     expect(height).toBe(limits.storedImagePx);
-    expect(width).toBe(Math.round(4000 * (limits.storedImagePx / 800)));
+    expect(width).toBe(limits.storedImagePx * 5);
   });
 
   test("a picture already small enough keeps its size, whatever format it ends up in", async () => {
@@ -376,7 +389,9 @@ describe("images are stored at the size, and in the format, they are best kept i
   });
 
   test("a GIF is fitted whole rather than flattened to its first frame", async () => {
-    const upload = await storeImage(file("moving.gif", await picture(1600, 1200, "gif")));
+    const upload = await storeImage(
+      file("moving.gif", await picture(Math.round(OVERSIZE * (4 / 3)), OVERSIZE, "gif")),
+    );
 
     // Whichever format wins, every frame is still there and the picture is the
     // size a card wants — a GIF must never come back as one still frame.
@@ -388,7 +403,7 @@ describe("images are stored at the size, and in the format, they are best kept i
   });
 
   test("a portrait taken out of a sheet is scaled like any other picture", async () => {
-    const portrait = await picture(1800, 1200);
+    const portrait = await picture(Math.round(OVERSIZE * 1.5), OVERSIZE);
     const sheet = await storeSheet(
       file("hero.html", `<img src="data:image/png;base64,${Buffer.from(portrait).toString("base64")}">`),
     );

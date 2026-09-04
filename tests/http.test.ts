@@ -12,6 +12,7 @@ import { serverOptions } from "../src/server/app.ts";
 import { registerServer } from "../src/server/ws.ts";
 import sharp from "sharp";
 import { gms } from "../src/db/queries.ts";
+import { CARD_IMAGE_PX } from "../src/lib/cards.ts";
 import { config, limits } from "../src/lib/config.ts";
 import { unique } from "./helpers.ts";
 import {
@@ -2164,7 +2165,6 @@ describe("the deployment's card size reaches the browser", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toStartWith("text/css");
     const css = await response.text();
-    expect(css).toContain(`--card-image-size: ${config.cardImagePx}px`);
     expect(css).toContain(`--sheet-size: ${config.sheetWidthPct}`);
     // A multiplier, so the stylesheet keeps the strengths the sheen was tuned at.
     expect(css).toContain(`--card-sheen-strength: ${config.cardSheenPct / 100}`);
@@ -2211,8 +2211,11 @@ describe("the deployment's card size reaches the browser", () => {
     }
   });
 
-  test("and the stored pictures follow it, so bigger cards stay sharp", () => {
-    expect(limits.storedImagePx).toBe(config.cardImagePx * 2);
+  test("and the stored pictures cover the largest card anyone may ask for", () => {
+    // Not twice the reader's own card, which is a per-game-master setting now:
+    // one stored picture is looked at by readers who have chosen different
+    // sizes, so it is sized for the biggest of them.
+    expect(limits.storedImagePx).toBe(CARD_IMAGE_PX.max * 2);
   });
 
 
@@ -2510,5 +2513,77 @@ describe("the upload limit covers a whole submission", () => {
       authed(cookie, { method: "POST", body: form }),
     );
     expect(response.status).toBe(201);
+  });
+});
+
+describe("a game master's own settings", () => {
+  const patch = (cookie: string | null, body: unknown) =>
+    fetch(`${base}/api/settings`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Origin: base,
+        ...(cookie ? { Cookie: cookie } : {}),
+      },
+      body: JSON.stringify(body),
+    });
+
+  const meAs = async (cookie: string) =>
+    await (await fetch(`${base}/api/auth/me`, authed(cookie))).json();
+
+  test("a saved card size comes back with the identity", async () => {
+    const { cookie } = await signIn();
+
+    // The size a new account starts at is the one the deployment setting used to
+    // hand everybody.
+    expect((await meAs(cookie)).gm.cardImagePx).toBe(CARD_IMAGE_PX.default);
+
+    const response = await patch(cookie, { cardImagePx: 320 });
+    expect(response.status).toBe(200);
+    expect((await response.json()).settings.cardImagePx).toBe(320);
+
+    // And it is on the identity the console reads at boot, which is the whole
+    // reason it rides along there rather than behind a GET of its own.
+    expect((await meAs(cookie)).gm.cardImagePx).toBe(320);
+  });
+
+  test("one game master's size is not another's", async () => {
+    const mine = await signIn();
+    const theirs = await signIn();
+
+    expect((await patch(mine.cookie, { cardImagePx: CARD_IMAGE_PX.max })).status).toBe(200);
+
+    expect((await meAs(mine.cookie)).gm.cardImagePx).toBe(CARD_IMAGE_PX.max);
+    expect((await meAs(theirs.cookie)).gm.cardImagePx).toBe(CARD_IMAGE_PX.default);
+  });
+
+  test("a size outside the slider's range is refused", async () => {
+    const { cookie } = await signIn();
+
+    for (const size of [CARD_IMAGE_PX.min - 1, CARD_IMAGE_PX.max + 1, 0, -40, 12.5, "big"]) {
+      expect((await patch(cookie, { cardImagePx: size })).status).toBe(400);
+    }
+
+    // Refused means unchanged, not partly written.
+    expect((await meAs(cookie)).gm.cardImagePx).toBe(CARD_IMAGE_PX.default);
+  });
+
+  test("an empty change is allowed and changes nothing", async () => {
+    // Every field is optional, as on the vitals route: a panel that touches no
+    // control sends no control, and that is not an error.
+    const { cookie } = await signIn();
+    expect((await patch(cookie, {})).status).toBe(200);
+    expect((await meAs(cookie)).gm.cardImagePx).toBe(CARD_IMAGE_PX.default);
+  });
+
+  test("nobody but a game master may write them", async () => {
+    const { cookie } = await signIn();
+    const table = await makeTable(cookie);
+    const player = await joinAs(table.session.code, "Nim");
+
+    expect((await patch(null, { cardImagePx: 320 })).status).toBe(401);
+    // A player is signed in, but not as an account — there is no row of theirs
+    // for a setting to live on.
+    expect((await patch(player, { cardImagePx: 320 })).status).toBe(401);
   });
 });

@@ -32,7 +32,6 @@ const font =
 const css =
   (font?.atImport ?? "") +
   `:root {\n` +
-  `  --card-image-size: ${config.cardImagePx}px;\n` +
   `  --sheet-size: ${config.sheetWidthPct};\n` +
   // A multiplier rather than a percentage: the strengths the sheen was tuned at
   // stay in the stylesheet, and this only scales them.

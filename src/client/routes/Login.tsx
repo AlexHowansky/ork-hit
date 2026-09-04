@@ -10,6 +10,7 @@ import { useState } from "react";
 import { faDiceD20 } from "@fortawesome/free-solid-svg-icons";
 import { useNavigate, useSearchParams } from "react-router";
 import { api } from "../api.ts";
+import { applyCardSize } from "../cardSize.ts";
 import {
   Button,
   Field,
@@ -70,10 +71,12 @@ export function Login({ onIdentity }: { onIdentity: (identity: Identity) => void
     event.preventDefault();
     setBusy(true);
     try {
-      const result = await api.postJson<{ gm: { id: string; email: string } }>(
+      const result = await api.postJson<{ gm: Extract<Identity, { kind: "gm" }>["gm"] }>(
         "/api/auth/gm/login",
         { email, password },
       );
+      // Their own card size, on the page before the library it sizes.
+      applyCardSize(result.gm.cardImagePx);
       onIdentity({ kind: "gm", gm: result.gm });
       navigate("/gm");
     } catch (error) {

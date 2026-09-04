@@ -50,7 +50,10 @@ export const gms = {
     return gms.byId(id)!;
   },
 
-  update(id: string, changes: { email?: string; passwordHash?: string }): void {
+  update(
+    id: string,
+    changes: { email?: string; passwordHash?: string; cardImagePx?: number },
+  ): void {
     if (changes.email !== undefined) {
       db.query("UPDATE gms SET email = $email, updated_at = $ts WHERE id = $id")
         .run({ id, email: changes.email, ts: now() });
@@ -60,6 +63,10 @@ export const gms = {
         .run({ id, hash: changes.passwordHash, ts: now() });
       // A password change invalidates every existing browser session.
       db.query("DELETE FROM gm_auth_sessions WHERE gm_id = $id").run({ id });
+    }
+    if (changes.cardImagePx !== undefined) {
+      db.query("UPDATE gms SET card_image_px = $px, updated_at = $ts WHERE id = $id")
+        .run({ id, px: changes.cardImagePx, ts: now() });
     }
   },
 

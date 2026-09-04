@@ -550,3 +550,75 @@ body {
     scale: 1;
   }
 }
+
+/*
+  The range slider's rail and thumb.
+
+  These are daisyUI's own — the same declarations, against the same custom
+  properties its `.range` sets — written out flat because the development server
+  does not serve them in a form any browser applies.
+
+  Bun's dev CSS pipeline rewrites daisyUI's stylesheet into nested rules, and for
+  the range it nests the declarations *inside* a pseudo-element selector:
+  `.range { &::-webkit-slider-thumb { @layer … { & { … } } } }`. A rule nested
+  under a pseudo-element is not something a browser resolves, so the whole of the
+  track and thumb is dropped and the control renders as a bare dot on no rail.
+  The production build flattens the same source correctly, so this is a
+  development-only breakage — which is the worst kind to leave, since it is the
+  only version anybody builds the screen against.
+
+  Written against `--range-*` rather than against colours, so the theme still
+  decides what these look like and a daisyUI upgrade that retunes the component
+  carries most of the way. What is left out is decoration: the depth highlights
+  on the thumb. What is kept is the shape, the colour, and the fill to the left of
+  the thumb — the part that says how far along the range you are.
+
+  Delete this when Bun's dev pipeline stops nesting under pseudo-elements; the
+  test for that is a dev server showing a rail without it.
+*/
+.range::-webkit-slider-runnable-track {
+  height: calc(var(--range-thumb-size) * 0.5);
+  border-radius: var(--radius-selector);
+  background-color: var(--range-bg);
+}
+
+.range::-moz-range-track {
+  height: calc(var(--range-thumb-size) * 0.5);
+  border-radius: var(--radius-selector);
+  background-color: var(--range-bg);
+}
+
+.range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  box-sizing: border-box;
+  position: relative;
+  inset-block-start: 50%;
+  transform: translateY(-50%);
+  width: var(--range-thumb-size);
+  height: var(--range-thumb-size);
+  border: var(--range-p) solid;
+  border-radius: calc(var(--radius-selector) + min(var(--range-p), var(--radius-selector-max)));
+  background-color: var(--range-thumb);
+  color: var(--range-progress);
+  /* The second shadow is the fill: a spread wide enough to reach the near end of
+     the track, offset back by the track's own width, and clipped by the input's
+     `overflow: hidden`. It is how the component fills the rail behind the thumb
+     without an element to fill it with. */
+  box-shadow:
+    0 0 0 2rem var(--range-thumb) inset,
+    var(--range-fill-x) var(--range-fill-y) 0 var(--range-fill-spread);
+}
+
+.range::-moz-range-thumb {
+  box-sizing: border-box;
+  width: var(--range-thumb-size);
+  height: var(--range-thumb-size);
+  border: var(--range-p) solid;
+  border-radius: calc(var(--radius-selector) + min(var(--range-p), var(--radius-selector-max)));
+  background-color: currentColor;
+  color: var(--range-progress);
+  box-shadow:
+    0 0 0 2rem var(--range-thumb) inset,
+    var(--range-fill-x) var(--range-fill-y) 0 var(--range-fill-spread);
+}

@@ -11,6 +11,7 @@ import { Database } from "bun:sqlite";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { migrate } from "../src/db/migrate.ts";
+import { CARD_IMAGE_PX } from "../src/lib/cards.ts";
 
 const MIGRATIONS = join(import.meta.dir, "../src/db/migrations");
 
@@ -45,7 +46,7 @@ describe("one active session per campaign", () => {
     addActiveSession(target, "mid", "2026-01-01T11:00:00.000Z");
     addActiveSession(target, "new", "2026-01-01T12:00:00.000Z");
 
-    expect(migrate(target)).toBe(10);
+    expect(migrate(target)).toBe(11);
 
     const statuses = Object.fromEntries(
       target.query<{ id: string; status: string }, []>(
@@ -297,5 +298,22 @@ describe("held actions", () => {
         "SELECT resume_slot_id FROM game_sessions WHERE id = 'only'",
       ).get()!.resume_slot_id,
     ).toBeNull();
+  });
+});
+
+describe("a game master's card size", () => {
+  test("an existing account comes through at the size the deployment used to set", () => {
+    const target = atInitialSchema();
+
+    migrate(target);
+
+    // The default the env var carried, so a table that upgrades sees the library
+    // it went to bed with. And it is the same number the app reads from
+    // `lib/cards.ts` — the migration writes it as a literal because SQL cannot
+    // import, so this is the assertion that keeps the two honest.
+    const size = target.query<{ card_image_px: number }, []>(
+      "SELECT card_image_px FROM gms WHERE id = 'gm1'",
+    ).get()!.card_image_px;
+    expect(size).toBe(CARD_IMAGE_PX.default);
   });
 });

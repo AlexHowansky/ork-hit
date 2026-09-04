@@ -7,6 +7,7 @@
  */
 
 import { z } from "zod";
+import { CARD_IMAGE_PX } from "./cards.ts";
 import { limits } from "./config.ts";
 import { errors } from "./errors.ts";
 import {
@@ -105,6 +106,22 @@ export const schemas = {
     endurance: z.number().int().min(-999).max(999).optional(),
     stun: z.number().int().min(-999).max(999).optional(),
     body: z.number().int().min(-999).max(999).optional(),
+  }),
+
+  /**
+   * A game master's own settings. Every field is optional, as on `setVitals`: a
+   * panel that changes one control sends one control.
+   *
+   * The bounds are the slider's own (`lib/cards.ts`), so a value this refuses is
+   * one no control in the app could have produced.
+   */
+  gmSettings: z.object({
+    cardImagePx: z.coerce
+      .number()
+      .int()
+      .min(CARD_IMAGE_PX.min)
+      .max(CARD_IMAGE_PX.max)
+      .optional(),
   }),
 
   /**

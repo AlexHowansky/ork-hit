@@ -8,6 +8,8 @@ export interface GmRow {
   id: string;
   email: string;
   password_hash: string;
+  /** How big this game master has asked for cards to be drawn, in CSS pixels. */
+  card_image_px: number;
   created_at: string;
   updated_at: string;
 }

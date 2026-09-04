@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useNavigate } from "react-router";
 import { api } from "./api.ts";
+import { applyCardSize } from "./cardSize.ts";
 import { ConfirmProvider } from "./components/Confirm.tsx";
 import { LoadingNote } from "./components/ui.tsx";
 import { ToastProvider, useToast } from "./components/Toast.tsx";
@@ -23,11 +24,15 @@ function Shell() {
   const navigate = useNavigate();
   const toast = useToast();
 
-  // One call on boot decides which of the three worlds we're in.
+  // One call on boot decides which of the three worlds we're in — and carries a
+  // game master's own settings with it, so their card size is on the page before
+  // there is a card to draw rather than a moment after.
   useEffect(() => {
     void (async () => {
       try {
-        setIdentity(await api.get<Identity>("/api/auth/me"));
+        const who = await api.get<Identity>("/api/auth/me");
+        if (who.kind === "gm") applyCardSize(who.gm.cardImagePx);
+        setIdentity(who);
       } catch {
         setIdentity({ kind: "anonymous" });
       }
@@ -40,6 +45,9 @@ function Shell() {
     } catch (error) {
       toast.showError(error);
     }
+    // Back to the default: the next person to use this browser is not the one
+    // whose eyes the cards were sized for.
+    applyCardSize(null);
     setIdentity({ kind: "anonymous" });
     navigate("/");
   }, [navigate, toast]);

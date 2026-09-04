@@ -13,7 +13,7 @@ import type { Browser, Locator, Page } from "playwright";
 import { serverOptions } from "../src/server/app.ts";
 import { registerServer } from "../src/server/ws.ts";
 import { gms } from "../src/db/queries.ts";
-import { config } from "../src/lib/config.ts";
+import { CARD_IMAGE_PX } from "../src/lib/cards.ts";
 import { unique } from "./helpers.ts";
 
 const PASSWORD = "a-sufficiently-long-password";
@@ -495,8 +495,11 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
      * on screen is the honest question anyway: the whole promise of this drawer
      * is that closed, it costs the console nothing.
      */
+    // By name: the console carries a settings drawer as well, built the same way
+    // and out of the same markup, so "the aside" is no longer a thing to say.
+    const logDrawer = (page: Page) => page.locator('aside[aria-label="Log"]');
     const drawerWidth = async (page: Page) =>
-      (await page.locator("aside").boundingBox())?.width ?? 0;
+      (await logDrawer(page).boundingBox())?.width ?? 0;
 
     for (const page of [gm, player]) {
       // A 16:9 default viewport, so the drawer is a column and collapses
@@ -504,7 +507,7 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
       expect(await drawerWidth(page)).toBe(0);
       // Closed it is `inert` as well as clipped, so nothing in it can be
       // clicked or read out.
-      expect(await page.locator("aside").getAttribute("inert")).not.toBeNull();
+      expect(await logDrawer(page).getAttribute("inert")).not.toBeNull();
 
       // `exact`, because the drawer's own close button is also named for the log.
       const toggle = page.getByRole("button", { name: "Log", exact: true });
@@ -516,7 +519,7 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
       // The line was written before either of these screens existed: the console
       // had not opened its socket and the player had not been given the code. It
       // can only have come out of the database, on the snapshot.
-      await page.locator("aside").getByText("Session started").waitFor({ timeout: 5000 });
+      await logDrawer(page).getByText("Session started").waitFor({ timeout: 5000 });
 
       // All three ways out close it: the × in the drawer...
       await page.getByRole("button", { name: "Close the log" }).click();
@@ -546,7 +549,7 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     // The drawer is open *before* anybody joins, so what appears in it appears
     // because a snapshot arrived — not because the page was built again.
     await gm.getByRole("button", { name: "Log", exact: true }).click();
-    const log = gm.locator("aside");
+    const log = gm.locator('aside[aria-label="Log"]');
     await log.getByText("Session started").waitFor({ timeout: 5000 });
     expect(await log.getByText("Dana joined").count()).toBe(0);
 
@@ -1169,10 +1172,10 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     const well = gm.locator(`${campaignCard} .aspect-square`).first();
     const box = (await well.boundingBox())!;
 
-    expect(Math.round(box.width)).toBe(config.cardImagePx);
+    expect(Math.round(box.width)).toBe(CARD_IMAGE_PX.default);
     // Square, and the card around it is taller than its picture — the border and
     // the name below it are extra, as the setting's documentation promises.
-    expect(Math.round(box.height)).toBe(config.cardImagePx);
+    expect(Math.round(box.height)).toBe(CARD_IMAGE_PX.default);
     const card = (await well.locator("xpath=ancestor::article[1]").boundingBox())!;
     expect(card.height).toBeGreaterThan(box.height);
 
@@ -1952,4 +1955,66 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
 
     await page.close();
   }, 60_000);
+});
+
+describe("how big cards are drawn is the reader's own setting", () => {
+  test("the slider resizes the library, and the size is still there after a reload", async () => {
+    if (!browser) return;
+
+    // Their own account, because the size is stored against it: the game master
+    // the rest of this file signs in as must not find their library resized by
+    // this test.
+    const mine = `${unique("gm")}@example.com`;
+    gms.create(mine, await Bun.password.hash(PASSWORD, { algorithm: "argon2id" }));
+
+    const page = await (await browser.newContext()).newPage();
+    await page.goto(base);
+    await page.getByRole("tab", { name: "Game master" }).click();
+    await page.getByLabel("Email").fill(mine);
+    await page.getByLabel("Password").fill(PASSWORD);
+    await page.getByRole("button", { name: "Sign in" }).click();
+    await page.waitForURL("**/gm");
+
+    const campaignName = unique("Campaign");
+    await page.getByRole("button", { name: "New", exact: true }).click();
+    await page.getByLabel("Campaign name").fill(campaignName);
+    await page.getByRole("button", { name: "Create campaign" }).click();
+    await page.getByText(`Characters in ${campaignName}`).waitFor();
+
+    const well = page
+      .locator(`article:has(button[aria-label="Select ${campaignName}"]) .aspect-square`)
+      .first();
+    const widthOf = async () => Math.round((await well.boundingBox())!.width);
+
+    // A new account starts where the deployment setting used to put everybody.
+    expect(await widthOf()).toBe(CARD_IMAGE_PX.default);
+
+    await page.getByRole("button", { name: "Settings" }).click();
+    const slider = page.getByRole("slider", { name: "Card size" });
+    const wanted = CARD_IMAGE_PX.default + CARD_IMAGE_PX.step * 8;
+
+    // The save is debounced, so the request is what is waited on rather than a
+    // guess at how long a drag takes to settle.
+    const saved = page.waitForResponse(
+      (response) => response.url().endsWith("/api/settings") && response.status() === 200,
+    );
+    await slider.fill(String(wanted));
+
+    // The cards move under the slider, before anything has been saved: the size
+    // goes onto the document as an inline custom property and the grid reflows
+    // off it, so waiting for the property is waiting for the whole mechanism.
+    await page.waitForFunction(
+      (px) => document.documentElement.style.getPropertyValue("--card-image-size") === `${px}px`,
+      wanted,
+    );
+    expect(await widthOf()).toBe(wanted);
+    await saved;
+
+    // And the size belongs to the account rather than to the page view.
+    await page.reload();
+    await page.getByText(`Characters in ${campaignName}`).waitFor();
+    expect(await widthOf()).toBe(wanted);
+
+    await page.close();
+  });
 });

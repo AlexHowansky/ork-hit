@@ -47,7 +47,9 @@ export const authRoutes = {
       startGmSession(request, gm.id, Math.floor(limits.gmSessionTtlMs / 1000));
       logger.info("gm signed in", { gmId: gm.id });
 
-      return json({ gm: { id: gm.id, email: gm.email } });
+      // The same shape `/api/auth/me` answers with, settings and all: signing in
+      // and arriving already signed in should put the console in the same state.
+      return json({ gm: { id: gm.id, email: gm.email, cardImagePx: gm.card_image_px } });
     }),
   },
 
@@ -95,7 +97,14 @@ export const authRoutes = {
   "/api/auth/me": {
     GET: handler((request: BunRequest) => {
       const gm = currentGm(request);
-      if (gm) return json({ kind: "gm", gm: { id: gm.id, email: gm.email } });
+      // The settings ride along with the identity: the console needs the card
+      // size before it draws a card, and this is the call it already makes.
+      if (gm) {
+        return json({
+          kind: "gm",
+          gm: { id: gm.id, email: gm.email, cardImagePx: gm.card_image_px },
+        });
+      }
 
       const player = currentPlayer(request);
       if (player) {

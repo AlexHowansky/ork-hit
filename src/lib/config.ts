@@ -5,6 +5,8 @@
  * other module reads `process.env` directly.
  */
 
+import { CARD_IMAGE_PX } from "./cards.ts";
+
 function bool(value: string | undefined, fallback = false): boolean {
   if (value === undefined) return fallback;
   return value === "1" || value.toLowerCase() === "true";
@@ -136,14 +138,6 @@ export const config = {
    */
   playerGraceMs: duration(process.env.PLAYER_GRACE_MS, 30_000),
   /**
-   * How large the picture on a card is drawn, in CSS pixels.
-   *
-   * The card itself comes out taller: its border and the name underneath are
-   * extra. Reaches the browser as a custom property (see routes/appearance.ts),
-   * so changing it is a restart rather than a rebuild.
-   */
-  cardImagePx: whole(process.env.CARD_IMAGE_PX, 176, 64, 640),
-  /**
    * How much of the window a character sheet is opened over, as a percentage.
    *
    * It sets both dimensions, which is what keeps the sheet in the window's own
@@ -202,12 +196,18 @@ export const limits = {
    * The shorter side a stored image is scaled down to.
    *
    * Every picture the app shows is cropped into a square card, so the shorter
-   * side is what has to cover it. Twice the card's own size covers a 2x screen
-   * exactly, and the full-width card a phone shows, without keeping a 4000px
-   * photograph to draw a thumbnail — and it follows the card, so making cards
-   * bigger keeps the pictures sharp rather than blowing them up.
+   * side is what has to cover it, and twice the card's own size covers a 2x
+   * screen exactly — which is the whole of the reasoning, and used to make this
+   * twice the deployment's card size.
+   *
+   * It is twice the *largest* card instead now that how big a card is drawn is
+   * each game master's own setting (see `lib/cards.ts`). A picture is stored
+   * once and looked at by readers who have chosen different sizes, so the only
+   * size that keeps all of them sharp is the biggest any of them may ask for.
+   * The cost is a bigger file for a table that never leaves the default — worth
+   * it against a picture that cannot be made sharp again once it is stored soft.
    */
-  storedImagePx: config.cardImagePx * 2,
+  storedImagePx: CARD_IMAGE_PX.max * 2,
   /** Sliding window before a GM has to log in again. */
   gmSessionTtlMs: 7 * 24 * 60 * 60 * 1000,
   /** Hard ceiling regardless of activity. */

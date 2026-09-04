@@ -1,0 +1,22 @@
+-- How big a game master wants cards drawn.
+--
+-- This used to be `CARD_IMAGE_PX`, a setting of the deployment: one number for
+-- everybody who opened the app. But how big a card should be is a fact about one
+-- reader's eyes and one reader's screen — a game master on a laptop beside the
+-- table and one casting to a television want different answers, and neither of
+-- them is the server's to give. So it comes to the row it was always about.
+--
+-- On `gms` rather than in the browser because it should follow a game master to
+-- whichever machine they open the library on, which `localStorage` cannot do.
+-- The theme sits in the browser for the opposite reason: whether a room is dark
+-- is a fact about the room, not about the person.
+--
+-- 176 is the size the deployment setting defaulted to, so every existing row
+-- comes through this migration looking exactly as it did yesterday. It is
+-- written out here because SQL cannot read `CARD_IMAGE_PX.default` in
+-- `src/lib/cards.ts`, which is where the same number lives for everything else —
+-- if one of the two ever moves, the other has to be moved by hand.
+--
+-- Nothing existing changes meaning, so there is no session to end here.
+
+ALTER TABLE gms ADD COLUMN card_image_px INTEGER NOT NULL DEFAULT 176;

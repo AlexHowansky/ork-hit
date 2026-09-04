@@ -111,7 +111,7 @@ export interface Snapshot {
 
 export type Identity =
   | { kind: "anonymous" }
-  | { kind: "gm"; gm: { id: string; email: string } }
+  | { kind: "gm"; gm: { id: string; email: string; cardImagePx: number } }
   | {
       kind: "player";
       player: { id: string; name: string; sessionId: string; claimedCharacterId: string | null };

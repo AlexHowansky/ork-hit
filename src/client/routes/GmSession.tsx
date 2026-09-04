@@ -39,6 +39,7 @@ import {
 import type { VitalsPatch } from "../components/Vitals.tsx";
 import { InitiativeList, stageLabel } from "../components/InitiativeList.tsx";
 import { LogDrawer, LogToggle, useLogDrawer } from "../components/EventLog.tsx";
+import { SettingsDrawer, SettingsToggle, useSettingsDrawer } from "../components/Settings.tsx";
 import { SegmentFilterToggle, useSegmentFilter } from "../components/SegmentFilter.tsx";
 import { TurnControls } from "../components/TurnControls.tsx";
 import { SheetOverlay } from "../components/SheetFrame.tsx";
@@ -70,6 +71,7 @@ export function GmSessionConsole({ onSignOut }: { onSignOut: () => void }) {
   const [busy, setBusy] = useState(false);
   const [showActingOnly, toggleSegmentFilter] = useSegmentFilter(sessionId);
   const [logOpen, toggleLog] = useLogDrawer(sessionId);
+  const [settingsOpen, toggleSettings] = useSettingsDrawer();
 
   // The console's columns start as equal shares and can be dragged to any others.
   // One split per boundary, each sizing the column to its left; the last column
@@ -372,6 +374,10 @@ export function GmSessionConsole({ onSignOut }: { onSignOut: () => void }) {
             <span className="badge badge-sm badge-warning badge-soft">Reconnecting…</span>
           ) : null}
           <ThemeToggle />
+          {/* Between the theme and the sign-out: the drawer comes out of this
+              corner, the same way the log's control sits in the corner its
+              drawer comes out of. */}
+          <SettingsToggle open={settingsOpen} onToggle={toggleSettings} />
           {/* Signing out is about this browser, not about the table: the session
               keeps running and the code keeps working. Ending it is the `End`
               button down in the panel with the code, where it belongs. */}
@@ -646,6 +652,12 @@ export function GmSessionConsole({ onSignOut }: { onSignOut: () => void }) {
           label="Resize the library column"
         />
       </div>
+
+        {/* The other end of the same row the log sits at the start of. Last in
+            the markup so it lands on the right once the page has columns to
+            push; the drawer itself moves back above the console on a phone,
+            where there is no sideways to give. */}
+        <SettingsDrawer open={settingsOpen} onClose={toggleSettings} />
       </div>
 
       {viewingSheet ? (
