@@ -100,6 +100,7 @@ async function gmWithSession(): Promise<{ page: Page; code: string; campaignName
     await page.getByLabel("SPD", { exact: true }).fill(String(speed));
     await page.getByLabel("DEX", { exact: true }).fill(String(dexterity));
     await page.getByLabel("INIT", { exact: true }).fill(String(initiative));
+    await page.getByLabel("CON", { exact: true }).fill("20");
     await page.getByLabel("REC", { exact: true }).fill("8");
     await page.getByLabel("END", { exact: true }).fill("30");
     await page.getByLabel("STUN", { exact: true }).fill("25");
@@ -146,10 +147,10 @@ async function playerIn(code: string, name: string, campaignName?: string): Prom
   const mine = page.locator("section", { hasText: /My character/ });
   await mine.getByText("Thorin", { exact: true }).waitFor();
   await mine.getByRole("button", { name: "My sheet" }).waitFor();
-  // The four characteristics that are looked up rather than spent, in the order
+  // The five characteristics that are looked up rather than spent, in the order
   // the sheet reads them. INIT is the one that would go unnoticed if it were
   // dropped, since every character the rest of the suite makes has it at zero.
-  await mine.getByText("SPD 12 · DEX 15 · INIT 3 · REC 8").waitFor();
+  await mine.getByText("SPD 12 · DEX 15 · INIT 3 · CON 20 · REC 8").waitFor();
   return page;
 }
 
@@ -327,10 +328,10 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
       .getByRole("listitem").filter({ hasText: "Thorin" });
     const myPanel = player.locator("section", { hasText: /My character/ });
 
-    // The game master's row carries the four looked-up characteristics, in the
+    // The game master's row carries the five looked-up characteristics, in the
     // same line the player reads on their own panel, and does not repeat who is
     // playing what — the players panel beside it already says.
-    await gmRow.getByText("SPD 12 · DEX 15 · INIT 3 · REC 8").waitFor();
+    await gmRow.getByText("SPD 12 · DEX 15 · INIT 3 · CON 20 · REC 8").waitFor();
     expect(await gmRow.innerText()).not.toContain("Played by");
 
     // The player's scene is the other way round: who holds which character, and
@@ -1560,12 +1561,13 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     await gm.getByRole("button", { name: "Create campaign" }).click();
     await gm.getByText(`Characters in ${campaignName}`).waitFor();
 
-    // Seven characteristics, all different, so a number read off the back can
+    // Eight characteristics, all different, so a number read off the back can
     // only have come from the field it belongs to.
     const stats = [
       ["SPD", 5],
       ["DEX", 21],
       ["INIT", 3],
+      ["CON", 23],
       ["REC", 9],
       ["END", 47],
       ["STUN", 38],
@@ -1624,7 +1626,7 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     expect(await facing(-1)).toBe(-1);
     expect(await press.getAttribute("aria-pressed")).toBe("true");
 
-    // All seven characteristics are printed on the back, each against its label.
+    // All eight characteristics are printed on the back, each against its label.
     const back = (await card.locator(CARD_BACK).innerText()).replace(/\s+/g, " ");
     for (const [label, value] of stats) {
       expect(back).toMatch(new RegExp(`\\b${label} ${value}\\b`));
@@ -1739,6 +1741,7 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
       "SPD",
       "DEX",
       "INIT",
+      "CON",
       "REC",
       "END",
       "STUN",
@@ -2501,6 +2504,7 @@ describe("a sheet fills the characteristics in for you", () => {
     '<div id="characteristics-collapse"><table><tbody>',
     `<tr><td><span class="primary">${values.dex}</span></td><td>DEX</td></tr>`,
     `<tr><td><span class="primary">${values.spd}</span></td><td>SPD</td></tr>`,
+    "<tr><td>20</td><td>CON</td></tr>",
     "<tr><td>9</td><td>REC</td></tr>",
     "<tr><td>33</td><td>END</td></tr>",
     "<tr><td>27</td><td>STUN</td></tr>",
@@ -2544,6 +2548,7 @@ describe("a sheet fills the characteristics in for you", () => {
       { timeout: 5000 },
     );
     expect(await box("SPD").inputValue()).toBe("4");
+    expect(await box("CON").inputValue()).toBe("20");
     expect(await box("REC").inputValue()).toBe("9");
     expect(await box("END").inputValue()).toBe("33");
     expect(await box("STUN").inputValue()).toBe("27");

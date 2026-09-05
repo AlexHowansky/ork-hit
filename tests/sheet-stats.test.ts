@@ -46,7 +46,7 @@ function talents(...names: string[]): string {
   `;
 }
 
-/** The six a full sheet carries, in the order the table prints them. */
+/** The seven a full sheet carries, in the order the table prints them. */
 const FULL: [string, string][] = [
   ["10", "STR"],
   ["23", "DEX"],
@@ -64,15 +64,19 @@ describe("a sheet that says what it is", () => {
 
     expect(stats).toMatchObject({
       dexterity: 23,
+      constitution: 10,
       body: 10,
       speed: 4,
       recovery: 8,
       endurance: 30,
       stun: 30,
     });
-    // STR and CON are in the table and are not among the seven this app keeps.
+    // STR is in the table and is not among the eight this app keeps.
     expect(Object.keys(stats).sort()).toEqual(
-      ["body", "dexterity", "endurance", "initiative", "recovery", "speed", "stun"],
+      [
+        "body", "constitution", "dexterity", "endurance",
+        "initiative", "recovery", "speed", "stun",
+      ],
     );
   });
 

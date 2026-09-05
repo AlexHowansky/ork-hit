@@ -296,7 +296,7 @@ the numbers, drawn the same way: the game master's list is passed the callback,
 a player's is not, and a player sets their own character's conditions on their
 `My character` panel instead. The pills are icon-only with the name in the
 tooltip and in an `sr-only` span, since a row already carries a name, a kind, a
-count and four characteristics.
+count and five characteristics.
 
 **Card styling is shared.** The campaign and character grids are different
 components, so their shape lives in one place — `CARD_BASE` in
@@ -471,8 +471,8 @@ siblings, not its children, so its own `:hover` never fires. The group is the
 `hover-3d` wrapper, which the zones *are* inside.
 
 **A character's card in the library turns over.** Pressing one flips it in 3D to
-a back that prints all seven characteristics — SPD, DEX, INIT, REC, END, STUN,
-BODY — ruled down the frame's window like the back of a baseball card, with the
+a back that prints all eight characteristics — SPD, DEX, INIT, CON, REC, END,
+STUN, BODY — ruled down the frame's window like the back of a baseball card, with the
 name still in its usual strip so a shelf of turned-over cards is still readable.
 The sheet that pressing a card used to open has its own control in the corner, so
 nothing was taken away; it stopped being what the whole card does. Only the
@@ -901,9 +901,9 @@ sense of, so the drop is refused and says to end the session first.
 **A sheet often knows its own characteristics.** The exports this table uses come
 from [Ork HERO Templates](https://github.com/AlexHowansky/ork-hero-templates),
 which stamps a marker comment at the top of every file it writes and lays the
-characteristics out in a table with a known id. So SPD, DEX, REC, END, STUN and
-BODY are read off the file rather than typed in beside it, and INIT comes from the
-Lightning Reflexes in the talents table — a talent rather than a characteristic,
+characteristics out in a table with a known id. So SPD, DEX, CON, REC, END, STUN
+and BODY are read off the file rather than typed in beside it, and INIT comes
+from the Lightning Reflexes in the talents table — a talent rather than a characteristic,
 which is why it is looked up separately.
 
 `statsFromSheetHtml` (`src/lib/sheet-stats.ts`) is the whole of it, in `lib/`
@@ -1219,7 +1219,7 @@ none. What the monster has left is the game master's information to give out or
 hold back at the table, and a player's own numbers are on their `My character`
 panel rather than a second time in the scene.
 
-The looked-up four — SPD, DEX, INIT and REC — divide the same way, on `editable`:
+The looked-up five — SPD, DEX, INIT, CON and REC — divide the same way, on `editable`:
 the game master's rows carry them, since the segment panel is where the order is
 worked out and those are what it is worked out from, and a player's rows carry
 who is playing what instead. `StatLine` draws that line for both the game
@@ -1259,7 +1259,7 @@ roles may call, and all of them share one authorization helper —
 rather than four that could drift apart. The game master runs the fight and may write any slot; a player may write exactly
 the slot holding the character they claimed, checked on the server rather than by
 hiding the boxes. Both end in the same `publish`, so an edit from either screen
-reaches every screen the usual way. `src/lib/hero.ts` names the seven
+reaches every screen the usual way. `src/lib/hero.ts` names the eight
 characteristics once, for the form fields, the labels and the API alike.
 
 ## The log is state, not a notice

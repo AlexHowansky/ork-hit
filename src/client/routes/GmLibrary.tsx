@@ -316,9 +316,10 @@ function CharacterForm({
       {/*
         The HERO characteristics in a block rather than in stacked rows: they are
         short numbers and reading them across is how a character sheet prints
-        them. Four to a row puts the looked-up ones on the first line and the
-        three spent in a fight on the second. A character nobody has filled in
-        yet is all zeros, which is a legitimate thing to save.
+        them. Four to a row puts the looked-up ones on the first line — SPD, DEX,
+        INIT and CON — and REC with the three spent in a fight on the second. A
+        character nobody has filled in yet is all zeros, which is a legitimate
+        thing to save.
       */}
       <fieldset>
         <legend className={FIELD_CAPTION}>Characteristics</legend>

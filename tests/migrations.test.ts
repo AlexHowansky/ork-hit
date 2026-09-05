@@ -46,7 +46,8 @@ describe("one active session per campaign", () => {
     addActiveSession(target, "mid", "2026-01-01T11:00:00.000Z");
     addActiveSession(target, "new", "2026-01-01T12:00:00.000Z");
 
-    expect(migrate(target)).toBe(12);
+    // Every migration after 001, which `atInitialSchema` has already applied.
+    expect(migrate(target)).toBe(13);
 
     const statuses = Object.fromEntries(
       target.query<{ id: string; status: string }, []>(
@@ -191,13 +192,14 @@ describe("HERO characteristics", () => {
 
     expect(
       target.query<Record<string, number>, []>(
-        "SELECT speed, dexterity, initiative, recovery, endurance, stun, body " +
+        "SELECT speed, dexterity, initiative, constitution, recovery, endurance, stun, body " +
           "FROM characters WHERE id = 'old'",
       ).get(),
     ).toEqual({
       speed: 0,
       dexterity: 0,
       initiative: 0,
+      constitution: 0,
       recovery: 0,
       endurance: 0,
       stun: 0,

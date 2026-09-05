@@ -24,6 +24,7 @@ export interface Character {
   speed: number;
   dexterity: number;
   initiative: number;
+  constitution: number;
   recovery: number;
   endurance: number;
   stun: number;

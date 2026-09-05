@@ -267,6 +267,7 @@ describe("HERO characteristics", () => {
     form.set("speed", "4");
     form.set("dexterity", "18");
     form.set("initiative", "2");
+    form.set("constitution", "20");
     form.set("recovery", "8");
     form.set("endurance", "30");
     form.set("stun", "25");
@@ -280,6 +281,7 @@ describe("HERO characteristics", () => {
       speed: 4,
       dexterity: 18,
       initiative: 2,
+      constitution: 20,
       recovery: 8,
       endurance: 30,
       stun: 25,
@@ -2785,6 +2787,7 @@ describe("a sheet that knows its own characteristics", () => {
 
     expect(character).toMatchObject({
       dexterity: 23,
+      constitution: 10,
       body: 12,
       speed: 4,
       recovery: 8,
@@ -2803,7 +2806,7 @@ describe("a sheet that knows its own characteristics", () => {
     form.set("kind", "npc");
     form.set("name", unique("Typed"));
     form.set("sheet", new File([sheet()], "hero.html"));
-    // The dialog sends all seven, having read the sheet in the browser already.
+    // The dialog sends all eight, having read the sheet in the browser already.
     // What arrives is what the game master saw and could have corrected.
     form.set("speed", "2");
     form.set("dexterity", "11");
@@ -2815,7 +2818,7 @@ describe("a sheet that knows its own characteristics", () => {
 
     expect(created).toMatchObject({ speed: 2, dexterity: 11 });
     // And the ones it did not send still come off the sheet.
-    expect(created).toMatchObject({ recovery: 8, endurance: 30, stun: 31 });
+    expect(created).toMatchObject({ constitution: 10, recovery: 8, endurance: 30, stun: 31 });
   });
 
   test("an unmarked sheet is left entirely alone", async () => {
@@ -2826,7 +2829,8 @@ describe("a sheet that knows its own characteristics", () => {
     const character = await drop(cookie, table.campaign.id, sheet({ marked: false }));
 
     expect(character).toMatchObject({
-      speed: 0, dexterity: 0, recovery: 0, endurance: 0, stun: 0, body: 0, initiative: 0,
+      speed: 0, dexterity: 0, constitution: 0, recovery: 0, endurance: 0, stun: 0,
+      body: 0, initiative: 0,
     });
   });
 

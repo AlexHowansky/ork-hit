@@ -57,6 +57,7 @@ export function presentCharacter(character: CharacterRow) {
     speed: character.speed,
     dexterity: character.dexterity,
     initiative: character.initiative,
+    constitution: character.constitution,
     recovery: character.recovery,
     endurance: character.endurance,
     stun: character.stun,

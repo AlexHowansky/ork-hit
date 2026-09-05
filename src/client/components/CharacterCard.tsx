@@ -18,9 +18,9 @@ import {
 /**
  * What is printed on the back of a card, in the order it is read.
  *
- * All seven of them: where the character stands in the fight (SPD, DEX, INIT),
- * what a Recovery is worth (REC), and the three totals a session then counts
- * down from (END, STUN, BODY). `HERO_STAT_FIELDS` is already in this order and
+ * All eight of them: where the character stands in the fight (SPD, DEX, INIT),
+ * what a stunning hit is measured against (CON), what a Recovery is worth (REC),
+ * and the three totals a session then counts down from (END, STUN, BODY). `HERO_STAT_FIELDS` is already in this order and
  * is the list, so a characteristic added there appears here without being added
  * twice — which is the whole point of that list existing.
  */

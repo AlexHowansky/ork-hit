@@ -284,9 +284,9 @@ The app should have the following features:
   single `My sheet` control on their `My character` panel, and no other sheet is
   theirs to open.
 
-* A player's own character panel carries the four characteristics that are looked
-  up rather than spent — SPD, DEX, INIT and REC — on one line under the name, with
-  what they have left of ENDURANCE, STUN and BODY below it.
+* A player's own character panel carries the five characteristics that are looked
+  up rather than spent — SPD, DEX, INIT, CON and REC — on one line under the name,
+  with what they have left of ENDURANCE, STUN and BODY below it.
 
 * Nothing in that panel wraps. It is one character's line of numbers, and a row
   folded in half reads at a glance as two characters; where
@@ -393,10 +393,10 @@ The app should have the following features:
   happened to be watching and is then gone.
 
 * Every character, PC and NPC alike, is a HERO System 5th Edition Revised
-  character. Each one in the library carries seven characteristics — SPEED,
-  DEXTERITY, INITIATIVE, RECOVERY, ENDURANCE, STUN and BODY — edited in the
-  character editor. A character nobody has filled in yet reads as zeros.
-  INITIATIVE is any bonus to acting first that DEXTERITY does not already
+  character. Each one in the library carries eight characteristics — SPEED,
+  DEXTERITY, INITIATIVE, CONSTITUTION, RECOVERY, ENDURANCE, STUN and BODY —
+  edited in the character editor. A character nobody has filled in yet reads as
+  zeros. INITIATIVE is any bonus to acting first that DEXTERITY does not already
   account for, such as the Combat Reflexes talent, and the editor says so on
   hover. SPEED is bounded at 0 to 12, since a turn is twelve segments long —
   refused by the server and not merely by the form — and the others are
@@ -452,7 +452,7 @@ The app should have the following features:
 
 * A known condition is drawn as its icon alone, with its name on hover and for a
   screen reader; a typed one keeps its word, since no picture would say it. A row
-  already carries a name, a kind, a count and four characteristics, and eight
+  already carries a name, a kind, a count and five characteristics, and eight
   spelled-out conditions would be wider than all of them. Setting a condition
   twice sets it once, and a tag typed as one of the eight is that one rather than
   a second condition spelled the same way.
@@ -484,7 +484,7 @@ The app should have the following features:
   phase this segment is dimmed rather than hidden, since the GM may still want to
   reach their numbers.
 
-* On the GM's segment panel each row carries SPD, DEX, INIT and REC under the
+* On the GM's segment panel each row carries SPD, DEX, INIT, CON and REC under the
   name, written the same way as on a player's `My character` panel — this is the
   panel where the order is worked out, so the numbers it is worked out from
   belong in it. It does not repeat which player holds which character: that is on
