@@ -4,7 +4,7 @@
  * Two pieces that belong together: the pills that read a character's conditions
  * off a row, and the dialog that sets them.
  *
- * Every one of them is its word, named or typed alike. The eight the app knows
+ * Every one of them is its word, named or typed alike. The nine the app knows
  * each had a picture once, and it earned nothing: a glyph for "Suppressed" is a
  * puzzle where the word is not, a typed tag never had one that meant anything,
  * and a pill carrying both spent width saying one thing twice.

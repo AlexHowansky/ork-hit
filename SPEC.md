@@ -438,9 +438,9 @@ The app should have the following features:
   days, which is longer than a session.
 
 * A character on the stage may also carry **status tags**: what condition they
-  are in. Eight are known by name — Dead, Drained, Entangled, Flashed, Prone,
-  Sleeping, Stunned and Suppressed — and a table may type its own for anything
-  else. Like the three numbers, they belong to the copy rather than to the
+  are in. Nine are known by name — Dead, Drained, Entangled, Flashed, Prone,
+  Sleeping, Stunned, Suppressed and Unconscious — and a table may type its own
+  for anything else. Like the three numbers, they belong to the copy rather than to the
   character: one goblin can be prone while its twin is standing, and none of it
   outlives the session.
 
@@ -463,11 +463,22 @@ The app should have the following features:
   `Or set it exactly`, however large the correction: that control is for fixing a
   total, and fixing a total is not a hit.
 
+* Unconscious is the other one the app sets by itself, and on the same terms. A
+  hit that takes a character's STUN to nought or below knocks them out: the tag
+  goes on, the log says `<character> has had STUN reduced to zero Unconscious`,
+  and the game master and that character's player are told `<character> has been
+  knocked out`. One hit can do both — past the CONSTITUTION and past the last of
+  the STUN — and then both happen and both are said, in that order, because a
+  character can be stunned without going down and can go down without ever being
+  stunned. A character with no STUN total typed in is never knocked out this way,
+  for the reason a character with no CONSTITUTION is never stunned: they start at
+  nought because nobody filled them in, not because they are down.
+
 * A known condition is drawn as its icon alone, with its name on hover and for a
   screen reader; a typed one keeps its word, since no picture would say it. A row
-  already carries a name, a kind, a count and five characteristics, and eight
+  already carries a name, a kind, a count and five characteristics, and nine
   spelled-out conditions would be wider than all of them. Setting a condition
-  twice sets it once, and a tag typed as one of the eight is that one rather than
+  twice sets it once, and a tag typed as one of the nine is that one rather than
   a second condition spelled the same way.
 
 * Each PC and NPC on a session page should be shown with a small picture of

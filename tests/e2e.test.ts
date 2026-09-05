@@ -432,6 +432,68 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     await line.getByTitle(/^Stunned/).waitFor();
   }, 60_000);
 
+  test("a hit that takes the last of the STUN knocks the character out", async () => {
+    if (!browser) return;
+    const { page: gm, code, campaignName } = await gmWithSession();
+    const player = await playerIn(code, "Wes", campaignName);
+
+    const gmRow = stagePanel(gm).getByRole("listitem").filter({ hasText: "Thorin" });
+    const myPanel = player.locator("section", { hasText: /My character/ });
+    await waitForValue(gmRow.getByLabel("STUN left for Thorin"), "25");
+
+    // Thorin is CON 20 on STUN 25, so a 25 is both at once: past the CON, and
+    // the last of what he had. That is the ordinary way a fight ends.
+    await change(gm, gmRow.getByLabel("STUN left for Thorin"), "−25");
+    await waitForValue(gmRow.getByLabel("STUN left for Thorin"), "0");
+
+    // Both conditions, on both screens, with nobody having pressed a button.
+    for (const row of [gmRow, myPanel]) {
+      await row.getByTitle(/^Stunned/).waitFor({ timeout: 5000 });
+      await row.getByTitle(/^Unconscious/).waitFor({ timeout: 5000 });
+    }
+
+    // And both are said out loud, to the game master and to the one player.
+    for (const page of [gm, player]) {
+      await page
+        .getByText("Thorin has been knocked out.", { exact: true })
+        .waitFor({ timeout: 5000 });
+    }
+
+    // Two lines in the log, each naming the rule it came from.
+    const toggle = gm.getByRole("button", { name: "Log", exact: true });
+    await toggle.click();
+    await gm.waitForTimeout(500);
+    const log = gm.locator('aside[aria-label="Log"]');
+    const line = log.getByRole("listitem").filter({ hasText: "has had STUN reduced to zero" });
+    await line.waitFor({ timeout: 5000 });
+    await line.getByText("Thorin has had STUN reduced to zero", { exact: true }).waitFor();
+    await line.getByTitle(/^Unconscious/).waitFor();
+    await log.getByText("Thorin has taken more STUN than CON", { exact: true }).waitFor();
+  }, 60_000);
+
+  test("Unconscious is a button on the status dialog for both roles", async () => {
+    if (!browser) return;
+    const { page: gm, code, campaignName } = await gmWithSession();
+    const player = await playerIn(code, "Tam", campaignName);
+
+    // The game master sets it for anybody in the scene...
+    const strahd = stagePanel(gm).getByRole("listitem").filter({ hasText: "Strahd" });
+    await strahd.getByRole("button", { name: "Set Strahd's status" }).click();
+    await gm.getByRole("button", { name: "Unconscious", exact: true }).click();
+    await gm.getByRole("button", { name: "Close" }).click();
+    await strahd.getByTitle(/^Unconscious/).waitFor({ timeout: 5000 });
+
+    // ...and a player for the character they are playing, from their own panel.
+    await player.getByRole("button", { name: "Set Thorin's status" }).click();
+    await player.getByRole("button", { name: "Unconscious", exact: true }).click();
+    await player.getByRole("button", { name: "Close" }).click();
+    await gm
+      .getByRole("listitem")
+      .filter({ hasText: "Thorin" })
+      .getByTitle(/^Unconscious/)
+      .waitFor({ timeout: 5000 });
+  }, 60_000);
+
   test("an exact set is a correction rather than a hit, however big", async () => {
     if (!browser) return;
     const { page: gm, code, campaignName } = await gmWithSession();
@@ -448,7 +510,11 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     await waitForValue(gmRow.getByLabel("STUN left for Thorin"), "0");
 
     expect(await gmRow.getByTitle(/^Stunned/).count()).toBe(0);
+    // Nor knocked out, though the number it left him on is nought: a total put
+    // right is not damage, and neither rule is asked about one.
+    expect(await gmRow.getByTitle(/^Unconscious/).count()).toBe(0);
     expect(await gm.getByText("has become stunned.", { exact: false }).count()).toBe(0);
+    expect(await gm.getByText("has been knocked out.", { exact: false }).count()).toBe(0);
   }, 60_000);
 
   test("an NPC can be brought on more than once, and each copy acts", async () => {

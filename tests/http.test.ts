@@ -33,6 +33,7 @@ import {
   tagsRemoved,
   actionHeld,
   becameStunned,
+  knockedOut,
   GAME_MASTER,
 } from "../src/server/events.ts";
 
@@ -504,10 +505,13 @@ describe("what a character has left", () => {
     /**
      * Gives a character a CON and its slot some STUN to lose.
      *
-     * CON is edited in the library rather than seeded on the slot, because that
-     * is where it lives: it is looked up, not spent. The slot's STUN is set
-     * through the same route the rule is being tested on, as a total, which is
-     * the path that never stuns.
+     * CON and the STUN total are edited in the library rather than seeded on the
+     * slot, because that is where they live. What this copy has left is set
+     * through the same route the rules are being tested on, as a total, which is
+     * the path that never stuns and never knocks anybody out.
+     *
+     * A STUN total as well as a CON because both rules refuse to fire on a
+     * character nobody has filled in, and `makeTable` fills in neither.
      */
     const arm = async (
       cookie: string,
@@ -518,6 +522,7 @@ describe("what a character has left", () => {
     ) => {
       const form = new FormData();
       form.set("constitution", String(constitution));
+      form.set("stun", "30");
       const patched = await fetch(
         `${base}/api/characters/${characterId}`,
         authed(cookie, { method: "PATCH", body: form }),
@@ -625,6 +630,127 @@ describe("what a character has left", () => {
 
       expect(await tagsOnSlot(cookie, session.id, slot!.id)).toEqual([]);
       expect(await messages(cookie, session.id)).toEqual(opening(npc));
+    });
+
+    test("a hit that takes the last of the STUN knocks the character out", async () => {
+      const { cookie } = await signIn();
+      const { pc, npc, session } = await makeTable(cookie);
+      const [slot] = await slotsOf(cookie, session.id);
+      // A CON no hit here will beat, so this is the knockout on its own.
+      await arm(cookie, pc.id, session.id, slot!.id, 40);
+
+      // Exactly nought, which is the edge: reduced *to* zero is out cold.
+      await patchVitals(cookie, session.id, slot!.id, { stunTaken: 30 });
+
+      expect(await tagsOnSlot(cookie, session.id, slot!.id)).toEqual(["unconscious"]);
+      expect(await messages(cookie, session.id)).toEqual([
+        ...opening(npc),
+        knockedOut(pc.name),
+      ]);
+    });
+
+    test("and a hit that leaves them any STUN at all does not", async () => {
+      const { cookie } = await signIn();
+      const { pc, npc, session } = await makeTable(cookie);
+      const [slot] = await slotsOf(cookie, session.id);
+      await arm(cookie, pc.id, session.id, slot!.id, 40);
+
+      await patchVitals(cookie, session.id, slot!.id, { stunTaken: 29 });
+
+      expect(await tagsOnSlot(cookie, session.id, slot!.id)).toEqual([]);
+      expect(await messages(cookie, session.id)).toEqual(opening(npc));
+    });
+
+    test("one hit can do both, and says both", async () => {
+      const { cookie } = await signIn();
+      const { pc, npc, session } = await makeTable(cookie);
+      const [slot] = await slotsOf(cookie, session.id);
+      await arm(cookie, pc.id, session.id, slot!.id, 10);
+
+      // Past the CON and past the last of the STUN in one blow, which is the
+      // ordinary way a fight ends: stunned by it and then out cold from it.
+      await patchVitals(cookie, session.id, slot!.id, { stunTaken: 31 });
+
+      expect((await tagsOnSlot(cookie, session.id, slot!.id)).sort())
+        .toEqual(["stunned", "unconscious"]);
+      // Two lines rather than one: a character can be stunned without going
+      // down and can go down without ever being stunned, so which happened is
+      // what the log is read back for.
+      expect(await messages(cookie, session.id)).toEqual([
+        ...opening(npc),
+        becameStunned(pc.name),
+        knockedOut(pc.name),
+      ]);
+    });
+
+    test("a character already out cold is not knocked out again", async () => {
+      const { cookie } = await signIn();
+      const { pc, session } = await makeTable(cookie);
+      const [slot] = await slotsOf(cookie, session.id);
+      await arm(cookie, pc.id, session.id, slot!.id, 40);
+
+      await patchVitals(cookie, session.id, slot!.id, { stunTaken: 30 });
+      const after = await messages(cookie, session.id);
+
+      // Still being hit while down, which happens, and says nothing new.
+      await patchVitals(cookie, session.id, slot!.id, { stunTaken: 5 });
+      expect(await messages(cookie, session.id)).toEqual(after);
+      expect(await tagsOnSlot(cookie, session.id, slot!.id)).toEqual(["unconscious"]);
+    });
+
+    test("a character with no STUN total is never knocked out by one", async () => {
+      const { cookie } = await signIn();
+      const { npc, session } = await makeTable(cookie);
+      const [slot] = await slotsOf(cookie, session.id);
+
+      // They start at nought because nobody typed a total, not because they are
+      // down, so the first scratch of the fight must not knock them out.
+      await patchVitals(cookie, session.id, slot!.id, { stunTaken: 1 });
+
+      expect(await tagsOnSlot(cookie, session.id, slot!.id)).toEqual([]);
+      expect(await messages(cookie, session.id)).toEqual(opening(npc));
+    });
+
+    test("the knockout is toasted to the game master and that player only", async () => {
+      const { cookie } = await signIn();
+      const { pc, session } = await makeTable(cookie);
+      const holder = await joinAs(session.code, "Down");
+      const bystander = await joinAs(session.code, "Standing");
+      await claimAs(holder, session.id, pc.id);
+
+      const slots = await slotsOf(cookie, session.id);
+      const slot = slots.find((row) => row.characterId === pc.id)!;
+      await arm(cookie, pc.id, session.id, slot.id, 10);
+
+      const [gmSocket, holderSocket, bystanderSocket] = await Promise.all([
+        watchSession(cookie, session.id),
+        watchSession(holder, session.id),
+        watchSession(bystander, session.id),
+      ]);
+
+      const notices = (socket: WebSocket) => {
+        const seen: { type: string; message: string; tone?: string }[] = [];
+        socket.addEventListener("message", (event) => {
+          const frame = JSON.parse(String(event.data));
+          if (frame.type === "notice") seen.push(frame);
+        });
+        return seen;
+      };
+      const [toGm, toHolder, toBystander] =
+        [gmSocket, holderSocket, bystanderSocket].map(notices);
+
+      await patchVitals(cookie, session.id, slot.id, { stunTaken: 31 });
+      await Bun.sleep(200);
+
+      // Both consequences, in the order they happened to the character.
+      expect(toGm).toEqual([
+        { type: "notice", message: `${pc.name} has become stunned.`, tone: "error" },
+        { type: "notice", message: `${pc.name} has been knocked out.`, tone: "error" },
+      ]);
+      expect(toHolder).toEqual(toGm);
+      expect(toBystander).toEqual([]);
+
+      for (const socket of [gmSocket, holderSocket, bystanderSocket]) socket.close();
     });
 
     test("a total and a hit cannot arrive together", async () => {

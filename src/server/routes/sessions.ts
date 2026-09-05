@@ -36,6 +36,7 @@ import {
   OPENING_SEGMENT,
   POST_SEGMENT_12_NOTICE,
   SEGMENTS_PER_TURN,
+  type StatusTag,
   tagLabel,
 } from "../../lib/hero.ts";
 import {
@@ -51,6 +52,7 @@ import {
   gmReassigned,
   gmRemovedFromScene,
   gmUnassigned,
+  knockedOut,
   playerJoined,
   playerSelected,
   segmentBegan,
@@ -117,46 +119,65 @@ function requireSlotAccess(
 }
 
 /**
- * The HERO rule that a hit bigger than a character's CON stuns them.
+ * What the rules say about a hit that has just landed: who it stunned, and who
+ * it knocked out.
  *
- * Applied here rather than in the browser because it is a rule about the fight
- * and not about a screen: a player taking their own STUN and a game master
+ * Applied here rather than in the browser because these are rules about the
+ * fight and not about a screen: a player taking their own STUN and a game master
  * taking it for them must come to the same answer, and only one of them is
  * looking at the character's CON.
  *
- * Answers who to tell when it fires, and null when it does not — which is most
- * hits. Three ways of not firing, each for its own reason:
+ * Read after the hit is written, so the numbers are the ones it left behind. The
+ * two are asked in the order they happen to a character — stunned by the size of
+ * the blow, then out cold when there is no STUN left — and both can be true of
+ * one hit, which is why this answers with a list rather than with a condition.
  *
- * - The hit was no bigger than the CON. That is the rule.
- * - The character has no CON. A zero here is not a threshold of nought, it is a
- *   character nobody has filled in, and stunning them on every scratch would
- *   punish an unfinished sheet.
- * - They are stunned already. The tag is on, so there is nothing to add and
- *   nothing new to say; a character being beaten on would otherwise fill the log
- *   with the same line.
- *
- * The condition goes on with `setTag`, exactly as the button does, so a table
- * takes it off the way they take off any other.
+ * Null when nothing happened, which is most hits.
  */
-function stunnedByTheHit(
+function consequencesOfTheHit(
   sessionId: string,
   slotId: string,
   taken: number,
-): { name: string; playerId: string | null } | null {
+): { messages: string[]; playerId: string | null } | null {
   const slot = slotOnStage(sessionId, slotId);
-  if (!slot || slot.constitution <= 0 || taken <= slot.constitution) return null;
-  if (sessionCharacters.hasTag(sessionId, slotId, "stunned")) return null;
-
-  sessionCharacters.setTag(sessionId, slotId, "stunned", true);
+  if (!slot) return null;
 
   const named = nameOf(slot);
-  sessionEvents.record(sessionId, becameStunned(named));
+  const messages: string[] = [];
+
+  /** Puts a condition on and says so, unless the character is already in it. */
+  const apply = (tag: StatusTag, line: string, said: string) => {
+    // The tag being on is the whole of the question: there is nothing to add,
+    // and a character being beaten on would otherwise fill the log with one
+    // line. It goes on with `setTag`, exactly as the button does, so a table
+    // takes it off the way they take off any other.
+    if (sessionCharacters.hasTag(sessionId, slotId, tag)) return;
+    sessionCharacters.setTag(sessionId, slotId, tag, true);
+    sessionEvents.record(sessionId, line);
+    messages.push(said);
+  };
+
+  // A CON of nought is not a threshold of nought, it is a character nobody has
+  // filled in, and stunning them on every scratch would punish an unfinished
+  // sheet.
+  if (slot.constitution > 0 && taken > slot.constitution) {
+    apply("stunned", becameStunned(named), `${named} has become stunned.`);
+  }
+
+  // And for the same reason, a character with no STUN total is not a character
+  // permanently at nought: they start there and would be knocked out by the
+  // first scratch of a fight they were never filled in for.
+  if (slot.stun > 0 && slot.cur_stun <= 0) {
+    apply("unconscious", knockedOut(named), `${named} has been knocked out.`);
+  }
+
+  if (messages.length === 0) return null;
 
   // `slot.id` is the character's — the row is a character with its slot's
   // columns hung on it — and a claim is on a character rather than on a slot.
   // Null for a monster nobody is playing, which leaves the game master the only
   // one told, and is right: there is nobody else whose character it is.
-  return { name: named, playerId: players.holderOf(sessionId, slot.id)?.id ?? null };
+  return { messages, playerId: players.holderOf(sessionId, slot.id)?.id ?? null };
 }
 
 /** Publishes the new state and returns it to the caller in the same shape. */
@@ -563,29 +584,26 @@ export const sessionRoutes = {
         // a body that sent both.
         if (stunTaken !== undefined) sessionCharacters.takeStun(session.id, slotId, stunTaken);
 
-        const stunned = stunTaken === undefined
+        const consequences = stunTaken === undefined
           ? null
-          : stunnedByTheHit(session.id, slotId, stunTaken);
+          : consequencesOfTheHit(session.id, slotId, stunTaken);
 
         logger.info("slot vitals set", {
           sessionId: session.id,
           slotId,
           stunTaken,
-          stunned: stunned !== null,
+          consequences: consequences?.messages.length ?? 0,
           by: asPlayer ? "player" : "gm",
         });
 
         const response = publish(session.id);
 
         // After the snapshot, like the Post-Segment 12 notice below: a screen
-        // should have the pill on the character's row before it is told why.
-        if (stunned) {
-          sendSessionNotice(
-            session.id,
-            `${stunned.name} has become stunned.`,
-            { playerId: stunned.playerId },
-            "error",
-          );
+        // should have the pills on the character's row before it is told why.
+        // One hit can say two things — stunned by the blow and out cold from it
+        // — and each is its own toast, in the order they happened.
+        for (const message of consequences?.messages ?? []) {
+          sendSessionNotice(session.id, message, { playerId: consequences!.playerId }, "error");
         }
 
         return response;

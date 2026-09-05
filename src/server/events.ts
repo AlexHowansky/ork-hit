@@ -147,6 +147,22 @@ export const actionTaken = (actor: string, character: string): string =>
 export const becameStunned = (character: string): string =>
   `${character} has taken more STUN than CON ${markTag(STATUS_TAG_LABELS.stunned)}`;
 
+/**
+ * A character knocked out by the STUN running out.
+ *
+ * The same shape as the line above and for the same reasons — nobody decided it,
+ * so nobody is named; the rule it came from is in the sentence, so a table can
+ * see why a condition they did not set appeared; and the condition is marked, so
+ * it draws as the pill.
+ *
+ * Both can be true of one hit, and then both lines are written. That is not a
+ * repetition to be collapsed: a character can be stunned without going down, and
+ * can go down without ever being stunned, so which of the two happened — or that
+ * it was both at once — is exactly what a table reads the log back for.
+ */
+export const knockedOut = (character: string): string =>
+  `${character} has had STUN reduced to zero ${markTag(STATUS_TAG_LABELS.unconscious)}`;
+
 /* ------------------------------------------------------------- the clock's */
 
 /**

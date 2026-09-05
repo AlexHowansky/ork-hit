@@ -278,7 +278,7 @@ it — so a retried request or two people reaching for Prone at once leaves one
 prone character. It is the fourth route `requireSlotAccess` guards: the game
 master may tag anybody in the scene, a player only the character they claimed.
 
-The eight the app knows by name live in `src/lib/hero.ts` beside the
+The nine the app knows by name live in `src/lib/hero.ts` beside the
 characteristics, which is what feeds both the zod schema and the labels; the
 pictures for them are in `src/client/components/StatusTags.tsx`, because
 `hero.ts` is read by the server and FontAwesome is the browser's business.
@@ -1265,12 +1265,23 @@ may not arrive together, and `schemas.setVitals` refuses a body carrying both.
 
 `Or set it exactly` is deliberately on the other side of that line: it is the
 control for putting a number right, so it writes a total and never stuns. The
-rule itself is `stunnedByTheHit` (`src/server/routes/sessions.ts`), which puts the
-condition on with the same `setTag` the button uses — a table takes it off the way
-they take off any other — and declines three ways: a hit no bigger than the CON, a
-CON of nought, and a character stunned already. The middle one matters more than
-it looks. Zero is what an unfilled characteristic reads as everywhere in this app,
-so treating it as a threshold would stun a half-typed character on every scratch.
+rules themselves are `consequencesOfTheHit` (`src/server/routes/sessions.ts`),
+which reads the slot back after the hit is written — so the numbers it judges are
+the ones the hit left behind — and asks two questions in the order they happen to
+a character: was that more than their CON, and is there any STUN left. Each puts
+its condition on with the same `setTag` the button uses, so a table takes it off
+the way they take off any other, and each declines for a character already in that
+condition: the tag is on, and a character being beaten on would otherwise fill the
+log with one line.
+
+Both decline for a characteristic left at nought, which matters more than it
+looks. Zero is what an unfilled characteristic reads as everywhere in this app, so
+a CON of nought treated as a threshold would stun a half-typed character on every
+scratch, and a STUN total of nought — which is also where that character's slot
+starts — would knock them out on the first one. One hit can answer both questions
+yes, and then both conditions go on, both lines are written and both toasts are
+sent, in that order: a character can be stunned without going down, and can go
+down without ever being stunned.
 
 Those two and `PATCH /api/sessions/:id/stage/:slotId/vitals` are the routes both
 roles may call, and all of them share one authorization helper —
