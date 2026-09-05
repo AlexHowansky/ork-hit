@@ -17,7 +17,7 @@
     "@fortawesome/free-solid-svg-icons": "^7.3.1",
     "@fortawesome/react-fontawesome": "^3.5.0",
     "bun-plugin-tailwind": "^0.0.15",
-    "daisyui": "^5.7.27",
+    "daisyui": "^5.7.28",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router": "^7.18.3",
@@ -26,10 +26,10 @@
     "zod": "^4.5.4"
   },
   "devDependencies": {
-    "@types/bun": "^1.4.0",
+    "@types/bun": "^1.4.1",
     "@types/react": "^19.2.18",
-    "@types/react-dom": "^19.2.5",
-    "playwright": "^1.62.1",
+    "@types/react-dom": "^19.2.7",
+    "playwright": "^1.63.0",
     "typescript": "^5.9.3"
   }
 }
