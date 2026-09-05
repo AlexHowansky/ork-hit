@@ -86,18 +86,38 @@ export const fileRoutes = {
   /**
    * A card image for a campaign or character.
    *
-   * Any authenticated user may read one: card images are decoration shown on
-   * cards that the viewer is already entitled to see.
+   * Readable by the game master whose library it belongs to, or by a player of a
+   * session that actually puts it on screen — the campaign they are sitting at,
+   * or a character standing on their stage.
+   *
+   * Being signed in is deliberately not enough. These ids are random, so nobody
+   * guesses one, but an id that gets out — a shared screenshot, a browser
+   * history, a proxy log — used to be readable by every account on the instance,
+   * including a game master with no relationship to the table it came from. The
+   * check below is the same shape as the sheet's above: what the viewer is
+   * entitled to, not merely who they are.
+   *
+   * A 404 rather than a 403, as everywhere else here, so that probing ids says
+   * nothing about which of them exist.
    */
   "/uploads/images/:uploadId": {
     GET: handler(async (request: BunRequest<"/uploads/images/:uploadId">) => {
-      const signedIn = currentGm(request) !== null || currentPlayer(request) !== null;
-      if (!signedIn) throw errors.unauthorized();
+      // The game master first, as `currentIdentity` does: a signed-in game master
+      // looking at their own library is the common case, and the one identity
+      // that can see a picture outside any session.
+      const gm = currentGm(request);
+      const player = gm ? null : currentPlayer(request);
+      if (!gm && !player) throw errors.unauthorized();
 
       const upload = uploads.byId(request.params.uploadId);
       if (!upload || upload.kind !== "image") {
         throw errors.notFound("We couldn't find that image.");
       }
+
+      const allowed = gm
+        ? uploads.isVisibleToGm(upload.id, gm.id)
+        : uploads.isVisibleInSession(upload.id, player!.session.id);
+      if (!allowed) throw errors.notFound("We couldn't find that image.");
 
       return await serveUpload(upload, {
         // The type comes from the magic bytes checked at upload time, never from

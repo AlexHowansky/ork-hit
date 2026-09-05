@@ -128,6 +128,39 @@ async function makeTable(cookie: string) {
   return { campaign: campaign.campaign, pc, npc, session };
 }
 
+/**
+ * A real 1x1 PNG, with a distinguishing byte appended so that two calls never
+ * produce the same file — the app stores an upload per row, and a test about who
+ * may read which picture needs them to be different pictures.
+ */
+function cardImage(tag: number): File {
+  const pixel = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+    "base64",
+  );
+  return new File([pixel, new Uint8Array([tag])], `card-${tag}.png`, { type: "image/png" });
+}
+
+/** A character carrying a card image, which `makeTable` does not give them. */
+async function addCardedCharacter(
+  cookie: string,
+  campaignId: string,
+  kind: "pc" | "npc",
+  tag: number,
+) {
+  const form = new FormData();
+  form.set("campaignId", campaignId);
+  form.set("kind", kind);
+  form.set("name", unique(kind));
+  form.set("sheet", new File(["<h1>sheet</h1>"], "sheet.html"));
+  form.set("card", cardImage(tag));
+  const response = await fetch(
+    `${base}/api/characters`,
+    authed(cookie, { method: "POST", body: form }),
+  );
+  return (await response.json()).character;
+}
+
 /** Joins a session as a player and returns their cookie. */
 async function joinAs(code: string, name: string): Promise<string> {
   const response = await fetch(`${base}/api/sessions/join`, {
@@ -189,6 +222,82 @@ describe("one game master cannot see another's material", () => {
         authed(stranger.cookie, { method: "DELETE" }),
       )).status,
     ).toBe(404);
+  });
+
+  /**
+   * A card image is reachable by entitlement rather than by merely being signed
+   * in. The ids are random, so nobody guesses one; what this is about is an id
+   * that gets out — a screenshot, a browser history, a proxy log — which used to
+   * be readable by every account on the instance.
+   */
+  test("a card image is invisible to a game master with no claim on it", async () => {
+    const owner = await signIn();
+    const stranger = await signIn();
+
+    const campaignForm = new FormData();
+    campaignForm.set("name", unique("Campaign"));
+    campaignForm.set("card", cardImage(1));
+    const campaign = (
+      await (await fetch(
+        `${base}/api/campaigns`,
+        authed(owner.cookie, { method: "POST", body: campaignForm }),
+      )).json()
+    ).campaign;
+
+    const character = await addCardedCharacter(owner.cookie, campaign.id, "npc", 2);
+
+    // The owner sees both, whether or not either is in a fight.
+    expect((await fetch(`${base}${campaign.cardUrl}`, authed(owner.cookie))).status).toBe(200);
+    expect((await fetch(`${base}${character.cardUrl}`, authed(owner.cookie))).status).toBe(200);
+
+    // The other game master sees neither, and gets the same 404 an id that never
+    // existed would give.
+    expect((await fetch(`${base}${campaign.cardUrl}`, authed(stranger.cookie))).status).toBe(404);
+    expect((await fetch(`${base}${character.cardUrl}`, authed(stranger.cookie))).status).toBe(404);
+  });
+
+  test("a player sees the cards of their own table and no others", async () => {
+    const gm = await signIn();
+
+    const campaignForm = new FormData();
+    campaignForm.set("name", unique("Campaign"));
+    campaignForm.set("card", cardImage(3));
+    const campaign = (
+      await (await fetch(
+        `${base}/api/campaigns`,
+        authed(gm.cookie, { method: "POST", body: campaignForm }),
+      )).json()
+    ).campaign;
+
+    const staged = await addCardedCharacter(gm.cookie, campaign.id, "pc", 4);
+    // Cast on the same campaign, but never brought into the fight.
+    const offstage = await addCardedCharacter(gm.cookie, campaign.id, "npc", 5);
+
+    const session = (
+      await (await fetch(`${base}/api/sessions`, authed(gm.cookie, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaignId: campaign.id }),
+      }))).json()
+    ).session;
+    await fetch(`${base}/api/sessions/${session.id}/stage`, authed(gm.cookie, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ characterId: staged.id }),
+    }));
+
+    const player = await joinAs(session.code, "Pat");
+
+    // Their own table: the campaign they are sitting at, and whoever is standing
+    // on the stage.
+    expect((await fetch(`${base}${campaign.cardUrl}`, { headers: { Cookie: player } })).status)
+      .toBe(200);
+    expect((await fetch(`${base}${staged.cardUrl}`, { headers: { Cookie: player } })).status)
+      .toBe(200);
+    // A monster the game master has not brought on is not theirs to look at,
+    // even though it belongs to the campaign they are playing in.
+    expect((await fetch(`${base}${offstage.cardUrl}`, { headers: { Cookie: player } })).status)
+      .toBe(404);
   });
 });
 

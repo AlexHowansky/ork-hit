@@ -199,6 +199,62 @@ export const uploads = {
    * Upload rows that nothing references any more. The caller deletes the files
    * from disk and then removes these rows.
    */
+  /**
+   * Whether an image is one this game master's own library carries.
+   *
+   * The two places a picture can be a card: on a campaign, or on a character in
+   * one. Both are reached through `campaigns.gm_id`, which is the only thing
+   * that says who a picture belongs to — an `uploads` row itself has no owner,
+   * because a file is not the thing that is owned. The character arm is what
+   * covers a monster borrowed onto a stage from another of their campaigns,
+   * which is still theirs (`characters.listForGm` never leaves a game master's
+   * own campaigns).
+   *
+   * A picture nothing references at all is nobody's, and so is visible to
+   * nobody — the honest answer for an orphan a sweep has not caught yet.
+   */
+  isVisibleToGm(uploadId: string, gmId: string): boolean {
+    return db.query<{ ok: number }, { uploadId: string; gmId: string }>(`
+      SELECT 1 AS ok WHERE
+        EXISTS (
+          SELECT 1 FROM campaigns
+          WHERE card_upload_id = $uploadId AND gm_id = $gmId
+        )
+        OR EXISTS (
+          SELECT 1 FROM characters c
+          JOIN campaigns cp ON cp.id = c.campaign_id
+          WHERE c.card_upload_id = $uploadId AND cp.gm_id = $gmId
+        )
+    `).get({ uploadId, gmId }) !== null;
+  },
+
+  /**
+   * Whether an image is one this session actually puts on screen.
+   *
+   * A player is entitled to the pictures of their own table and no others: the
+   * campaign they are sitting at, and whoever is standing on the stage. Stage
+   * membership rather than campaign membership is the test for a character,
+   * because that is what the snapshot hands them — a monster borrowed from
+   * another campaign is on their stage and drawn on their screen, while the rest
+   * of the cast of their own campaign is not yet in the fight and is none of
+   * their business.
+   */
+  isVisibleInSession(uploadId: string, sessionId: string): boolean {
+    return db.query<{ ok: number }, { uploadId: string; sessionId: string }>(`
+      SELECT 1 AS ok WHERE
+        EXISTS (
+          SELECT 1 FROM game_sessions gs
+          JOIN campaigns cp ON cp.id = gs.campaign_id
+          WHERE gs.id = $sessionId AND cp.card_upload_id = $uploadId
+        )
+        OR EXISTS (
+          SELECT 1 FROM session_characters sc
+          JOIN characters c ON c.id = sc.character_id
+          WHERE sc.game_session_id = $sessionId AND c.card_upload_id = $uploadId
+        )
+    `).get({ uploadId, sessionId }) !== null;
+  },
+
   orphaned(): UploadRow[] {
     return db.query<UploadRow, []>(`
       SELECT * FROM uploads
