@@ -1436,6 +1436,120 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     expect(dark.background).toBe("rgba(0, 0, 0, 0)");
   }, 60_000);
 
+  test("P and N set the kind of the card the pointer is on", async () => {
+    if (!browser) return;
+    const gm = await signedInGm();
+    // A key goes to the page the browser is typing into, and the tests before
+    // this one leave theirs open. A click does not need it and a keystroke does.
+    await gm.bringToFront();
+
+    const campaignName = unique("Campaign");
+    await gm.getByRole("button", { name: "New", exact: true }).click();
+    await gm.getByLabel("Campaign name").fill(campaignName);
+    await gm.getByRole("button", { name: "Create campaign" }).click();
+    await gm.getByText(`Characters in ${campaignName}`).waitFor();
+
+    // Two of them, because the point of the keys is that they mean the card
+    // under the pointer rather than a selection.
+    for (const name of ["Hero", "Bystander"]) {
+      await gm.getByRole("button", { name: "Add", exact: true }).click();
+      await gm.getByLabel("Name").fill(name);
+      await gm.getByLabel(/Character sheet/).setInputFiles({
+        name: "sheet.html",
+        mimeType: "text/html",
+        buffer: Buffer.from(`<h1>${name}</h1>`),
+      });
+      await gm.getByRole("button", { name: "Add character" }).last().click();
+      await gm.getByRole("button", { name, exact: true }).waitFor();
+    }
+
+    /** Which frame a card is printed in, which is what says what kind it is. */
+    const frameOf = async (name: string) =>
+      gm
+        .locator(`article:has(button[aria-label="${name}"]) ${CARD_FRONT} .card-frame`)
+        .evaluate((el) => getComputedStyle(el).backgroundImage);
+
+    /**
+     * Waits for a card to be printed in a given frame.
+     *
+     * The frame *is* the answer — the key says nothing else, deliberately — so
+     * this is both how the test waits and what it is waiting for.
+     */
+    const framed = async (name: string, kind: "pc" | "npc") => {
+      const deadline = Date.now() + 5000;
+      let seen = "";
+      while (Date.now() < deadline) {
+        seen = await frameOf(name);
+        if (seen.includes(`/frames/character-${kind}.webp`)) return seen;
+        await gm.waitForTimeout(50);
+      }
+      return seen;
+    };
+
+    // A character added without saying otherwise is an NPC, which is the whole
+    // reason these keys are worth having.
+    expect(await frameOf("Hero")).toContain("/frames/character-npc.webp");
+
+    await gm.locator(`article:has(button[aria-label="Hero"])`).hover();
+    await gm.keyboard.press("p");
+    expect(await framed("Hero", "pc")).toContain("/frames/character-pc.webp");
+
+    // And only that card: the key means the one under the pointer.
+    expect(await frameOf("Bystander")).toContain("/frames/character-npc.webp");
+
+    // Nothing is announced. The card is the answer, and a toast over a change
+    // the reader is already looking at is one more thing to dismiss.
+    expect(await gm.locator(".alert").count()).toBe(0);
+
+    // Back again, from the same card.
+    await gm.keyboard.press("n");
+    expect(await framed("Hero", "npc")).toContain("/frames/character-npc.webp");
+
+    // And it survives a reload, so the key really saved rather than only redrew.
+    await gm.locator(`article:has(button[aria-label="Bystander"])`).hover();
+    await gm.keyboard.press("p");
+    expect(await framed("Bystander", "pc")).toContain("/frames/character-pc.webp");
+    await gm.reload();
+    // A reload does not remember which campaign was open, so it is chosen again.
+    await gm.getByRole("button", { name: `Select ${campaignName}` }).click();
+    await gm.getByText(`Characters in ${campaignName}`).waitFor();
+    expect(await frameOf("Bystander")).toContain("/frames/character-pc.webp");
+
+    await gm.close();
+  }, 60_000);
+
+  test("a name being typed is not a hot key", async () => {
+    if (!browser) return;
+    const gm = await signedInGm();
+
+    const campaignName = unique("Campaign");
+    await gm.getByRole("button", { name: "New", exact: true }).click();
+    await gm.getByLabel("Campaign name").fill(campaignName);
+    await gm.getByRole("button", { name: "Create campaign" }).click();
+    await gm.getByText(`Characters in ${campaignName}`).waitFor();
+
+    await gm.getByRole("button", { name: "Add", exact: true }).click();
+    await gm.getByLabel("Name").fill("Pippin");
+    await gm.getByLabel(/Character sheet/).setInputFiles({
+      name: "sheet.html",
+      mimeType: "text/html",
+      buffer: Buffer.from("<h1>Pippin</h1>"),
+    });
+    await gm.getByRole("button", { name: "Add character" }).last().click();
+    await gm.getByRole("button", { name: "Pippin", exact: true }).waitFor();
+
+    // The pointer is on the card and the caret is in a box. The box wins: a `p`
+    // typed into a name is a letter of the name.
+    await gm.locator(`article:has(button[aria-label="Pippin"])`).hover();
+    await gm.getByRole("button", { name: "Add", exact: true }).click();
+    await gm.getByLabel("Name").fill("");
+    await gm.getByLabel("Name").pressSequentially("pn");
+
+    expect(await gm.getByLabel("Name").inputValue()).toBe("pn");
+
+    await gm.close();
+  }, 60_000);
+
   test("a character's card turns over to show its characteristics", async () => {
     if (!browser) return;
     const gm = await signedInGm();

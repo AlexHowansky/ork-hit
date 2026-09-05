@@ -99,6 +99,15 @@ document explains the requirements that must be adhered to.
   nor shone at, and keeps the hover highlight on its own, along with the foil,
   held still.
 
+* A character's kind can be set from the card itself, without opening anything:
+  with the reader on a card in the library — the pointer over it, or the keyboard
+  focused on it — `P` makes that character a player character and `N` makes it a
+  non-player character. A key typed into a field is text, not a command, and no
+  hot key fires while a dialog is open. The card redrawing itself in the other
+  kind's frame is the whole of the answer: a change made this way announces
+  nothing, since the reader is already looking at the thing that changed. A
+  failure is still reported, because that is the case where nothing else moves.
+
 * Pressing a card anywhere does the card's own thing: selecting a campaign,
   turning a character's card over. Its corner controls stay reachable over the
   top of that, and remain reachable however the card is animated — except while a

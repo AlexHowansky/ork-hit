@@ -99,6 +99,7 @@ export function CharacterCard({
   inviting = false,
   flippable = false,
   flipped = false,
+  onAttention,
 }: {
   character: Character;
   actions?: ReactNode;
@@ -118,7 +119,30 @@ export function CharacterCard({
   flippable?: boolean;
   /** Whether the back is the side showing. Ignored unless `flippable`. */
   flipped?: boolean;
+  /**
+   * The card has come under the reader's attention, or lost it: the pointer has
+   * moved onto it, or the keyboard has focused something inside it.
+   *
+   * Which is one thing rather than two, because what asks for it is one thing —
+   * the library's hot keys, which change a character's kind and need to know
+   * which character is meant. A game master driving the page by keyboard has no
+   * pointer to hover with, and the card they are on is the card they mean.
+   */
+  onAttention?: (attending: boolean) => void;
 }) {
+  const attention = onAttention
+    ? {
+        onMouseEnter: () => onAttention(true),
+        onMouseLeave: () => onAttention(false),
+        // `focus` and `blur` on a React element are the bubbling pair, so these
+        // hear about the card's own button and its corner controls alike. Moving
+        // between two of them fires the leaving half before the arriving one, so
+        // the card is still attended to at the end of it.
+        onFocus: () => onAttention(true),
+        onBlur: () => onAttention(false),
+      }
+    : undefined;
+
   return (
     // The whole card opens the character, rather than the name under it doing so:
     // `HoverCard`'s zones cover the name, and the card's one obvious action is
@@ -128,6 +152,7 @@ export function CharacterCard({
     <HoverCard
       {...dragProps}
       {...dropProps}
+      {...attention}
       label={onOpen ? character.name : undefined}
       onClick={onOpen}
       // Which side is up, said out loud: a card is a toggle once it has a back,

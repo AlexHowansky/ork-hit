@@ -65,7 +65,7 @@ import { CharacterCard } from "../components/CharacterCard.tsx";
 import { SheetOverlay } from "../components/SheetFrame.tsx";
 import { useConfirm } from "../components/Confirm.tsx";
 import { useToast } from "../components/Toast.tsx";
-import type { Campaign, Character, GameSession } from "../types.ts";
+import type { Campaign, Character, CharacterKind, GameSession } from "../types.ts";
 
 /** Mirrors `limits.nameMaxLength` on the server, which is what rejects a longer one. */
 const NAME_MAX_LENGTH = 60;
@@ -368,6 +368,62 @@ function CharacterForm({
   );
 }
 
+/** The hot keys that set a character's kind, and what each one means. */
+const KIND_KEYS: Record<string, CharacterKind> = { p: "pc", n: "npc" };
+
+/**
+ * `P` and `N` on the card under the reader, which is the fastest way there is to
+ * sort a freshly dropped folder of sheets into heroes and monsters.
+ *
+ * A sheet arrives as an NPC because that is the safer default, so a party of six
+ * is six trips through the edit dialog to say what everybody already knows by
+ * looking at the card. This is that, done from the card itself — the same
+ * bargain the picture drop makes, and for the same reason: what a character *is*
+ * is the whole of the decision, and the card is right there.
+ *
+ * Hung on the window rather than on the cards, because the key is pressed
+ * wherever the reader last clicked and a card is not focused merely by being
+ * hovered. Which card it means is the caller's business (`onAttention`).
+ *
+ * The listener is re-hung on every render, which is deliberate rather than
+ * overlooked: `apply` closes over which card is attended to and what is in the
+ * library, and both change under it. Adding and removing one window listener is
+ * cheaper than the staleness a memo here would buy.
+ *
+ * What it deliberately does not fire on:
+ *
+ * - **A key with a modifier on it.** `Ctrl-P` prints, `Cmd-N` opens a window, and
+ *   neither of them is about a character.
+ * - **A key held down.** `event.repeat` would otherwise send a `PATCH` for every
+ *   repeat of a key that says the same thing each time.
+ * - **A key typed into something.** A name being typed into a box is a name, not
+ *   a command, and the box is where it belongs.
+ * - **A key pressed while a dialog is open.** A dialog covers the library, and a
+ *   pointer that was over a card when one opened is not told it has left.
+ */
+function useKindKeys(apply: (kind: CharacterKind) => void): void {
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
+      const kind = KIND_KEYS[event.key.toLowerCase()];
+      if (!kind) return;
+
+      const target = event.target as HTMLElement | null;
+      if (target?.isContentEditable) return;
+      if (target && ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)) return;
+      if (document.querySelector("dialog[open], [role='dialog']")) return;
+
+      // Consumed, so it reaches nothing else — a browser's own find-as-you-type
+      // among them.
+      event.preventDefault();
+      apply(kind);
+    };
+
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [apply]);
+}
+
 /**
  * A character in the library: the card, plus the picture drop the campaign cards
  * beside it also take.
@@ -381,6 +437,7 @@ function LibraryCharacterCard({
   character,
   onOpen,
   flipped,
+  onAttention,
   onPicture,
   dragProps,
   actions,
@@ -389,6 +446,8 @@ function LibraryCharacterCard({
   onOpen: () => void;
   /** Whether this is the card currently turned over. */
   flipped: boolean;
+  /** The card is the one the pointer or the keyboard is on — see `useKindKeys`. */
+  onAttention: (attending: boolean) => void;
   onPicture: (file: File) => void;
   dragProps: HTMLAttributes<HTMLElement> & { draggable?: boolean };
   actions: ReactNode;
@@ -404,6 +463,7 @@ function LibraryCharacterCard({
       onOpen={onOpen}
       flippable
       flipped={flipped}
+      onAttention={onAttention}
       dragProps={dragProps}
       dropProps={dropProps}
       inviting={over}
@@ -609,6 +669,23 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
    * cards showing their backs is a wall with no pictures on it.
    */
   const [flippedId, setFlippedId] = useState<string | null>(null);
+  /**
+   * The character the reader is on — under the pointer, or holding the keyboard
+   * focus — which is the one the kind hot keys mean. Null when they are on none.
+   *
+   * A ref rather than state, for two reasons that point the same way. Nothing is
+   * *drawn* differently because the pointer is on a card — the tilt and the hover
+   * border are the stylesheet's — so a state update here would re-render the
+   * whole library on every card the pointer crosses, for nothing.
+   *
+   * And it would be a re-render that can arrive too late. React gives a pointer
+   * crossing a boundary a lower priority than a keystroke, so on a busy page the
+   * hover can still be uncommitted when the key lands a few milliseconds later —
+   * and the key would then be read against the card the pointer was on before.
+   * Written straight to a ref, "which card" is true the instant the pointer
+   * arrives, which is what a hot key needs it to be.
+   */
+  const attendedId = useRef<string | null>(null);
   const [settingsOpen, toggleSettings] = useSettingsDrawer();
   /**
    * The character being dragged, if one is.
@@ -928,6 +1005,50 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
     }
   };
 
+  /**
+   * Makes a character a PC or an NPC, from the hot key on its card.
+   *
+   * The same `PATCH` the edit dialog sends, carrying the one field — so the
+   * server applies it exactly as it would from the form, and answers with the
+   * record that goes back into the list.
+   *
+   * It says nothing when it works. The card redrawing itself in the other frame
+   * — new artwork, and the foil arriving or leaving with it — is the whole of the
+   * answer, and a toast on top of a change the reader is already looking at is
+   * one more thing to dismiss while sorting a folder of sheets a key at a time.
+   * A failure still speaks, because that is the case where nothing visible
+   * happens.
+   *
+   * A character that is already that kind is left alone. The key says what the
+   * character is rather than toggling it, so pressing it twice is not a mistake
+   * — it is the same instruction twice.
+   */
+  const setKind = async (character: Character, kind: CharacterKind) => {
+    if (character.kind === kind) return;
+    const form = new FormData();
+    form.set("kind", kind);
+    try {
+      const { character: updated } = await api.patchForm<{ character: Character }>(
+        `/api/characters/${character.id}`,
+        form,
+      );
+      setCharacters((current) =>
+        current.map((entry) => (entry.id === updated.id ? updated : entry))
+      );
+    } catch (error) {
+      toast.showError(error);
+    }
+  };
+
+  useKindKeys((kind) => {
+    // The character is looked up rather than remembered whole: the card may have
+    // been edited since the pointer arrived on it, and a hot key should change
+    // what the card is currently showing. It is looked up in the *visible* list,
+    // so a key can only ever mean a card that is on the screen.
+    const character = visibleCharacters.find((entry) => entry.id === attendedId.current);
+    if (character) void setKind(character, kind);
+  });
+
   const startSession = async () => {
     if (!selectedCampaign) return;
     try {
@@ -1095,6 +1216,13 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
                           setFlippedId((current) => (current === character.id ? null : character.id))
                         }
                         flipped={flippedId === character.id}
+                        onAttention={(attending) => {
+                          // Only this card may clear the mark, and only while it
+                          // still holds it: the pointer leaves one card by
+                          // arriving on the next, and the two fire in that order.
+                          if (attending) attendedId.current = character.id;
+                          else if (attendedId.current === character.id) attendedId.current = null;
+                        }}
                         onPicture={(file) => void setCardImage(file, character)}
                         dragProps={{
                           draggable: true,

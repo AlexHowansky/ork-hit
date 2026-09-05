@@ -1007,6 +1007,39 @@ also sits inside the panel that files a dropped sheet as a new character, so
 innermost target that wants a file is the one that gets it, and one drop never
 means two things.
 
+**And so can a character's kind, with a key.** `P` and `N` over a card in the
+library make it a player character or a non-player character — the same one-field
+`PATCH` the picture drop sends. It exists because a sheet arrives as an NPC (the
+safer default), so filing a party of six meant six trips through the edit dialog
+to say what anyone could see by looking at the card.
+
+It says nothing when it works, which is the difference between it and the picture
+drop beside it. The card redraws in the other kind's frame, foil arriving or
+leaving with it, and that *is* the answer — a toast over a change the reader is
+already looking at is one more thing to dismiss while going down a shelf a key at
+a time. A failure still speaks, since that is the case where nothing visible
+happens.
+
+`useKindKeys` (`GmLibrary.tsx`) hangs the listener on the window rather than on
+the cards: a key is pressed wherever the reader last clicked, and a card is not
+focused merely by being hovered. It stands down for a key with a modifier on it
+(`Ctrl-P` prints), a key held down (`event.repeat`, which would send a `PATCH` per
+repeat), a key typed into a field, and any key at all while a dialog is open —
+because a dialog covers the library, and a pointer that was over a card when one
+opened is never told it has left.
+
+Which card the key means is **a ref, not state** (`attendedId`), and that is the
+part worth keeping. Nothing is drawn differently because the pointer is on a card
+— the tilt and the hover border are the stylesheet's — so state here would
+re-render the library for every card the pointer crossed, to no effect. It would
+also be a re-render that can arrive too late: React ranks a pointer crossing a
+boundary below a keystroke, so on a busy page the hover can still be uncommitted
+when the key lands a few milliseconds behind it, and the key would be read against
+the card the pointer was on *before*. A ref is true the instant the pointer
+arrives. `onAttention` on `CharacterCard` is what reports it, and it reports the
+keyboard's focus as well as the pointer, since a game master driving the page by
+keyboard has no pointer and the card they are on is the card they mean.
+
 Emptying the picture deliberately is what `Remove the current card image` is for — on both edit dialogs, and offered only when there is
 one to remove. It outranks a portrait found in a sheet uploaded alongside it, and
 loses to a picture chosen in the same submission, so neither box nor file has to
