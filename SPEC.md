@@ -453,7 +453,10 @@ The app should have the following features:
 * Stunned is the one condition the app sets by itself. A character who takes more
   STUN than their CONSTITUTION **in a single hit** is stunned by it, so the tag
   goes on without anybody pressing anything, and the log says `<character> has
-  become stunned` — a line with no actor in it, because nobody chose it. A
+  taken more STUN than CON Stunned` — a line with no actor in it, because nobody
+  chose it, and one that names the rule it came from, since a table reading back
+  will want to know why a condition they did not set appeared. The condition at
+  the end of it is drawn as the same pill every other line about one is. A
   character with no CONSTITUTION typed in is never stunned this way: a zero there
   is an unfilled sheet rather than a threshold of nought. Neither is a character
   already stunned, who has nothing to add. And neither is a number put right with

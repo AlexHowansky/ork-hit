@@ -417,14 +417,19 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     }
 
     // And the log carries it as its own line, with nobody's name on the front:
-    // the rules did this, not the game master.
+    // the rules did this, not the game master. The line says which rule, since a
+    // table reading back will want to know why a condition nobody set appeared.
     const toggle = gm.getByRole("button", { name: "Log", exact: true });
     await toggle.click();
     await gm.waitForTimeout(500);
-    await gm
+    const line = gm
       .locator('aside[aria-label="Log"]')
-      .getByText("Thorin has become stunned", { exact: true })
-      .waitFor({ timeout: 5000 });
+      .getByRole("listitem")
+      .filter({ hasText: "has taken more STUN than CON" });
+    await line.waitFor({ timeout: 5000 });
+    await line.getByText("Thorin has taken more STUN than CON", { exact: true }).waitFor();
+    // The condition is drawn as the pill it is on Thorin's row, not as a word.
+    await line.getByTitle(/^Stunned/).waitFor();
   }, 60_000);
 
   test("an exact set is a correction rather than a hit, however big", async () => {

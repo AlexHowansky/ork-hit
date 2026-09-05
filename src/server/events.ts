@@ -28,7 +28,7 @@
  * The clock is the one exception, and it is at the bottom with its reasons.
  */
 
-import { markTag } from "../lib/hero.ts";
+import { markTag, STATUS_TAG_LABELS } from "../lib/hero.ts";
 
 export const SESSION_STARTED = "Session started";
 
@@ -134,13 +134,18 @@ export const actionTaken = (actor: string, character: string): string =>
  * game master who had reached for the Stunned button, which is a different thing
  * a table would want to be able to tell apart in the log.
  *
- * So the character is the subject and the rule is the verb. The condition is not
- * marked with `markTag`: what is written here is what happened to a character,
- * not a pill somebody put on them, and the pill is on their row for anyone
- * looking.
+ * So the character is the subject and the rule is the verb — and the line says
+ * which rule, because a table reading back will want to know why a condition
+ * they did not set appeared. The condition itself is marked with `markTag` like
+ * every other line about one, so the log draws it as the pill on the character's
+ * row rather than as a word that happens to name it.
+ *
+ * The tag is fixed rather than passed in, unlike `tagsAdded`: this line is only
+ * ever about the one condition, and it is the rule's own sentence rather than a
+ * report of whatever somebody pressed.
  */
 export const becameStunned = (character: string): string =>
-  `${character} has become stunned`;
+  `${character} has taken more STUN than CON ${markTag(STATUS_TAG_LABELS.stunned)}`;
 
 /* ------------------------------------------------------------- the clock's */
 
