@@ -23,6 +23,7 @@ import {
   HERO_STAT_RANGES,
 } from "../../lib/hero.ts";
 import type { HeroStatField } from "../../lib/hero.ts";
+import { compareNames } from "../../lib/names.ts";
 import { statsFromSheetHtml } from "../../lib/sheet-stats.ts";
 import { useSessionSocket } from "../useSessionSocket.ts";
 import { useLiveSessions } from "../useLiveSessions.ts";
@@ -86,12 +87,12 @@ function characterNameFor(file: File): string {
  * A character added to the list where the server would have put it.
  *
  * The library arrives sorted by name, so a character filed without a reload has
- * to be filed into that order rather than onto the end. `COLLATE NOCASE` is the
- * server's rule; `sensitivity: "base"` is the nearest thing the browser has.
+ * to be filed into that order rather than onto the end. `compareNames` is the
+ * order the server sent, which is the point of its being shared code.
  */
 function insertByName(current: Character[], added: Character): Character[] {
   const next = [...current, added];
-  return next.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+  return next.sort((a, b) => compareNames(a.name, b.name));
 }
 
 /* ------------------------------------------------------------------- dialogs */

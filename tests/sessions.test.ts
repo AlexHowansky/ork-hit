@@ -220,6 +220,22 @@ describe("the starting roster", () => {
     expect(roster.map((character) => character.position)).toEqual([0, 1, 2]);
   });
 
+  test("in the same name order the library is listed in", () => {
+    // `position` is only the tiebreak between characters on the same DEX+INIT,
+    // but it is a name order when it is used, and there is one of those in this
+    // app — the one that files "The Anvil" with the As.
+    const campaign = makeCampaign();
+    for (const name of ["The Zarina", "Bruenor", "The Anvil"]) {
+      makeCharacter(campaign.id, "pc", name);
+    }
+
+    const session = start(campaign.id, campaign.gm_id);
+    const roster = sessionCharacters.list(session.id);
+
+    expect([...roster].sort((a, b) => a.position - b.position).map((c) => c.name))
+      .toEqual(["The Anvil", "Bruenor", "The Zarina"]);
+  });
+
   test("leaves the NPCs in the library", () => {
     const campaign = makeCampaign();
     makeCharacter(campaign.id, "pc", "Thorin");
@@ -360,6 +376,19 @@ describe("the character library", () => {
 
     const listed = characters.listForGm(campaign.gm_id, campaign.id).map((c) => c.name);
     expect(listed).toEqual(["Bruenor", "Elara", "strahd", "zarina"]);
+  });
+
+  test("and files a name under its first real word rather than its article", () => {
+    // The order is the app's own (`compareNames`) rather than SQLite's, which is
+    // the reason this list is sorted outside the query. Left to `COLLATE NOCASE`
+    // half a cast collects under T.
+    const campaign = makeCampaign();
+    for (const name of ["The Zarina", "Bruenor", "The Anvil", "Theodore"]) {
+      makeCharacter(campaign.id, "pc", name);
+    }
+
+    expect(characters.listForGm(campaign.gm_id, campaign.id).map((c) => c.name))
+      .toEqual(["The Anvil", "Bruenor", "Theodore", "The Zarina"]);
   });
 
   test("is ordered the same way across campaigns", () => {

@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { api } from "../api.ts";
+import { compareNames } from "../../lib/names.ts";
 import { useSessionSocket } from "../useSessionSocket.ts";
 import { useGmSettings } from "../gmSettings.ts";
 import { useColumnSplit } from "../useColumnSplit.ts";
@@ -398,7 +399,7 @@ export function GmSessionConsole({ onSignOut }: { onSignOut: () => void }) {
       // the console is actually running is what a game master is looking for
       // first, and the rest is a shelf they went to on purpose.
       Number(isBorrowed(a)) - Number(isBorrowed(b)) ||
-      a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
+      compareNames(a.name, b.name),
   );
 
   // The one row that has the scene above it and the rest of the campaign below.

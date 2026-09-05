@@ -15,6 +15,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api.ts";
+import { compareNames } from "../../lib/names.ts";
 import { playDing } from "../ding.ts";
 import { useSessionSocket } from "../useSessionSocket.ts";
 import { useColumnSplit } from "../useColumnSplit.ts";
@@ -289,7 +290,7 @@ export function PlayerSession({
     // finding your own character in a list of names.
     const available = snapshot.characters
       .filter((character) => character.kind === "pc" && character.claimedByPlayerId === null)
-      .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+      .sort((a, b) => compareNames(a.name, b.name));
 
     return (
       <div className="w-full p-2 sm:p-3">

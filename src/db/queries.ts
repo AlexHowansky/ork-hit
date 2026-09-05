@@ -10,6 +10,7 @@ import { db, fromNow, now } from "./index.ts";
 import { limits } from "../lib/config.ts";
 import { sortTags } from "../lib/hero.ts";
 import { newId } from "../lib/ids.ts";
+import { compareNames } from "../lib/names.ts";
 import type {
   CampaignRow,
   CharacterKind,
@@ -299,22 +300,27 @@ export const characters = {
    * By name alone rather than by kind first: the cards carry a badge saying which
    * is which, so grouping them only made a character harder to find by the one
    * thing the reader knows about it.
+   *
+   * Ordered here rather than in the `SELECT`, which is the one place in this file
+   * that sorts outside SQL. The rule is `compareNames` — a name files under its
+   * first real word, so "The Crimson Fist" goes with the Cs — and `bun:sqlite`
+   * offers no way to register a collation, so an `ORDER BY` could only be a
+   * second copy of it in a language that cannot be made to agree. A library is a
+   * campaign's cast; there is no page of them to sort a piece at a time.
    */
   listForGm(gmId: string, campaignId?: string): CharacterRow[] {
-    if (campaignId) {
-      return db.query<CharacterRow, { gmId: string; campaignId: string }>(`
-        SELECT c.* FROM characters c
-        JOIN campaigns cp ON cp.id = c.campaign_id
-        WHERE cp.gm_id = $gmId AND c.campaign_id = $campaignId
-        ORDER BY c.name COLLATE NOCASE
-      `).all({ gmId, campaignId });
-    }
-    return db.query<CharacterRow, { gmId: string }>(`
-      SELECT c.* FROM characters c
-      JOIN campaigns cp ON cp.id = c.campaign_id
-      WHERE cp.gm_id = $gmId
-      ORDER BY c.name COLLATE NOCASE
-    `).all({ gmId });
+    const rows = campaignId
+      ? db.query<CharacterRow, { gmId: string; campaignId: string }>(`
+          SELECT c.* FROM characters c
+          JOIN campaigns cp ON cp.id = c.campaign_id
+          WHERE cp.gm_id = $gmId AND c.campaign_id = $campaignId
+        `).all({ gmId, campaignId })
+      : db.query<CharacterRow, { gmId: string }>(`
+          SELECT c.* FROM characters c
+          JOIN campaigns cp ON cp.id = c.campaign_id
+          WHERE cp.gm_id = $gmId
+        `).all({ gmId });
+    return rows.sort((a, b) => compareNames(a.name, b.name));
   },
 
   byId(id: string): CharacterRow | null {
@@ -824,31 +830,53 @@ export const sessionCharacters = {
    * Anyone already there is filtered out rather than left to
    * `ON CONFLICT`, because a skipped row would leave a hole in the positions,
    * which the rest of the code takes to be dense.
+   *
+   * The name order is `compareNames`, the app's own, so two characters on the
+   * same DEX+INIT stand in the order the library lists them. It costs the window
+   * function this used to do the numbering with: SQLite cannot be taught that
+   * rule from here (see `listForGm`), so the party is read out, ordered, and
+   * written back in a transaction — which is what keeps the positions dense if
+   * anything fails partway.
    */
-  addCampaignPcs(sessionId: string, campaignId: string): void {
-    db.query(`
-      INSERT INTO session_characters
-        (id, game_session_id, character_id, copy_number, position, added_at,
-         cur_endurance, cur_stun, cur_body)
-      SELECT
-        lower(hex(randomblob(16))),
-        $sessionId,
-        c.id,
-        1,
-        COALESCE(
-          (SELECT MAX(position) + 1 FROM session_characters WHERE game_session_id = $sessionId),
-          0
-        ) + ROW_NUMBER() OVER (ORDER BY c.name COLLATE NOCASE) - 1,
-        $ts,
-        c.endurance, c.stun, c.body
-      FROM characters c
+  addCampaignPcs: db.transaction((sessionId: string, campaignId: string): void => {
+    const party = db.query<
+      { id: string; name: string; endurance: number; stun: number; body: number },
+      { sessionId: string; campaignId: string }
+    >(`
+      SELECT c.id, c.name, c.endurance, c.stun, c.body FROM characters c
       WHERE c.campaign_id = $campaignId
         AND c.kind = 'pc'
         AND c.id NOT IN (
           SELECT character_id FROM session_characters WHERE game_session_id = $sessionId
         )
-    `).run({ sessionId, campaignId, ts: now() });
-  },
+    `).all({ sessionId, campaignId });
+    if (party.length === 0) return;
+
+    const next = db.query<{ position: number }, { sessionId: string }>(`
+      SELECT COALESCE(MAX(position) + 1, 0) AS position
+      FROM session_characters WHERE game_session_id = $sessionId
+    `).get({ sessionId })!.position;
+
+    const ts = now();
+    party.sort((a, b) => compareNames(a.name, b.name));
+    party.forEach((character, index) => {
+      db.query(`
+        INSERT INTO session_characters
+          (id, game_session_id, character_id, copy_number, position, added_at,
+           cur_endurance, cur_stun, cur_body)
+        VALUES ($id, $sessionId, $characterId, 1, $position, $ts, $end, $stun, $body)
+      `).run({
+        id: newId(),
+        sessionId,
+        characterId: character.id,
+        position: next + index,
+        ts,
+        end: character.endurance,
+        stun: character.stun,
+        body: character.body,
+      });
+    });
+  }),
 
   /**
    * Brings a copy of a character on stage.

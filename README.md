@@ -809,6 +809,26 @@ appears as its sheet lands — inserted in name order, which is the order the
 library arrives in — under a line saying how many are still to come, and one
 failure is reported without stopping the rest.
 
+**A name files under its first real word.** "The Crimson Fist" is listed with the
+Cs, the way a catalogue or a record shop files it — leave the article in and half
+a campaign's cast collects under T, which is no order at all for finding anybody
+in. `compareNames` (`src/lib/names.ts`) is the whole of the rule: a leading `The`
+is dropped from the key, one *inside* a name is left alone ("Sword of the
+Morning" files under S), `Theodore` keeps its T because the article is a word
+rather than a prefix, and the full name breaks a tie so a library lists the same
+way twice.
+
+It lives in `lib/` because both sides sort: the server sends the library in order
+and the browser files a newly uploaded character into that same order without
+asking for the list again. That is also why it is TypeScript rather than the
+`ORDER BY` it used to be — SQLite takes a collation from its host program, but
+`bun:sqlite` exposes no way to register one, so a rule written in SQL could only
+be a second copy in a language that cannot be made to agree. `characters.listForGm`
+is therefore the one query in `queries.ts` that sorts outside SQL, and
+`addCampaignPcs` gave up a window function for the same reason: the party that
+opens a session is numbered in the order the library lists it, so two characters
+on the same DEX+INIT stand where the game master expects.
+
 **A name the campaign already has is that character being updated**, not a
 collision. Re-exporting from HERO Designer and dropping the file back is how a
 sheet is kept current, and refusing it left the game master finding each
@@ -820,10 +840,12 @@ picture". The kind is what it leaves alone: a monster dropped over a hero does n
 make that hero a monster, and the dialog is where that is decided.
 
 `fileSheets` matches the name the way the server does — its `COLLATE NOCASE`
-against `sensitivity: "base"` in the browser, the same stand-in `insertByName`
-uses — and the list it searches is the page's own, so a character added in another
-tab since the page loaded takes the create path and gets the conflict it always
-did. That is also why the toast counts the two separately: a batch that quietly
+against `sensitivity: "base"` in the browser — and the list it searches is the
+page's own, so a character added in another tab since the page loaded takes the
+create path and gets the conflict it always did. Matching is not ordering, which
+is why that comparison stayed here rather than moving into `compareNames` below:
+"The Ravager" is a different character from "Ravager", however near each other
+they are filed. That is also why the toast counts the two separately: a batch that quietly
 updated ten characters when the game master meant to add ten is worth noticing.
 
 The **portrait** rule is the one place the drop and the edit dialog differ, and

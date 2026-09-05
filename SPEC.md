@@ -35,6 +35,15 @@ document explains the requirements that must be adhered to.
   remembered, and handing the boundary back — a double-click on it — restores the
   automatic fit.
 
+* Wherever characters are listed by name — the library, the roster a session
+  opens with, the list a player picks their character from — a name is filed
+  under its first real word: a leading "The" is not what decides where it lands,
+  so "The Crimson Fist" is found with the Cs rather than in a drift of Ts. Only
+  the leading one, and only as a whole word: "Sword of the Morning" is filed
+  under S, and nobody called Theodore is filed under A. Case never decides an
+  order. Two names that file in the same place still come out the same way every
+  time.
+
 * How large a card's picture is drawn is a deployment setting, not a constant in
   the code. It measures the picture: the card comes out larger, since its border
   and the name underneath are extra. The size is a ceiling. A card is never drawn
