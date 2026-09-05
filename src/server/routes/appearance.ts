@@ -49,6 +49,8 @@ const css =
   // And the foil the well blends over a picture, which is written here for the
   // same reason the frames are.
   `  --card-foil: url("/frames/sheen.webp");\n` +
+  // And the stock the back of a character's card is printed on, likewise.
+  `  --card-back: url("/frames/back.webp");\n` +
   // Only when there is one. Unset, `styles.css` falls back to `inherit` and a
   // card's name keeps the interface font.
   //

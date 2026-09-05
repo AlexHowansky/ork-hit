@@ -497,10 +497,21 @@ cannot turn with it — fade out while the back is showing.
 The back is drawn in the same frame as the front and carries `data-theme="winter"`
 for the whole face, for the reason the name's strip carries it on the front: one
 cut of the artwork serves both themes, so the back of a card is pale whatever the
-page is doing, and the ink on it has to be the ink that belongs on pale card. The
-stat block's type scales with `--card-image-size` (`.card-stat`) exactly as the
-name's does — seven ruled rows come to about 0.61 of the card's width against a
-window of 0.85, so they fit at every size the slider allows.
+page is doing, and the ink on it has to be the ink that belongs on pale card. It
+is printed on stock of its own — `assets/back.webp`, served beside the frames and
+delivered as `--card-back` for the same bundler reason — laid in the same
+full-width square the front prints its picture in, not in the frame's window: the
+window is smaller than that square on every side, and art cut to it leaves a bare
+band between the window's foot and the name's panel. What overruns goes under the
+frame, which is what a bleed is for.
+
+The numbers are set as the name is — the same face (`--card-font-family`), the
+same weight, the same ink at full strength — because they are the only two pieces
+of type on a card and a back set in the interface font reads as a screen with a
+card in front of it. Only the size differs: it scales with `--card-image-size`
+(`.card-stat`) exactly as the name's does, but smaller, since seven ruled rows
+come to about 0.61 of the card's width against a window of 0.85 and the name's own
+0.09 would not fit them at any card size.
 
 **The card also catches the light as it tilts**, and that too is daisyUI's, only
 turned up. `hover-3d` sets a `--shine` beside the `--transform` it rotates by —

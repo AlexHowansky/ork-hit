@@ -1469,6 +1469,15 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     // library rather than seven anonymous stat blocks.
     expect(back).toContain("Turncoat");
 
+    // Printed on stock rather than on a blank panel — and the artwork is actually
+    // resolved, like the frame's above: its address arrives from /appearance.css
+    // too, so an unset variable is otherwise a silent nothing.
+    expect(
+      await card
+        .locator(".card-back-art")
+        .evaluate((el) => getComputedStyle(el).backgroundImage),
+    ).toContain("/frames/back.webp");
+
     // The corner controls are printed on the face that has just turned away.
     // They ride outside the tile and cannot turn with it, so they are faded out
     // instead — and are not clickable while they are gone.

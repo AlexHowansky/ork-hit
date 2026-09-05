@@ -45,6 +45,12 @@ const BACK_STATS: readonly HeroStatField[] = HERO_STAT_FIELDS;
 function CharacterCardBack({ character }: { character: Character }) {
   return (
     <div className="relative h-full w-full bg-base-100" data-theme="winter">
+      {/* The stock the numbers are printed on: the same full-width square the
+          front prints its picture in, so the back is printed edge to edge and
+          the frame trims it. Laid out rather than positioned, for exactly the
+          reason the front's well is — see `.card-back-art` in `styles.css`. */}
+      <div className="card-back-art aspect-square w-full shrink-0" aria-hidden />
+
       <CardFrame kind={character.kind} />
 
       {/* Laid in the frame's window, where the front's picture shows through.
@@ -52,7 +58,15 @@ function CharacterCardBack({ character }: { character: Character }) {
           window is a fixed share of the card at every size, so a block centred
           in it stays centred whether the cards are drawn at 100px or 350px. */}
       <dl
-        className={`card-stat absolute z-20 flex flex-col justify-evenly px-[6%] tabular-nums ${CARD_WINDOW}`}
+        className={
+          // Set exactly as the name below it is: the same face, the same weight
+          // and the same ink at full strength (`CARD_NAME`). A label held back at
+          // half opacity read as a caption on a screen rather than as something
+          // printed, and a card has no captions on it — both halves of a row are
+          // printed matter.
+          `card-stat absolute z-20 flex flex-col justify-evenly px-[6%] font-medium `
+          + `tabular-nums ${CARD_WINDOW}`
+        }
       >
         {BACK_STATS.map((field) => (
           // A rule under each pair, in the way a printed stat block is ruled —
@@ -62,10 +76,8 @@ function CharacterCardBack({ character }: { character: Character }) {
             key={field}
             className="flex items-baseline justify-between gap-2 border-b border-base-content/15 last:border-b-0"
           >
-            <dt className="font-semibold uppercase tracking-wide opacity-60">
-              {HERO_STAT_LABELS[field]}
-            </dt>
-            <dd className="font-semibold">{character[field]}</dd>
+            <dt>{HERO_STAT_LABELS[field]}</dt>
+            <dd>{character[field]}</dd>
           </div>
         ))}
       </dl>

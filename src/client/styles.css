@@ -565,6 +565,33 @@ body {
 }
 
 /*
+  The stock the back of a character's card is printed on.
+
+  `assets/back.webp` — pale card with a halftone bloom and the corners of a comic
+  panel's speed lines — laid where the front's picture goes, so the back is a
+  printed side of the card rather than a blank one. Its address arrives from
+  /appearance.css as `--card-back`, for the same bundler reason the frames' do; a
+  page that never receives it simply gets the pale ground underneath.
+
+  The box is the picture's, not the window's: the same full-width square the front
+  prints its picture in (`CardWell`), which is `--card-image-size` across and the
+  reason it is a flow child of the face rather than a box positioned against the
+  artwork. The window the frame leaves is smaller than that square on every side,
+  so printing to the square covers the window whole — including the strip between
+  the window's foot and the name's panel, which a print cut to the window itself
+  leaves showing as a bare band. What overruns is hidden under the frame, which is
+  what a bleed is for.
+
+  `cover` because the art is square and so is the box, which makes it an exact
+  fit — and keeps it one if either is ever redrawn a little out of square.
+*/
+.card-back-art {
+  background-image: var(--card-back);
+  background-size: cover;
+  background-position: center;
+}
+
+/*
   The stat block on the back of a character's card.
 
   Sized against the card the way the name is (`.card-name` above), and for the
@@ -575,6 +602,10 @@ body {
   which is 0.85 of its width, and seven ruled lines of this come to 0.61 of it.
 */
 .card-stat {
+  /* The name's face, whatever the deployment set it to (`.card-name` above). The
+     two are the only type printed on a card, and a card whose back was set in the
+     interface font would read as a screen with a card in front of it. */
+  font-family: var(--card-font-family, inherit);
   font-size: calc(var(--card-image-size) * 0.062);
   line-height: 1.4;
 }

@@ -11,6 +11,11 @@
  * over a picture as the card tilts (`--card-foil`). It is not painted on the card
  * either — it is light caught by it, and the same light in either theme.
  *
+ * A fifth, `back.webp`, is what a character's card is printed on where its
+ * picture would be, on the side that shows the characteristics (`--card-back`).
+ * It is the only one of these that is not transparent anywhere: it is stock
+ * rather than something laid over stock.
+ *
  * WebP rather than PNG: the window has to stay transparent and WebP carries the
  * alpha, at roughly a third of the bytes the PNGs cost.
  *
@@ -48,6 +53,9 @@ const frames = {
 /** The foil, which lies over a picture rather than framing it. */
 const sheen = await load("sheen.webp");
 
+/** The stock the back of a character's card is printed on. */
+const back = await load("back.webp");
+
 /**
  * Answers 304 when the browser already holds this exact image, and the bytes
  * otherwise. Public rather than private: a frame is the same for everyone and
@@ -79,5 +87,8 @@ export const frameRoutes = {
   },
   "/frames/sheen.webp": {
     GET: handler(async (request: Request) => serve(sheen, request)),
+  },
+  "/frames/back.webp": {
+    GET: handler(async (request: Request) => serve(back, request)),
   },
 };

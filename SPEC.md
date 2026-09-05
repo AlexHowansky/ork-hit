@@ -96,7 +96,10 @@ document explains the requirements that must be adhered to.
   over as an object being turned over rather than a picture being swapped.
   Printed on it: the character's characteristics, in the frame's window where the
   picture is on the front, and the character's name where it always is — a shelf
-  of turned-over cards is still a shelf somebody can read. It is the library's
+  of turned-over cards is still a shelf somebody can read. The back is printed
+  stock like the front, not a blank panel, and the numbers on it are set in the
+  same face, weight and ink as the name, since they are the only type a card
+  carries. It is the library's
   alone. Where a character's card appears beside those same numbers, as it does
   in a session, the card has no back: turning it over would hide the picture to
   say something the screen is already saying. Which way up a card is must be
