@@ -65,6 +65,24 @@ function textOf(cell: string): string {
 }
 
 /**
+ * The number a value cell says, or `null` where it does not say one.
+ *
+ * HERO writes some characteristics as a pair — `PD 6 / 16` is the base and what
+ * it comes to with the armour on — and the first half is the characteristic
+ * itself, which is what this app stores. So a cell is read up to the first
+ * slash, and a cell with no slash in it is read whole.
+ *
+ * What is left has to be a whole number for the cell to count. That is what
+ * still throws out the header row, the total row written back to front, the
+ * fractions (`OCV 7.666…`) and the distances (`Leaping 6"/3"`, whose first half
+ * is not a number either) — none of which is a value this app could store.
+ */
+function valueOf(cell: string): number | null {
+  const head = cell.split("/", 1)[0]!.trim();
+  return /^-?\d+$/.test(head) ? Number(head) : null;
+}
+
+/**
  * The rows of the first table inside the div with this id, each as its cells'
  * text.
  *
@@ -111,18 +129,18 @@ export function statsFromSheetHtml(html: string): Partial<Record<HeroStatField, 
     // one thing about this table that cannot be assumed from the row alone: the
     // last row of it is a total, written the other way round —
     // `Total Characteristic Points | 85`. Requiring the second cell to name a
-    // characteristic *and* the first to be a whole number throws that row out,
-    // and with it the header row and every characteristic the sheet writes as a
-    // fraction (`OCV 7.666…`), as a pair (`PD 6 / 16`) or as a distance
-    // (`Leaping 6"/3"`). None of those is one of the seven, and none of them is
-    // a number this app could store if it were.
+    // characteristic *and* the first to be a number throws that row out, and
+    // with it the header row.
     const field = FIELD_BY_LABEL.get(cells[1]!);
-    if (!field || !/^-?\d+$/.test(cells[0]!)) continue;
+    if (!field) continue;
+
+    const value = valueOf(cells[0]!);
+    if (value === null) continue;
 
     // SPD and BODY are printed twice on these sheets, in the primary block and
     // again lower down. They have always agreed; the first is the answer if they
     // ever stop.
-    stats[field] ??= Number(cells[0]);
+    stats[field] ??= value;
   }
 
   // INIT is not a characteristic on the sheet at all — it is a talent, and this

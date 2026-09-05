@@ -830,7 +830,7 @@ the game master saw the numbers — and bounds anything it reads by the same
 `schemas.heroStat` a typed number passes through, dropping what will not fit
 rather than refusing the upload over a characteristic this table may never use.
 
-Four things in the real files decide how the table is read, and the tests in
+Five things in the real files decide how the table is read, and the tests in
 `tests/sheet-stats.test.ts` are named after them. The **marker is the licence**:
 without it, ids like `characteristics-collapse` are words that might mean this or
 might mean anything, and a wrong reading writes silently onto a character — so an
@@ -838,8 +838,11 @@ unmarked sheet is left completely alone. The **last row is written back to front
 (`Total Characteristic Points | 85`), which read by position alone invents a
 characteristic called `85`; requiring the second cell to name a characteristic
 *and* the first to be a whole number throws it out, along with the header row and
-every value HERO writes as a fraction, a pair or a distance. **SPD and BODY are
-printed twice** and the first printing wins. And **`Lightning Calculator` is a
+every value HERO writes as a fraction or a distance. **Some values are written as
+a pair** — `6 / 16` is the characteristic and what it comes to with something else
+switched on — and a cell is read up to the first slash, so the characteristic
+itself is what gets stored. **SPD and BODY are printed twice** and the first
+printing wins. And **`Lightning Calculator` is a
 different talent** that shares a first word with the one that matters, so the
 whole phrase is matched, including the `All Actions` that separates a general
 initiative bonus from one bought for ranged attacks alone. A marked sheet with no

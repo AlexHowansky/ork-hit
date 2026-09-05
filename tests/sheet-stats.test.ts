@@ -111,12 +111,23 @@ describe("the rows a naive reading gets wrong", () => {
     expect(stats.speed).toBe(4);
   });
 
+  test("a value written as a pair is read as the first half of it", () => {
+    // `6 / 16` is the characteristic and what it comes to with something else
+    // switched on. The characteristic is the half this app stores.
+    const stats = statsFromSheetHtml(MARKER + characteristics(
+      ["6 / 16", "REC"],
+      ["30/45", "STUN"],
+    ));
+
+    expect(stats).toMatchObject({ recovery: 6, stun: 30 });
+  });
+
   test("values HERO does not write as whole numbers are left out", () => {
-    // A fraction, a pair, a distance and an empty cell — all real, all in the
-    // table being scanned, none of them a number this app could store.
+    // A fraction, a distance and an empty cell — all real, all in the table
+    // being scanned, none of them a number this app could store. The distance is
+    // a pair like the one above, but its first half is `6"` rather than a number.
     const stats = statsFromSheetHtml(MARKER + characteristics(
       ["7.666666666666667", "DEX"],
-      ["6 / 16", "REC"],
       ['6"/3"', "END"],
       ["", "STUN"],
       ["12", "BODY"],
@@ -124,7 +135,6 @@ describe("the rows a naive reading gets wrong", () => {
 
     expect(stats).toMatchObject({ body: 12 });
     expect(stats.dexterity).toBeUndefined();
-    expect(stats.recovery).toBeUndefined();
     expect(stats.endurance).toBeUndefined();
     expect(stats.stun).toBeUndefined();
   });
