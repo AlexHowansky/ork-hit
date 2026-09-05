@@ -5,7 +5,6 @@
  * the tests can start their own on an ephemeral port.
  */
 
-import index from "../client/index.html";
 import { authRoutes } from "./routes/auth.ts";
 import { campaignRoutes } from "./routes/campaigns.ts";
 import { characterRoutes } from "./routes/characters.ts";
@@ -15,16 +14,14 @@ import { settingsRoutes } from "./routes/settings.ts";
 import { appearanceRoutes } from "./routes/appearance.ts";
 import { frameRoutes } from "./routes/frames.ts";
 import { websocket, wsRoute } from "./ws.ts";
+import { clientRoutes } from "./client.ts";
 import { log } from "../lib/log.ts";
 
-/**
- * Client-side routes, each served the same bundled document. Listed explicitly
- * rather than as a catch-all, so an unknown path still returns a 404.
- */
-const PAGES = ["/", "/join", "/gm", "/gm/sessions/:id", "/play"];
-
 export const routes = {
-  ...Object.fromEntries(PAGES.map((path) => [path, index])),
+  // The client and its assets. Awaited here because in production the document
+  // is built before the first request rather than bundled on the way out — see
+  // `client.ts` for why it is served by the app rather than by the bundler.
+  ...(await clientRoutes()),
   ...authRoutes,
   ...campaignRoutes,
   ...characterRoutes,

@@ -1451,9 +1451,21 @@ Set `TRUSTED_PROXY=1` so `X-Forwarded-For` is honoured for rate limiting and
 logs. Without it the forwarded header is ignored — otherwise anyone could spoof
 it to escape a rate limit — and the socket address is used instead.
 
-Two response headers cannot be set by the app, because Bun's bundler serves the
-HTML document itself: **`Strict-Transport-Security` and `frame-ancestors`**. The
-page carries a `<meta>` CSP covering everything else; set these at the proxy:
+In production the app builds the client at startup and serves the document
+itself, so the HTML carries the same headers every other response does —
+`X-Frame-Options: DENY`, `Strict-Transport-Security`, `X-Content-Type-Options`,
+`Referrer-Policy` and `Cross-Origin-Opener-Policy`. It is framed by nobody
+without a proxy having to arrange it.
+
+Development is the exception: there the document is served by Bun's bundler, which
+is what rebuilds the client as a file is saved, and a bundler-served response is
+outside the app's headers. A development instance is therefore framable, which is
+a reason not to expose one.
+
+The proxy is still worth setting `frame-ancestors` at. `X-Frame-Options` is
+honoured by every current browser, but it is the older mechanism, and the CSP
+directive is the one that will outlive it — the `<meta>` CSP in the page cannot
+carry `frame-ancestors`, as it is header-only. It goes in the proxy block below.
 
 That policy is `'self'` throughout with two exceptions, both for `CARD_FONT_URL`:
 `fonts.googleapis.com` in `style-src` for the stylesheet, and
@@ -1475,6 +1487,9 @@ location / {
     proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
 
+    # Belt and braces: the app sets HSTS and X-Frame-Options on its own responses
+    # in production. `frame-ancestors` is the modern spelling of the second and
+    # cannot go in the page's <meta> policy, so it is worth having here too.
     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
     add_header Content-Security-Policy   "frame-ancestors 'none'" always;
 
@@ -1501,7 +1516,9 @@ Back up `data/` — it holds both the database and every uploaded file.
   `src/db/queries.ts` and nothing interpolates into SQL.
 - **CSRF**: cookies are `SameSite=Lax`, and mutating requests must additionally
   present a same-origin `Sec-Fetch-Site` or a matching `Origin`. There are no
-  form posts.
+  form posts. The WebSocket handshake is held to the same rule, which matters
+  more there than anywhere else: a handshake is exempt from CORS, so nothing in
+  the browser refuses one another site opened.
 - **Uploads** are checked by content, not by name — images by magic bytes, so an
   HTML payload named `.png` is rejected. Files are stored outside any served
   directory and reached only through authorised routes, under a generated name —
@@ -1510,6 +1527,20 @@ Back up `data/` — it holds both the database and every uploaded file.
   the filesystem, so there is no path to traverse out of. Delivery still resolves
   `disk_path` rather than rebuilding the path from the id, so rows predating that
   naming rule keep working and files can be rehomed.
+- **Uploaded pictures** are reached by entitlement rather than by being signed
+  in: a game master sees the cards in their own library, and a player sees the
+  campaign they are sitting at and whoever is on their stage. The ids are random,
+  so nobody guesses one; the rule is what stops an id that gets out — a
+  screenshot, a browser history, a proxy log — from being readable by every
+  account on the instance.
+- **Character sheets** carry the game master's own JavaScript, so they are served
+  under a `sandbox` CSP with no `allow-same-origin`. That puts them in an opaque
+  origin: the script still runs, but it cannot reach this app's cookies, storage,
+  DOM or authenticated API.
+- **The page itself** is served by the app in production, so it carries
+  `X-Frame-Options: DENY` and the rest of the response headers rather than
+  depending on a proxy to add them. See Deployment for what development does
+  instead, and why.
 - **Errors** shown to a user never carry internal detail; anything unexpected is
   logged in full server-side and reported as one generic line.
 - **Logs** are JSON lines with a request id, and redact passwords, tokens,
