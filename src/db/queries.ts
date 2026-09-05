@@ -687,6 +687,28 @@ export const sessionCharacters = {
   },
 
   /**
+   * A hit: this much STUN off what the slot has left.
+   *
+   * The subtraction is done in the statement rather than read out and written
+   * back, for `RECOVERY_UPDATE`'s reason turned the other way round — two hits
+   * landing at once must both land, and a total computed by whichever screen
+   * pressed first would swallow the other. It is also what lets the caller be
+   * told how big the hit was, which is the one thing a rule about hits needs and
+   * a new total cannot say.
+   *
+   * The floor is the one the API takes anyway (`schemas.setVitals`), so a run of
+   * presses on a character already well past nought cannot walk the number off
+   * the end of what can be saved. Nothing else is bounded: a HERO character at
+   * -8 STUN is unconscious, not invalid.
+   */
+  takeStun(sessionId: string, slotId: string, amount: number): void {
+    db.query(`
+      UPDATE session_characters SET cur_stun = MAX(cur_stun - $amount, -999)
+      WHERE game_session_id = $sessionId AND id = $slotId
+    `).run({ sessionId, slotId, amount });
+  },
+
+  /**
    * Writes what a slot has left. Absent values are left as they were, so a
    * screen that edits one box does not have to send the other two.
    *

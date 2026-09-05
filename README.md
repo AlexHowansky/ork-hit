@@ -1253,6 +1253,25 @@ lose one of two Recoveries pressed at once. Its neighbour, `…/rest`, is the sa
 shape and the blunter instrument: END and STUN set straight to the totals, BODY
 untouched.
 
+**STUN sends the hit, and the other two send the total.** A hit bigger than a
+character's CON stuns them in HERO, and that is a rule about the size of one hit
+— which a new total cannot say. Nine STUN off a goblin is one hit or three, or a
+game master fixing a number they mistyped, and the three mean different things.
+So the STUN box sends `stunTaken` and the server does the subtraction, in one
+`UPDATE` for the Recovery button's reason: two hits landing at once must both
+land. END and BODY go on sending totals, because nothing turns on how big a
+change to them was, and `enduranceTaken` would be shape nothing asks for. The two
+may not arrive together, and `schemas.setVitals` refuses a body carrying both.
+
+`Or set it exactly` is deliberately on the other side of that line: it is the
+control for putting a number right, so it writes a total and never stuns. The
+rule itself is `stunnedByTheHit` (`src/server/routes/sessions.ts`), which puts the
+condition on with the same `setTag` the button uses — a table takes it off the way
+they take off any other — and declines three ways: a hit no bigger than the CON, a
+CON of nought, and a character stunned already. The middle one matters more than
+it looks. Zero is what an unfilled characteristic reads as everywhere in this app,
+so treating it as a threshold would stun a half-typed character on every scratch.
+
 Those two and `PATCH /api/sessions/:id/stage/:slotId/vitals` are the routes both
 roles may call, and all of them share one authorization helper —
 `requireSlotAccess` — so there is one answer to who may change a slot
@@ -1269,6 +1288,17 @@ now, rebuilt and republished on every change. There is one exception —
 `broadcastSessionNotice`, which says something out loud once and keeps nothing.
 That is right for a toast: a client reconnecting five minutes later should not be
 told about the Post-Segment 12 Recovery it missed.
+
+Not every notice is the whole table's, though. A character stunned by a hit is
+the business of whoever is running the fight and whoever is playing that
+character, and a toast about it on the other five screens is noise about a
+monster whose numbers they cannot see anyway. So `sendSessionNotice` is the
+narrow one: it walks the open sockets and sends to the game master's and to one
+player's, the way `disconnectPlayer` finds a kicked player's, because a topic is
+exactly the thing that cannot be narrowed. It carries a tone with it, since a
+notice that is not good news should not arrive in the green the Recovery does —
+absent, which is what the Post-Segment 12 notice still sends, the screen keeps
+its own default.
 
 The log is deliberately on the other side of that line. It rides the snapshot,
 because a history that only lived in the browsers watching at the time would not

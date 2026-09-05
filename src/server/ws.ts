@@ -94,6 +94,39 @@ export function broadcastSessionNotice(sessionId: string, message: string): void
   serverRef?.publish(topicFor(sessionId), JSON.stringify({ type: "notice", message }));
 }
 
+/** How a notice is drawn where it lands. A missing one is the toast's own default. */
+export type NoticeTone = "error" | "success" | "info";
+
+/**
+ * Says something to the game master and to one player, and to nobody else.
+ *
+ * The counterpart to the broadcast above, for the notices that are somebody's
+ * news rather than the table's: a character being stunned is the business of
+ * whoever is running the fight and whoever is playing that character, and a
+ * toast about it on the other five screens is noise about a monster they cannot
+ * see the numbers of anyway.
+ *
+ * Sent down the sockets themselves rather than published to the topic, because a
+ * topic is exactly the thing that cannot be narrowed — the same reason
+ * `disconnectPlayer` walks this set. `playerId` is null where nobody holds the
+ * character, which leaves the game master told and is right: an unclaimed
+ * monster has no player to tell.
+ */
+export function sendSessionNotice(
+  sessionId: string,
+  message: string,
+  to: { playerId: string | null },
+  tone?: NoticeTone,
+): void {
+  const frame = JSON.stringify({ type: "notice", message, tone });
+  for (const socket of sockets) {
+    if (socket.data.sessionId !== sessionId) continue;
+    const wanted = socket.data.role === "gm"
+      || (to.playerId !== null && socket.data.playerId === to.playerId);
+    if (wanted) socket.send(frame);
+  }
+}
+
 /**
  * Tells everyone the session is over, then closes their sockets. The message goes
  * first so a player screen can explain what happened instead of just going quiet.

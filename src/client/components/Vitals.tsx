@@ -61,7 +61,19 @@ function pairFor(
   return { current: character.currentBody, max: character.body };
 }
 
-export type VitalsPatch = Partial<Record<HeroVitalField, number>>;
+/**
+ * What a screen asks to change about a slot.
+ *
+ * Each field is where that number should end up. `stunTaken` is the exception
+ * and is a different kind of statement: it is the size of one hit, and the
+ * server does the subtraction. STUN alone has it because STUN alone has a rule
+ * that turns on how big a single hit was — more of it than the character's CON
+ * stuns them — and a total arriving on its own cannot say whether it is one hit,
+ * three, or a game master correcting a typo.
+ */
+export type VitalsPatch = Partial<Record<HeroVitalField, number>> & {
+  stunTaken?: number;
+};
 
 /**
  * What each band looks like: red when a character is nearly out, yellow while
@@ -191,6 +203,7 @@ function Box({
   current,
   max,
   onCommit,
+  onTake,
   name,
 }: {
   label: string;
@@ -198,6 +211,15 @@ function Box({
   max: number;
   /** Absent for a read-only box. */
   onCommit?: (value: number) => void;
+  /**
+   * Where a box would rather report the size of a loss than the total it leaves.
+   *
+   * Given, a press in the "Take" block calls this with what was taken and the
+   * arithmetic is somebody else's; absent, every press is a total like it always
+   * was. Only the STUN box is handed one — see `VitalsPatch` — and even there,
+   * `Or set it exactly` never comes through here: setting a number is not a hit.
+   */
+  onTake?: (amount: number) => void;
   /** Who this belongs to, for the accessible label — a list needs telling apart. */
   name: string;
 }) {
@@ -240,6 +262,17 @@ function Box({
               max={max}
               onPick={(delta) => {
                 setPicking(false);
+                // A loss, from a box that would rather say how big it was: the
+                // number itself is left to the server, which is the only place
+                // that knows what this slot holds right now. Two screens are
+                // looking at the same monster and one of them is always slightly
+                // behind, so a total computed from what this one happens to be
+                // showing is how two hits at once become one — the reason the
+                // Recovery button sends a press rather than a number too.
+                if (onTake && delta < 0) {
+                  onTake(-delta);
+                  return;
+                }
                 onCommit(clamp(current + delta));
               }}
               onSet={(value) => {
@@ -362,6 +395,11 @@ export function Vitals({
             max={max}
             name={character.name}
             onCommit={onChange ? (value) => onChange({ [field]: value }) : undefined}
+            onTake={
+              onChange && field === "stun"
+                ? (amount) => onChange({ stunTaken: amount })
+                : undefined
+            }
           />
         );
       })}

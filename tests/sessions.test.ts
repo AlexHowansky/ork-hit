@@ -497,6 +497,40 @@ describe("what a stage slot has left", () => {
     expect(row.cur_stun).toBe(4);
   });
 
+  test("a hit is subtracted from what the slot has, not written over it", () => {
+    const { session, campaign } = makeSession(1);
+    const goblin = makeCharacter(campaign.id, "npc", unique("Goblin"), {
+      endurance: 20,
+      stun: 25,
+      body: 10,
+    });
+    const slot = sessionCharacters.add(session.id, goblin.id, "npc")!;
+
+    sessionCharacters.takeStun(session.id, slot, 11);
+    expect(vitalsOf(session.id).at(-1)).toEqual({ end: 20, stun: 14, body: 10 });
+
+    // Two hits both land, which is the whole reason the arithmetic is here and
+    // not in whichever browser pressed first.
+    sessionCharacters.takeStun(session.id, slot, 4);
+    sessionCharacters.takeStun(session.id, slot, 4);
+    expect(vitalsOf(session.id).at(-1)!.stun).toBe(6);
+
+    // Past nought is where a HERO character spends a fight being unconscious,
+    // so it goes on going down.
+    sessionCharacters.takeStun(session.id, slot, 20);
+    expect(vitalsOf(session.id).at(-1)!.stun).toBe(-14);
+  });
+
+  test("a hit cannot walk the number off the end of what can be saved", () => {
+    const { session, campaign } = makeSession(1);
+    const mook = makeCharacter(campaign.id, "npc", unique("Mook"), { stun: 10 });
+    const slot = sessionCharacters.add(session.id, mook.id, "npc")!;
+
+    // The floor `schemas.setVitals` would refuse a total below anyway.
+    for (let i = 0; i < 12; i += 1) sessionCharacters.takeStun(session.id, slot, 99);
+    expect(vitalsOf(session.id).at(-1)!.stun).toBe(-999);
+  });
+
   test("a Recovery gives back RECOVERY, and stops at the totals", () => {
     const { session, campaign } = makeSession(1);
     const brick = makeCharacter(campaign.id, "npc", unique("Brick"), {

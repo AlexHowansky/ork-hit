@@ -44,6 +44,7 @@ import {
   SESSION_STARTED,
   actionHeld,
   actionTaken,
+  becameStunned,
   gmAddedToScene,
   gmAssigned,
   gmKicked,
@@ -64,6 +65,7 @@ import {
   broadcastSessionNotice,
   closeSessionSockets,
   disconnectPlayer,
+  sendSessionNotice,
 } from "../ws.ts";
 
 /** The snapshot for a session, or a 404 if it vanished under us. */
@@ -114,6 +116,49 @@ function requireSlotAccess(
   return { session, asPlayer, player: asPlayer ? identity.player : null };
 }
 
+/**
+ * The HERO rule that a hit bigger than a character's CON stuns them.
+ *
+ * Applied here rather than in the browser because it is a rule about the fight
+ * and not about a screen: a player taking their own STUN and a game master
+ * taking it for them must come to the same answer, and only one of them is
+ * looking at the character's CON.
+ *
+ * Answers who to tell when it fires, and null when it does not — which is most
+ * hits. Three ways of not firing, each for its own reason:
+ *
+ * - The hit was no bigger than the CON. That is the rule.
+ * - The character has no CON. A zero here is not a threshold of nought, it is a
+ *   character nobody has filled in, and stunning them on every scratch would
+ *   punish an unfinished sheet.
+ * - They are stunned already. The tag is on, so there is nothing to add and
+ *   nothing new to say; a character being beaten on would otherwise fill the log
+ *   with the same line.
+ *
+ * The condition goes on with `setTag`, exactly as the button does, so a table
+ * takes it off the way they take off any other.
+ */
+function stunnedByTheHit(
+  sessionId: string,
+  slotId: string,
+  taken: number,
+): { name: string; playerId: string | null } | null {
+  const slot = slotOnStage(sessionId, slotId);
+  if (!slot || slot.constitution <= 0 || taken <= slot.constitution) return null;
+  if (sessionCharacters.hasTag(sessionId, slotId, "stunned")) return null;
+
+  sessionCharacters.setTag(sessionId, slotId, "stunned", true);
+
+  const named = nameOf(slot);
+  sessionEvents.record(sessionId, becameStunned(named));
+
+  // `slot.id` is the character's — the row is a character with its slot's
+  // columns hung on it — and a claim is on a character rather than on a slot.
+  // Null for a monster nobody is playing, which leaves the game master the only
+  // one told, and is right: there is nobody else whose character it is.
+  return { name: named, playerId: players.holderOf(sessionId, slot.id)?.id ?? null };
+}
+
 /** Publishes the new state and returns it to the caller in the same shape. */
 function publish(sessionId: string) {
   const snapshot = snapshotOr404(sessionId);
@@ -157,10 +202,18 @@ function prevSegment(segment: number): number {
  * Answers null for a slot that is not on this stage, which is the same nothing
  * `sessionCharacters.remove` does with one.
  */
-function sceneName(sessionId: string, slotId: string): string | null {
-  const slot = sessionCharacters.list(sessionId).find((row) => row.slot_id === slotId);
-  if (!slot) return null;
+function slotOnStage(sessionId: string, slotId: string): SessionCharacterRow | null {
+  return sessionCharacters.list(sessionId).find((row) => row.slot_id === slotId) ?? null;
+}
+
+/** The rule itself, for callers that already have the row in hand. */
+function nameOf(slot: SessionCharacterRow): string {
   return slot.copy_number > 1 ? `${slot.name} ${slot.copy_number}` : slot.name;
+}
+
+function sceneName(sessionId: string, slotId: string): string | null {
+  const slot = slotOnStage(sessionId, slotId);
+  return slot ? nameOf(slot) : null;
 }
 
 /**
@@ -501,16 +554,41 @@ export const sessionRoutes = {
         { logger }: RequestContext,
       ) => {
         const { session, asPlayer } = requireSlotAccess(request);
-        const values = await parseJsonBody(request, schemas.setVitals);
+        const { stunTaken, ...totals } = await parseJsonBody(request, schemas.setVitals);
+        const { slotId } = request.params;
 
-        sessionCharacters.setVitals(session.id, request.params.slotId, values);
+        sessionCharacters.setVitals(session.id, slotId, totals);
+        // The hit is applied on its own, since it is subtracted from what the
+        // slot holds rather than written over it. The schema has already refused
+        // a body that sent both.
+        if (stunTaken !== undefined) sessionCharacters.takeStun(session.id, slotId, stunTaken);
+
+        const stunned = stunTaken === undefined
+          ? null
+          : stunnedByTheHit(session.id, slotId, stunTaken);
+
         logger.info("slot vitals set", {
           sessionId: session.id,
-          slotId: request.params.slotId,
+          slotId,
+          stunTaken,
+          stunned: stunned !== null,
           by: asPlayer ? "player" : "gm",
         });
 
-        return publish(session.id);
+        const response = publish(session.id);
+
+        // After the snapshot, like the Post-Segment 12 notice below: a screen
+        // should have the pill on the character's row before it is told why.
+        if (stunned) {
+          sendSessionNotice(
+            session.id,
+            `${stunned.name} has become stunned.`,
+            { playerId: stunned.playerId },
+            "error",
+          );
+        }
+
+        return response;
       },
     ),
   },

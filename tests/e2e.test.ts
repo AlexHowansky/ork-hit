@@ -389,6 +389,63 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     expect(await strahdOnConsole.getByLabel("STUN left for Strahd").count()).toBe(1);
   }, 60_000);
 
+  test("a hit bigger than CON stuns the character on both screens", async () => {
+    if (!browser) return;
+    const { page: gm, code, campaignName } = await gmWithSession();
+    const player = await playerIn(code, "Rae", campaignName);
+
+    const gmRow = stagePanel(gm).getByRole("listitem").filter({ hasText: "Thorin" });
+    const myPanel = player.locator("section", { hasText: /My character/ });
+    await waitForValue(gmRow.getByLabel("STUN left for Thorin"), "25");
+
+    // Thorin is CON 20, so 21 is the first hit that stuns him. The player takes
+    // it on their own panel: the rule is the fight's rather than the console's,
+    // and must not depend on which screen pressed.
+    await change(player, myPanel.getByLabel("STUN left for Thorin"), "−21");
+    await waitForValue(myPanel.getByLabel("STUN left for Thorin"), "4");
+
+    // Nobody pressed the Stunned button, and the pill is on him on both screens.
+    await gmRow.getByTitle(/^Stunned/).waitFor({ timeout: 5000 });
+    await myPanel.getByTitle(/^Stunned/).waitFor({ timeout: 5000 });
+
+    // Both are told out loud, once. The full stop is what tells the toast from
+    // the log line below it, which is a record rather than a sentence said.
+    for (const page of [gm, player]) {
+      await page
+        .getByText("Thorin has become stunned.", { exact: true })
+        .waitFor({ timeout: 5000 });
+    }
+
+    // And the log carries it as its own line, with nobody's name on the front:
+    // the rules did this, not the game master.
+    const toggle = gm.getByRole("button", { name: "Log", exact: true });
+    await toggle.click();
+    await gm.waitForTimeout(500);
+    await gm
+      .locator('aside[aria-label="Log"]')
+      .getByText("Thorin has become stunned", { exact: true })
+      .waitFor({ timeout: 5000 });
+  }, 60_000);
+
+  test("an exact set is a correction rather than a hit, however big", async () => {
+    if (!browser) return;
+    const { page: gm, code, campaignName } = await gmWithSession();
+    await playerIn(code, "Sim", campaignName);
+
+    const gmRow = stagePanel(gm).getByRole("listitem").filter({ hasText: "Thorin" });
+    await waitForValue(gmRow.getByLabel("STUN left for Thorin"), "25");
+
+    // The whole 25 off, written as where the number ends up. A game master
+    // putting a total right is not damage, whatever the size of the change.
+    await gmRow.getByLabel("STUN left for Thorin").click();
+    await gm.getByRole("dialog").getByLabel("Or set it exactly").fill("0");
+    await gm.getByRole("dialog").getByRole("button", { name: "Set" }).click();
+    await waitForValue(gmRow.getByLabel("STUN left for Thorin"), "0");
+
+    expect(await gmRow.getByTitle(/^Stunned/).count()).toBe(0);
+    expect(await gm.getByText("has become stunned.", { exact: false }).count()).toBe(0);
+  }, 60_000);
+
   test("an NPC can be brought on more than once, and each copy acts", async () => {
     if (!browser) return;
     const { page: gm, code } = await gmWithSession();

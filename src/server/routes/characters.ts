@@ -229,7 +229,7 @@ export const characterRoutes = {
         // What the form said, over what the new sheet says about itself — the
         // same order the create route uses, and for the same reason.
         //
-        // The edit dialog sends all seven boxes, having read the sheet in the
+        // The edit dialog sends all eight boxes, having read the sheet in the
         // browser as it was chosen, so nothing here changes that path. This is
         // for a sheet dropped on the character panel over a character that
         // already exists: that sends the file and nothing else, and without this

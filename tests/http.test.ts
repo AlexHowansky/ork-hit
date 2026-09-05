@@ -32,6 +32,7 @@ import {
   tagsAdded,
   tagsRemoved,
   actionHeld,
+  becameStunned,
   GAME_MASTER,
 } from "../src/server/events.ts";
 
@@ -497,6 +498,208 @@ describe("what a character has left", () => {
     const response = await patchVitals(stranger, mine.session.id, slot!.id, { stun: 1 });
     expect(response.status).toBeGreaterThanOrEqual(401);
     expect(response.status).toBeLessThan(500);
+  });
+
+  describe("and a hit big enough to stun them", () => {
+    /**
+     * Gives a character a CON and its slot some STUN to lose.
+     *
+     * CON is edited in the library rather than seeded on the slot, because that
+     * is where it lives: it is looked up, not spent. The slot's STUN is set
+     * through the same route the rule is being tested on, as a total, which is
+     * the path that never stuns.
+     */
+    const arm = async (
+      cookie: string,
+      characterId: string,
+      sessionId: string,
+      slotId: string,
+      constitution: number,
+    ) => {
+      const form = new FormData();
+      form.set("constitution", String(constitution));
+      const patched = await fetch(
+        `${base}/api/characters/${characterId}`,
+        authed(cookie, { method: "PATCH", body: form }),
+      );
+      expect(patched.status).toBe(200);
+      expect((await patchVitals(cookie, sessionId, slotId, { stun: 30 })).status).toBe(200);
+    };
+
+    /** The tags on one slot, as the snapshot carries them. */
+    const tagsOnSlot = async (cookie: string, sessionId: string, slotId: string) => {
+      const snapshot = (
+        await (await fetch(`${base}/api/sessions/${sessionId}`, authed(cookie))).json()
+      ).snapshot;
+      return snapshot.characters.find((row: { id: string }) => row.id === slotId).statusTags;
+    };
+
+    test("the server does the subtraction, so two hits at once both land", async () => {
+      const { cookie } = await signIn();
+      const { pc, session } = await makeTable(cookie);
+      const [slot] = await slotsOf(cookie, session.id);
+      await arm(cookie, pc.id, session.id, slot!.id, 30);
+
+      // Both computed from 30 had the browser been doing it, and the second
+      // would have written the first one out of existence.
+      await Promise.all([
+        patchVitals(cookie, session.id, slot!.id, { stunTaken: 4 }),
+        patchVitals(cookie, session.id, slot!.id, { stunTaken: 5 }),
+      ]);
+
+      const snapshot = (
+        await (await fetch(`${base}/api/sessions/${session.id}`, authed(cookie))).json()
+      ).snapshot;
+      expect(snapshot.characters[0].currentStun).toBe(21);
+    });
+
+    test("more STUN than the CON stuns the character, and says so", async () => {
+      const { cookie } = await signIn();
+      const { pc, npc, session } = await makeTable(cookie);
+      const [slot] = await slotsOf(cookie, session.id);
+      await arm(cookie, pc.id, session.id, slot!.id, 10);
+
+      expect(
+        (await patchVitals(cookie, session.id, slot!.id, { stunTaken: 11 })).status,
+      ).toBe(200);
+
+      expect(await tagsOnSlot(cookie, session.id, slot!.id)).toContain("stunned");
+      // Nobody's line: the rules did this, not the game master.
+      expect(await messages(cookie, session.id)).toEqual([
+        ...opening(npc),
+        becameStunned(pc.name),
+      ]);
+    });
+
+    test("a hit no bigger than the CON does not", async () => {
+      const { cookie } = await signIn();
+      const { pc, npc, session } = await makeTable(cookie);
+      const [slot] = await slotsOf(cookie, session.id);
+      await arm(cookie, pc.id, session.id, slot!.id, 10);
+
+      // Exactly the CON, which is the edge the rule is written on: *more* than.
+      await patchVitals(cookie, session.id, slot!.id, { stunTaken: 10 });
+
+      expect(await tagsOnSlot(cookie, session.id, slot!.id)).toEqual([]);
+      expect(await messages(cookie, session.id)).toEqual(opening(npc));
+    });
+
+    test("a character nobody has filled in is never stunned by one", async () => {
+      const { cookie } = await signIn();
+      const { npc, session } = await makeTable(cookie);
+      const [slot] = await slotsOf(cookie, session.id);
+
+      // CON 0 is a sheet nobody typed, not a threshold of nought, so a hit of
+      // any size at all must not stun them.
+      await patchVitals(cookie, session.id, slot!.id, { stunTaken: 99 });
+
+      expect(await tagsOnSlot(cookie, session.id, slot!.id)).toEqual([]);
+      expect(await messages(cookie, session.id)).toEqual(opening(npc));
+    });
+
+    test("a character already stunned is not stunned again", async () => {
+      const { cookie } = await signIn();
+      const { pc, session } = await makeTable(cookie);
+      const [slot] = await slotsOf(cookie, session.id);
+      await arm(cookie, pc.id, session.id, slot!.id, 10);
+
+      await patchVitals(cookie, session.id, slot!.id, { stunTaken: 11 });
+      const after = await messages(cookie, session.id);
+
+      // The tag is on, so a second qualifying hit has nothing to add. A
+      // character being beaten on would otherwise fill the log with one line.
+      await patchVitals(cookie, session.id, slot!.id, { stunTaken: 11 });
+      expect(await messages(cookie, session.id)).toEqual(after);
+      expect(await tagsOnSlot(cookie, session.id, slot!.id)).toEqual(["stunned"]);
+    });
+
+    test("an exact set is a correction rather than a hit", async () => {
+      const { cookie } = await signIn();
+      const { pc, npc, session } = await makeTable(cookie);
+      const [slot] = await slotsOf(cookie, session.id);
+      await arm(cookie, pc.id, session.id, slot!.id, 10);
+
+      // The same 30 points off, written as where the number ends up. A game
+      // master fixing a total is not damage, whatever the size of the change.
+      await patchVitals(cookie, session.id, slot!.id, { stun: 0 });
+
+      expect(await tagsOnSlot(cookie, session.id, slot!.id)).toEqual([]);
+      expect(await messages(cookie, session.id)).toEqual(opening(npc));
+    });
+
+    test("a total and a hit cannot arrive together", async () => {
+      const { cookie } = await signIn();
+      const { session } = await makeTable(cookie);
+      const [slot] = await slotsOf(cookie, session.id);
+
+      // They are two different requests — where the number ends up, and what
+      // happened to it — and a body with both in it has not said which.
+      const response = await patchVitals(cookie, session.id, slot!.id, {
+        stun: 12,
+        stunTaken: 4,
+      });
+      expect(response.status).toBe(400);
+    });
+
+    test("the toast goes to the game master and that character's player only", async () => {
+      const { cookie } = await signIn();
+      const { pc, session } = await makeTable(cookie);
+      const holder = await joinAs(session.code, "Held");
+      const bystander = await joinAs(session.code, "Watching");
+      await claimAs(holder, session.id, pc.id);
+
+      const slots = await slotsOf(cookie, session.id);
+      const slot = slots.find((row) => row.characterId === pc.id)!;
+      await arm(cookie, pc.id, session.id, slot.id, 10);
+
+      const [gmSocket, holderSocket, bystanderSocket] = await Promise.all([
+        watchSession(cookie, session.id),
+        watchSession(holder, session.id),
+        watchSession(bystander, session.id),
+      ]);
+
+      /** Every notice a socket is sent while the hit is being applied. */
+      const notices = (socket: WebSocket) => {
+        const seen: { type: string; message: string; tone?: string }[] = [];
+        socket.addEventListener("message", (event) => {
+          const frame = JSON.parse(String(event.data));
+          if (frame.type === "notice") seen.push(frame);
+        });
+        return seen;
+      };
+      const [toGm, toHolder, toBystander] =
+        [gmSocket, holderSocket, bystanderSocket].map(notices);
+
+      await patchVitals(cookie, session.id, slot.id, { stunTaken: 11 });
+      // The snapshot and the notice are two frames on the same socket; this is
+      // long enough for both, and the assertion below is what fails if it is not.
+      await Bun.sleep(200);
+
+      expect(toGm).toEqual([
+        { type: "notice", message: `${pc.name} has become stunned.`, tone: "error" },
+      ]);
+      expect(toHolder).toEqual(toGm);
+      // A monster's misfortune is not everyone's business, and the numbers
+      // behind it are not this player's to see.
+      expect(toBystander).toEqual([]);
+
+      for (const socket of [gmSocket, holderSocket, bystanderSocket]) socket.close();
+    });
+
+    test("an unclaimed monster leaves the game master the only one told", async () => {
+      const { cookie } = await signIn();
+      const { npc, session } = await makeTable(cookie);
+      const slots = await slotsOf(cookie, session.id);
+      const slot = slots.find((row) => row.characterId === npc.id)!;
+      await arm(cookie, npc.id, session.id, slot.id, 10);
+
+      // Nothing to send to nobody: the notice goes out with no player named and
+      // the route neither throws nor waits for one.
+      expect(
+        (await patchVitals(cookie, session.id, slot.id, { stunTaken: 11 })).status,
+      ).toBe(200);
+      expect(await tagsOnSlot(cookie, session.id, slot.id)).toContain("stunned");
+    });
   });
 
   describe("and what condition they are in", () => {
@@ -1124,6 +1327,26 @@ async function addPc(cookie: string, campaignId: string, sessionId: string) {
 }
 
 /** A player taking a character for themselves. */
+/**
+ * A session socket, carrying the cookie a browser would have sent.
+ *
+ * The only way to watch what the server says *to one screen* rather than what it
+ * leaves in the database — a notice is an event and keeps nothing, so a test
+ * that asks afterwards is asking too late.
+ */
+function watchSession(cookie: string, sessionId: string): Promise<WebSocket> {
+  const socket = new WebSocket(
+    `${base.replace(/^http/, "ws")}/ws?sessionId=${encodeURIComponent(sessionId)}`,
+    { headers: { Cookie: cookie, Origin: base } } as unknown as string[],
+  );
+  return new Promise((resolve, reject) => {
+    socket.addEventListener("open", () => resolve(socket), { once: true });
+    socket.addEventListener("error", () => reject(new Error("the socket was refused")), {
+      once: true,
+    });
+  });
+}
+
 function claimAs(cookie: string, sessionId: string, characterId: string) {
   return fetch(
     `${base}/api/sessions/${sessionId}/claim`,

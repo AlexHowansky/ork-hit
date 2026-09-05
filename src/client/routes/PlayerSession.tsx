@@ -82,13 +82,13 @@ export function PlayerSession({
   onLeave: () => void;
 }) {
   const toast = useToast();
-  // Anything the server wants said at the table — the Post-Segment 12 Recovery —
-  // reaches every screen in the session as a toast. Green, like the turn passing
-  // to your character: both are the fight going well rather than something
-  // wanting attention.
+  // Anything the server wants said out loud here reaches this screen as a toast.
+  // Green unless the server says otherwise: the Post-Segment 12 Recovery and the
+  // turn passing to your character are both the fight going well, and a notice
+  // that is not — a character stunned by a hit — sends the tone to say so.
   const { snapshot, connection, applySnapshot } = useSessionSocket(
     sessionId,
-    (message) => toast.show(message, "success"),
+    (message, tone) => toast.show(message, tone ?? "success"),
   );
   const [claiming, setClaiming] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);

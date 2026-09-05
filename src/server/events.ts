@@ -121,6 +121,27 @@ export const actionHeld = (actor: string, character: string): string =>
 export const actionTaken = (actor: string, character: string): string =>
   `${actor} took ${character}'s held action`;
 
+/* -------------------------------------------------------------- the rules' */
+
+/**
+ * A character stunned by the size of the hit that landed on them.
+ *
+ * The second line in this module with nobody in it, and for a different reason
+ * than the clock's: somebody pressed the button that did the damage, but nobody
+ * decided this. A hit bigger than a character's CON stuns them because that is
+ * what the rules say, and writing it as `The game master stunned Goblin 2` would
+ * credit a person with a ruling they only rolled dice for — and would read as a
+ * game master who had reached for the Stunned button, which is a different thing
+ * a table would want to be able to tell apart in the log.
+ *
+ * So the character is the subject and the rule is the verb. The condition is not
+ * marked with `markTag`: what is written here is what happened to a character,
+ * not a pill somebody put on them, and the pill is on their row for anyone
+ * looking.
+ */
+export const becameStunned = (character: string): string =>
+  `${character} has become stunned`;
+
 /* ------------------------------------------------------------- the clock's */
 
 /**

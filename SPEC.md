@@ -450,6 +450,16 @@ The app should have the following features:
   their numbers already are. Both audiences see everyone's in the segment panel:
   who is stunned is not a secret, it is what the table is reading the list for.
 
+* Stunned is the one condition the app sets by itself. A character who takes more
+  STUN than their CONSTITUTION **in a single hit** is stunned by it, so the tag
+  goes on without anybody pressing anything, and the log says `<character> has
+  become stunned` — a line with no actor in it, because nobody chose it. A
+  character with no CONSTITUTION typed in is never stunned this way: a zero there
+  is an unfilled sheet rather than a threshold of nought. Neither is a character
+  already stunned, who has nothing to add. And neither is a number put right with
+  `Or set it exactly`, however large the correction: that control is for fixing a
+  total, and fixing a total is not a hit.
+
 * A known condition is drawn as its icon alone, with its name on hover and for a
   screen reader; a typed one keeps its word, since no picture would say it. A row
   already carries a name, a kind, a count and five characteristics, and eight
@@ -565,6 +575,12 @@ The app should have the following features:
 * When the turn reaches a player's character, that player should get a toast and
   an audible chime. Only that player: the turn passing to anyone else must stay
   silent.
+
+* A character stunned by a hit is toasted to two screens: the game master's, and
+  that character's player. Nobody else at the table is told — it is not their
+  character and not their numbers — and a monster nobody is playing is news for
+  the game master alone. It arrives in the tone of something gone wrong rather
+  than in the green the Post-Segment 12 Recovery uses.
 
 ## Conclusion
 

@@ -101,12 +101,26 @@ export const schemas = {
   /**
    * What a stage slot has left. Every field is optional: a screen that edits one
    * box sends one box.
+   *
+   * `stunTaken` is the one field that is not a total. It is the size of a single
+   * hit, and it is here rather than in the browser's arithmetic because a rule
+   * turns on it: a hit bigger than the character's CON stuns them, and a total
+   * cannot say whether it arrived as one hit or as three. The server does the
+   * subtraction, so two screens cannot lose a hit between them.
+   *
+   * Which is also why the two may not arrive together: `stun` says where the
+   * number ends up and `stunTaken` says what happened to it, and a body carrying
+   * both is asking for two different things at once.
    */
   setVitals: z.object({
     endurance: z.number().int().min(-999).max(999).optional(),
     stun: z.number().int().min(-999).max(999).optional(),
+    stunTaken: z.number().int().min(1).max(999).optional(),
     body: z.number().int().min(-999).max(999).optional(),
-  }),
+  }).refine(
+    (values) => values.stun === undefined || values.stunTaken === undefined,
+    { message: "Send either a new STUN total or the STUN taken, not both." },
+  ),
 
   /**
    * A game master's own settings. Every field is optional, as on `setVitals`: a
