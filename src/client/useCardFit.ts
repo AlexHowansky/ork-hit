@@ -23,6 +23,7 @@
  */
 
 import { useCallback, useEffect, useLayoutEffect, type RefObject } from "react";
+import { subscribeCardSize } from "./cardSize.ts";
 
 /** The `wide` variant from `styles.css`: the only layout with a panel to trim. */
 export const WIDE = "(min-width: 1024px) and (min-aspect-ratio: 3/2)";
@@ -146,9 +147,18 @@ export function useCardFit({
     const query = window.matchMedia(WIDE);
     query.addEventListener("change", measure);
 
+    // And the cards can change size under a container that does not move at all:
+    // the size is an inline custom property on the document (`cardSize.ts`), so
+    // neither the observer nor the query hears about it. Left unmeasured, the
+    // panel stays pinned to a width that held whole columns of the old card and
+    // is a fraction of a column short of the new one — which the grid answers by
+    // drawing the card smaller than the reader just asked for.
+    const unsubscribe = subscribeCardSize(measure);
+
     return () => {
       observer.disconnect();
       query.removeEventListener("change", measure);
+      unsubscribe();
     };
   }, [measure, containerRef]);
 }

@@ -37,7 +37,11 @@ document explains the requirements that must be adhered to.
 
 * How large a card's picture is drawn is a deployment setting, not a constant in
   the code. It measures the picture: the card comes out larger, since its border
-  and the name underneath are extra.
+  and the name underneath are extra. The size is a ceiling. A card is never drawn
+  larger than it, however much room a column has — a narrow window shows fewer
+  cards rather than bigger ones — and it is drawn smaller only where a card at
+  that size would not fit the column at all. Changing the size re-fits every
+  panel measured in cards, at once.
 
 * A character sheet is shown as it was written: it opens over the page in the
   window's own aspect ratio, with nothing drawn around it — no title, no border,

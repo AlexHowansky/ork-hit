@@ -56,6 +56,15 @@
 :root {
   --card-image-size: 176px;
   --card-border: 1px;
+
+  /*
+    A card column: the picture plus the border on each side of it, which is the
+    whole card's width. Named because two places have to agree on it — the grid's
+    track (`CARD_GRID`) and the arithmetic `useCardFit` does against the used
+    track list — and because it is the number a reader of either would otherwise
+    have to reassemble from the two above.
+  */
+  --card-track: calc(var(--card-image-size) + 2 * var(--card-border));
 }
 
 /*

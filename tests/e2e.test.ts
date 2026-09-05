@@ -1231,6 +1231,56 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     ).toContain("/frames/campaign.webp");
   }, 60_000);
 
+  test("a narrow window shows fewer cards rather than larger ones", async () => {
+    if (!browser) return;
+    const gm = await signedInGm();
+
+    const campaignName = unique("Campaign");
+    await gm.getByRole("button", { name: "New", exact: true }).click();
+    await gm.getByLabel("Campaign name").fill(campaignName);
+    await gm.getByRole("button", { name: "Create campaign" }).click();
+    await gm.getByText(`Characters in ${campaignName}`).waitFor();
+
+    // Narrow enough for the stacked layout and for a single column of cards, and
+    // still several times a card wide — which is the case that used to go wrong:
+    // the lone column took the whole width and the card was drawn across all of
+    // it, well past the size anybody had asked for.
+    await gm.setViewportSize({ width: 500, height: 900 });
+
+    const card = gm.locator(`article:has(button[aria-label="Select ${campaignName}"])`);
+    const well = card.locator(".aspect-square").first();
+
+    const width = async () => Math.round((await well.boundingBox())!.width);
+    const deadline = Date.now() + 3000;
+    while (Date.now() < deadline && (await width()) !== CARD_IMAGE_PX.default) {
+      await gm.waitForTimeout(50);
+    }
+
+    // The size is a ceiling, not a target.
+    expect(await width()).toBe(CARD_IMAGE_PX.default);
+
+    // And the room left over really is room: the card is a fraction of the grid
+    // it sits in, rather than the grid having shrunk to the card.
+    // Every track is one card wide — none of them stretched to take up the slack —
+    // and the slack is left as slack: the row is narrower than the grid holding
+    // it, which is the whole of what "fewer cards rather than larger ones" means.
+    const gridBox = card.locator("xpath=ancestor::div[contains(@class,'grid-cols-')][1]");
+    const grid = (await gridBox.boundingBox())!;
+    const laid = await gridBox.evaluate((el) => {
+      const style = getComputedStyle(el);
+      return { tracks: style.gridTemplateColumns.split(" "), gap: Number.parseFloat(style.columnGap) };
+    });
+
+    // The card's border on each side is what the track adds to the picture.
+    expect(new Set(laid.tracks)).toEqual(new Set([`${CARD_IMAGE_PX.default + 2}px`]));
+
+    const row = laid.tracks.length * (CARD_IMAGE_PX.default + 2)
+      + (laid.tracks.length - 1) * laid.gap;
+    expect(grid.width).toBeGreaterThan(row);
+
+    await gm.close();
+  }, 60_000);
+
   test("an NPC card is printed in the NPC cut of the frame", async () => {
     if (!browser) return;
     const gm = await signedInGm();

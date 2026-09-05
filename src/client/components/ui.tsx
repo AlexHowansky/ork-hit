@@ -275,20 +275,28 @@ export function CardFrame({ kind = "pc" }: { kind?: CharacterKind | "campaign" }
  * in the campaign panel and the character panel even though those panels are not
  * the same width. The cost is some slack at the end of a row, which is the price
  * of the two libraries matching — on the campaign panel `useCardFit` takes that
- * slack back by trimming the panel to whole columns. Below `sm` there is only ever
- * one column, and it takes the full width rather than leaving most of a phone
- * screen empty.
+ * slack back by trimming the panel to whole columns.
  *
- * The width itself is `--card-image-size`, which the deployment sets (see
- * `server/routes/appearance.ts`) — and it names the picture rather than the card
- * because that is what it measures: the image well is the full width of the
- * track, and the border and the name below it make the card taller. How much
- * taller is fixed now rather than a matter of the caption's contents: the card is
- * five by seven, so the track's width decides its height too (see `CARD_BASE`).
+ * The width itself is `--card-track`: `--card-image-size`, which the deployment
+ * sets (see `server/routes/appearance.ts`), plus the border on each side. The
+ * setting names the picture rather than the card because that is what it
+ * measures — the image well is the full width of the track, and the border and
+ * the name below it make the card taller. How much taller is fixed rather than a
+ * matter of the caption's contents: the card is five by seven, so the track's
+ * width decides its height too (see `CARD_BASE`).
+ *
+ * That size is a ceiling and not a target, which is what `minmax` is doing here.
+ * The track is the card's width wherever there is room for it, down to a single
+ * column with empty space beside it — a card is the size it was asked to be, and
+ * a narrow window gets fewer cards rather than larger ones. The floor is
+ * `min(100%, …)` rather than the track, and that is the case the two disagree
+ * about: a column narrower than one card. The track alone would overflow it, so
+ * the floor drops to the column's own width and the card comes out smaller than
+ * asked for, which is the one direction it may go — there is nowhere else for it
+ * to be drawn.
  */
 export const CARD_GRID =
-  "grid grid-cols-1 gap-4 " +
-  "sm:grid-cols-[repeat(auto-fill,calc(var(--card-image-size)+2*var(--card-border)))]";
+  "grid gap-4 grid-cols-[repeat(auto-fill,minmax(min(100%,var(--card-track)),var(--card-track)))]";
 
 /*
   Which daisyUI colour a button takes.

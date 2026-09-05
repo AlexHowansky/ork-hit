@@ -35,10 +35,23 @@ let current: number | null = null;
 
 const listeners = new Set<() => void>();
 
-function subscribe(listener: () => void): () => void {
+/**
+ * Says when the size changes, to anything that has measured something in terms of
+ * it.
+ *
+ * The store behind `useCardSize`, exported because it has a second kind of
+ * reader. The slider wants the number and re-renders on it; `useCardFit` wants
+ * only to know that its measurements are stale — the size is a custom property on
+ * the document, so nothing it observes changes on its own when the property does,
+ * and a panel pinned to a whole number of columns of the old card is a panel that
+ * is now too narrow for one of the new. Subscribing rather than re-rendering
+ * keeps a drag of the slider off React's path entirely.
+ */
+export function subscribeCardSize(listener: () => void): () => void {
   listeners.add(listener);
   return () => listeners.delete(listener);
 }
+
 
 /**
  * Puts a size on the page, or takes one off.
@@ -63,7 +76,7 @@ export function applyCardSize(px: number | null): void {
  */
 export function useCardSize(): [number, (px: number) => void] {
   const size = useSyncExternalStore(
-    subscribe,
+    subscribeCardSize,
     () => current ?? CARD_IMAGE_PX.default,
     () => CARD_IMAGE_PX.default,
   );

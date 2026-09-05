@@ -674,6 +674,23 @@ panels of different widths, and anything proportional makes a campaign card and 
 character card come out different sizes; a fixed track makes them identical at
 every window size, at the price of some slack at the end of a row.
 
+That size is a **ceiling, not a target**, which is what the `minmax` in the track
+is for. A window too narrow for two columns gets one column with empty space
+beside it, rather than one card stretched across the panel — the size is the
+reader's own setting now, and a card that grew past it whenever the window
+narrowed would be ignoring it. The floor is `min(100%, …)` rather than the track
+itself, for the one case the two disagree about: a column narrower than a single
+card, where the track would simply overflow. There the floor drops to the column's
+own width and the card comes out *smaller* than asked for, which is the only
+direction it may go, since there is nowhere else to draw it.
+
+The size can also change under a panel that never moves — it is an inline custom
+property on the document (`cardSize.ts`), so neither a `ResizeObserver` nor a
+media query hears about it. `useCardFit` subscribes to that store as well, because
+a panel still pinned to whole columns of the *old* card is a fraction of a column
+short of the new one, and the grid answers that by drawing the card smaller than
+the reader has just asked for.
+
 **The campaign panel gives that slack away.** On the wide layout it is trimmed to
 the width that holds a whole number of card columns and no part of another, so its
 edge sits flush against the last column and the character panel beside it takes
