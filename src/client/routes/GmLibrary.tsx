@@ -379,12 +379,15 @@ function CharacterForm({
 function LibraryCharacterCard({
   character,
   onOpen,
+  flipped,
   onPicture,
   dragProps,
   actions,
 }: {
   character: Character;
   onOpen: () => void;
+  /** Whether this is the card currently turned over. */
+  flipped: boolean;
   onPicture: (file: File) => void;
   dragProps: HTMLAttributes<HTMLElement> & { draggable?: boolean };
   actions: ReactNode;
@@ -398,6 +401,8 @@ function LibraryCharacterCard({
     <CharacterCard
       character={character}
       onOpen={onOpen}
+      flippable
+      flipped={flipped}
       dragProps={dragProps}
       dropProps={dropProps}
       inviting={over}
@@ -595,6 +600,14 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
   /** Sheets from the current drop still to be filed, for the note the panel shows. */
   const [filing, setFiling] = useState(0);
   const [previewing, setPreviewing] = useState<Character | null>(null);
+  /**
+   * The character whose card is turned over, if one is.
+   *
+   * One at a time. A card is turned over to read a number off the back of it,
+   * which is a thing done to one card rather than to the library — and a wall of
+   * cards showing their backs is a wall with no pictures on it.
+   */
+  const [flippedId, setFlippedId] = useState<string | null>(null);
   const [settingsOpen, toggleSettings] = useSettingsDrawer();
   /**
    * The character being dragged, if one is.
@@ -1073,7 +1086,14 @@ export function GmLibrary({ email, onSignOut }: { email: string; onSignOut: () =
                       <LibraryCharacterCard
                         key={character.id}
                         character={character}
-                        onOpen={() => setPreviewing(character)}
+                        // Pressing the card turns it over. The sheet it used to
+                        // open has its own control in the corner, so nothing has
+                        // been taken away — it has stopped being what the whole
+                        // card does.
+                        onOpen={() =>
+                          setFlippedId((current) => (current === character.id ? null : character.id))
+                        }
+                        flipped={flippedId === character.id}
                         onPicture={(file) => void setCardImage(file, character)}
                         dragProps={{
                           draggable: true,

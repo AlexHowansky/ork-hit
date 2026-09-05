@@ -481,12 +481,101 @@ body {
 .card-actions-3d {
   --ease: linear(0, 0.931 13.8%, 1.196 21.4%, 1.343 29.8%, 1.378 36%, 1.365 43.2%, 1.059 78%, 1);
   transform: rotate3d(var(--transform), 0, 10deg);
-  transition: transform var(--ease) 0.5s, scale var(--ease) 0.5s;
+  /* Opacity rides along for the flip's sake — see `.card-actions-3d.is-hidden`. */
+  transition: transform var(--ease) 0.5s, scale var(--ease) 0.5s, opacity 0.25s ease-out;
 }
 
 .card-3d:hover .card-actions-3d {
   --ease: linear(0, 0.708 15.2%, 0.927 23.6%, 1.067 33%, 1.12 41%, 1.13 50.2%, 1.019 83.2%, 1);
   scale: 1.05;
+}
+
+/*
+  Turning a card over.
+
+  The flip cannot go on the tile. `hover-3d` owns that element's `transform` —
+  the tilt — and also gives it `overflow: hidden`, which forces `transform-style:
+  flat` on it, so anything under it is drawn flattened however it is rotated. So
+  the flip is a layer *inside* the tile: the tile keeps tilting and provides the
+  perspective, the layer below it turns, and the two compose instead of one
+  overwriting the other.
+
+  `perspective` here rather than depending on the article's: the article's applies
+  to its own children, which is the `hover-3d` wrapper and not this. Shorter than
+  the 75rem the tilt uses, because the flip is a half-turn rather than a lean of a
+  few degrees, and at 75rem a half-turn reads as flat.
+
+  Both faces are absolute and stacked, which is what makes the box the height of
+  the tile rather than of whichever face is showing. `backface-visibility: hidden`
+  is what actually swaps them: each face disappears as it turns away, so the back
+  face — parked at 180 degrees — is the one facing the reader for the second half
+  of the turn.
+*/
+.card-flip-tile {
+  perspective: 40rem;
+}
+
+.card-flip {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  /* Longer than the tilt's 0.5s: a half-turn covers thirty-six times the angle,
+     and at the tilt's pace it is a snap rather than a card being turned over. */
+  transition: transform 0.6s cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+
+.card-flip.is-flipped {
+  transform: rotateY(180deg);
+}
+
+.card-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  backface-visibility: hidden;
+}
+
+.card-face-back {
+  transform: rotateY(180deg);
+}
+
+/*
+  The corner controls belong to the card's face, and the face is what has just
+  turned away. They sit outside the tilting tile entirely (see above), so they
+  cannot ride the flip with it — left as they are they would hang over the back
+  of the card, three glyphs on a stat block.
+
+  Faded rather than unmounted, so they leave with the turn instead of blinking
+  out at the start of it. The opacity is added to the transition the block above
+  declares rather than set with a utility: `transition-opacity` would replace
+  `transition-property` wholesale and take the transform's easing with it.
+
+  `pointer-events` is set on the child because the child is what claims them —
+  `.card-actions-3d` itself passes the pointer through and the box inside it takes
+  it back. Unlayered, so it beats the utility that does.
+*/
+.card-actions-3d.is-hidden {
+  opacity: 0;
+}
+
+.card-actions-3d.is-hidden > * {
+  pointer-events: none;
+}
+
+/*
+  The stat block on the back of a character's card.
+
+  Sized against the card the way the name is (`.card-name` above), and for the
+  same reason: the cards are drawn anywhere from 100px to 350px wide, and a flat
+  size that reads on one is a whisper or a shout on the other. 0.062 is the
+  fraction that puts all seven rows and their rules inside the frame's window at
+  every size the slider allows — the window is about 61% of the card's height,
+  which is 0.85 of its width, and seven ruled lines of this come to 0.61 of it.
+*/
+.card-stat {
+  font-size: calc(var(--card-image-size) * 0.062);
+  line-height: 1.4;
 }
 
 /* Respect a reader who has asked for less motion; the drag list animates a lot. */

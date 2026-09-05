@@ -183,6 +183,20 @@ export const CARD_WINDOW_CONTROLS =
   "left-[3.3%] right-[4.4%] top-[5.5%] bottom-[37.5%]";
 
 /**
+ * The frame's window itself — where the picture shows through — as a box to lay
+ * something else in.
+ *
+ * The same measurement `CARD_WINDOW_CONTROLS` is taken from, written out whole:
+ * x 3.3% to 97.0%, y 2.9% to 63.9%. That one pulls its corner in to clear the
+ * bevel, because it holds glyphs pinned to the top right; this one holds a block
+ * that fills the window, and a block is padded away from its own edges anyway.
+ *
+ * Used by the back of a character's card, which prints its numbers where the
+ * front prints its picture.
+ */
+export const CARD_WINDOW = "left-[3.3%] right-[3.0%] top-[2.9%] bottom-[36.1%]";
+
+/**
  * The name's strip on a card that carries the frame, which is not the same box.
  *
  * The card's own division puts the bottom two sevenths under the picture.
@@ -640,6 +654,13 @@ const ZONES = [0, 1, 2, 3, 4, 5, 6, 7];
  * Anything else — a drag source, a drop target — goes on the outer `<article>`
  * through `...rest`, which is also what keeps `article:has(button[…])` working as
  * the way `tests/e2e.test.ts` finds a card.
+ *
+ * **A card with a back** turns over instead of only tilting. The two are separate
+ * layers on purpose: `hover-3d` owns the tile's transform, so the turn belongs to
+ * a layer inside it and the two compose rather than one cancelling the other. See
+ * `.card-flip` in `styles.css` for why it cannot be the tile itself. Without a
+ * `back` the markup is exactly what it always was — one tile with the children
+ * inside it — so the cards that have no second side pay nothing for this.
  */
 export function HoverCard({
   label,
@@ -647,6 +668,8 @@ export function HoverCard({
   pressed,
   disabled,
   actions,
+  back,
+  flipped = false,
   cardClassName = "",
   className = "",
   children,
@@ -660,13 +683,31 @@ export function HoverCard({
   disabled?: boolean;
   /** Icon buttons laid into the top right of the picture, above the zones. */
   actions?: ReactNode;
+  /** The card's other side. Without one the card has no back and never turns. */
+  back?: ReactNode;
+  /** Whether the back is the side facing the reader. Ignored without `back`. */
+  flipped?: boolean;
   /** Border and background for the tile, which vary with selection. */
   cardClassName?: string;
   /** For the frame around the card: a drop target's ring, and nothing else. */
   className?: string;
   children: ReactNode;
 }) {
-  const tile = <div className={`${CARD_BASE} ${cardClassName}`}>{children}</div>;
+  const tile = (
+    <div className={`${CARD_BASE} ${cardClassName}${back ? " card-flip-tile" : ""}`}>
+      {back ? (
+        <div className={`card-flip${flipped ? " is-flipped" : ""}`}>
+          {/* Both faces are always mounted and always laid out: the back has to
+              be there to be turned towards, and a face that only appeared at the
+              half-way point would arrive edge-on to the reader. */}
+          <div className="card-face">{children}</div>
+          <div className="card-face card-face-back">{back}</div>
+        </div>
+      ) : (
+        children
+      )}
+    </div>
+  );
   // `key` on a list of empties only to keep React quiet; they are interchangeable.
   const zones = ZONES.map((zone) => <div key={zone} />);
 
@@ -697,7 +738,12 @@ export function HoverCard({
       )}
       {actions ? (
         <div
-          className="card-actions-3d pointer-events-none absolute inset-0 z-20"
+          // Hidden while the back is showing: the controls are printed on the
+          // card's face, and they ride outside the tile rather than on it, so
+          // they cannot turn away with it. `styles.css` fades them out.
+          className={`card-actions-3d pointer-events-none absolute inset-0 z-20${
+            flipped && back ? " is-hidden" : ""
+          }`}
           aria-hidden={false}
         >
           {/* Two boxes, because they do two different jobs. The outer one is the
