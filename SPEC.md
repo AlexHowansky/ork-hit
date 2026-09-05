@@ -87,8 +87,20 @@ document explains the requirements that must be adhered to.
   held still.
 
 * Pressing a card anywhere does the card's own thing: selecting a campaign,
-  opening a character. Its corner controls stay reachable over the top of that,
-  and remain reachable however the card is animated.
+  turning a character's card over. Its corner controls stay reachable over the
+  top of that, and remain reachable however the card is animated — except while a
+  card is showing its back, since they are printed on the face that has turned
+  away.
+
+* A character's card in the library has a back, and pressing the card turns it
+  over as an object being turned over rather than a picture being swapped.
+  Printed on it: the character's characteristics, in the frame's window where the
+  picture is on the front, and the character's name where it always is — a shelf
+  of turned-over cards is still a shelf somebody can read. It is the library's
+  alone. Where a character's card appears beside those same numbers, as it does
+  in a session, the card has no back: turning it over would hide the picture to
+  say something the screen is already saying. Which way up a card is must be
+  legible to somebody who cannot see it turn.
 
 * Icons come from one published set rather than being drawn per control or typed
   as text symbols, so they match each other and render the same everywhere. An

@@ -551,15 +551,16 @@ body {
   declares rather than set with a utility: `transition-opacity` would replace
   `transition-property` wholesale and take the transform's easing with it.
 
-  `pointer-events` is set on the child because the child is what claims them —
-  `.card-actions-3d` itself passes the pointer through and the box inside it takes
-  it back. Unlayered, so it beats the utility that does.
+  `pointer-events` has to be taken back explicitly, and from every descendant
+  rather than from the child: `.card-actions-3d` passes the pointer through
+  already, and it is a box two levels down that claims it again for the buttons.
+  Unlayered, so this beats the utility that does.
 */
 .card-actions-3d.is-hidden {
   opacity: 0;
 }
 
-.card-actions-3d.is-hidden > * {
+.card-actions-3d.is-hidden * {
   pointer-events: none;
 }
 

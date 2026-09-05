@@ -210,6 +210,19 @@ const stageCount = async (page: Page, count: number) => {
   expect(seen).toBe(count);
 };
 
+/**
+ * The side of a library character's card that is facing the reader.
+ *
+ * A character's card in the library has two of everything the frame draws — the
+ * artwork, the name's strip, the name itself — because it has a back with the
+ * numbers on it, and both sides are mounted at all times so the far one is there
+ * to be turned towards. So anything measured on a card has to say which side it
+ * is asking about, or it matches twice. The campaign cards have no back and are
+ * not scoped this way.
+ */
+const CARD_FRONT = ".card-face:not(.card-face-back)";
+const CARD_BACK = ".card-face-back";
+
 const namesIn = (page: Page) =>
   stagePanel(page)
     .locator("li")
@@ -1240,7 +1253,7 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     await gm.getByRole("button", { name: "Goblin", exact: true }).waitFor();
 
     const card = gm.locator(`article:has(button[aria-label="Goblin"])`);
-    const frame = card.locator(".card-frame");
+    const frame = card.locator(`${CARD_FRONT} .card-frame`);
     await frame.waitFor();
 
     // Asserted on the URL rather than on pixels: which file the card asks for is
@@ -1278,7 +1291,7 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     await gm.getByRole("button", { name: "Framed", exact: true }).waitFor();
 
     const card = gm.locator(`article:has(button[aria-label="Framed"])`);
-    const frame = card.locator(".card-frame");
+    const frame = card.locator(`${CARD_FRONT} .card-frame`);
     await frame.waitFor();
 
     // The artwork is actually resolved rather than left as an unset variable —
@@ -1306,13 +1319,14 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     // The panel runs 72.7% to 96.5% of the card's height, so its centre is 84.6%;
     // what lands here is a whisker above that because the strip is inside the
     // tile, which is inset from this box by the card's hairline border.
-    const name = (await card.getByText("Framed", { exact: true }).boundingBox())!;
+    const name = (await card.locator(CARD_FRONT).getByText("Framed", { exact: true })
+      .boundingBox())!;
     const centre = (name.y + name.height / 2 - cardBox.y) / cardBox.height;
     expect(centre).toBeCloseTo(0.843, 2);
 
     // No kind badge on a library card: the frame says which kind it is, so the
     // pill would only repeat the artwork over the top of it.
-    expect(await card.getByText("PC", { exact: true }).count()).toBe(0);
+    expect(await card.locator(CARD_FRONT).getByText("PC", { exact: true }).count()).toBe(0);
 
     // The corner controls are bare glyphs stacked down the picture's top right,
     // inside the bevel that keeps the window's own corner out of reach: on the
@@ -1353,7 +1367,7 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     // must not touch the name — and must not paint the panel out from under it
     // with that theme's own background either. Left until last, since switching
     // theme reflows the page every measurement above was taken from.
-    const caption = card.locator(".card-caption");
+    const caption = card.locator(`${CARD_FRONT} .card-caption`);
     const ink = async () => {
       await gm.waitForTimeout(100);
       return caption.evaluate((el) => {
@@ -1370,6 +1384,119 @@ describe.skipIf(!process.env.CI && !process.env.E2E)("in a real browser", () => 
     expect(dark.colour).toBe(light.colour);
     expect(light.background).toBe("rgba(0, 0, 0, 0)");
     expect(dark.background).toBe("rgba(0, 0, 0, 0)");
+  }, 60_000);
+
+  test("a character's card turns over to show its characteristics", async () => {
+    if (!browser) return;
+    const gm = await signedInGm();
+
+    const campaignName = unique("Campaign");
+    await gm.getByRole("button", { name: "New", exact: true }).click();
+    await gm.getByLabel("Campaign name").fill(campaignName);
+    await gm.getByRole("button", { name: "Create campaign" }).click();
+    await gm.getByText(`Characters in ${campaignName}`).waitFor();
+
+    // Seven characteristics, all different, so a number read off the back can
+    // only have come from the field it belongs to.
+    const stats = [
+      ["SPD", 5],
+      ["DEX", 21],
+      ["INIT", 3],
+      ["REC", 9],
+      ["END", 47],
+      ["STUN", 38],
+      ["BODY", 14],
+    ] as const;
+
+    await gm.getByRole("button", { name: "Add", exact: true }).click();
+    await gm.getByLabel("Name").fill("Turncoat");
+    await gm.getByLabel(/Character sheet/).setInputFiles({
+      name: "sheet.html",
+      mimeType: "text/html",
+      buffer: Buffer.from("<h1>Turncoat</h1>"),
+    });
+    for (const [label, value] of stats) {
+      await gm.getByLabel(label, { exact: true }).fill(String(value));
+    }
+    await gm.getByRole("button", { name: "Add character" }).last().click();
+    await gm.getByRole("button", { name: "Turncoat", exact: true }).waitFor();
+
+    const card = gm.locator(`article:has(button[aria-label="Turncoat"])`);
+    const press = card.getByRole("button", { name: "Turncoat", exact: true });
+
+    /**
+     * Which way the card is facing once it has finished turning: `1` is face up
+     * and `-1` is turned over, read as the first cell of the rotation matrix.
+     *
+     * Read off the computed transform rather than off a class, because a class
+     * says what was asked for and this says what the browser drew — and because
+     * the flip has to survive the tilt that is on the element above it.
+     *
+     * It is told what it is waiting for, and that is not fussiness: the turn
+     * takes 0.6s, and for the first frame of it the card is still exactly where
+     * it was. A poll that stopped at "settled" would read the side it started on
+     * and call it the answer. On timeout it returns whatever it last saw, so a
+     * failure says which way the card actually ended up.
+     */
+    const facing = async (want: 1 | -1) => {
+      const deadline = Date.now() + 3000;
+      let seen = 0;
+      while (Date.now() < deadline) {
+        seen = await card.locator(".card-flip").evaluate(
+          (el) => new DOMMatrix(getComputedStyle(el).transform).m11,
+        );
+        if (Math.round(seen) === want) return want;
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      return seen;
+    };
+
+    // It starts face up, and says so: a card with a back is a toggle, and a
+    // reader who cannot see it turn is told nothing else by the press.
+    expect(await facing(1)).toBe(1);
+    expect(await press.getAttribute("aria-pressed")).toBe("false");
+
+    await press.click();
+    expect(await facing(-1)).toBe(-1);
+    expect(await press.getAttribute("aria-pressed")).toBe("true");
+
+    // All seven characteristics are printed on the back, each against its label.
+    const back = (await card.locator(CARD_BACK).innerText()).replace(/\s+/g, " ");
+    for (const [label, value] of stats) {
+      expect(back).toMatch(new RegExp(`\\b${label} ${value}\\b`));
+    }
+    // And the name with them, so a library of turned-over cards is still a
+    // library rather than seven anonymous stat blocks.
+    expect(back).toContain("Turncoat");
+
+    // The corner controls are printed on the face that has just turned away.
+    // They ride outside the tile and cannot turn with it, so they are faded out
+    // instead — and are not clickable while they are gone.
+    // Polled to the end of the fade, like the turn above: the two run on
+    // different clocks — a 0.25s fade under a 0.6s turn — so the card being over
+    // is not the same moment as the controls being gone.
+    const actions = card.locator(".card-actions-3d");
+    const faded = async () => {
+      const deadline = Date.now() + 3000;
+      let seen = "";
+      while (Date.now() < deadline) {
+        seen = await actions.evaluate((el) => getComputedStyle(el).opacity);
+        if (seen === "0") return seen;
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      return seen;
+    };
+    expect(await faded()).toBe("0");
+    expect(
+      await card
+        .getByRole("button", { name: /^Delete / })
+        .evaluate((el) => getComputedStyle(el).pointerEvents),
+    ).toBe("none");
+
+    // And it turns back.
+    await press.click();
+    expect(await facing(1)).toBe(1);
+    expect(await press.getAttribute("aria-pressed")).toBe("false");
   }, 60_000);
 
   test("the corner controls tilt with the card, and still work while it is tilted", async () => {

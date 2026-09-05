@@ -321,9 +321,10 @@ sit beneath it and the tilt would otherwise stop, and `CARD_CAPTION_FRAMED` puts
 the name on the artwork's panel (72.7%–96.5% of the card's height, the part every
 frame draws panel behind) rather than in
 the card's own bottom two sevenths, which would leave it astride the frame's
-lower border. `CARD_WINDOW` does the same job for the corner controls, which are
-pinned to the square well otherwise and would sit across the gold divider the art
-draws at 64%. The card's own 1px border is deliberately left showing around the
+lower border. `CARD_WINDOW_CONTROLS` does the same job for the corner controls, which
+are pinned to the square well otherwise and would sit across the gold divider the
+art draws at 64%. `CARD_WINDOW` is the window itself, for something laid in it
+whole rather than pinned to a corner of it — the back of a character's card. The card's own 1px border is deliberately left showing around the
 art: it is the hover and keyboard-focus highlight, and painting over it would
 take that away. Every kind of card is framed, so they all put their controls in
 the same corner and there is one arrangement in `HoverCard` rather than a choice.
@@ -469,6 +470,38 @@ pointer is never over that element at all: the zones cover it and are its
 siblings, not its children, so its own `:hover` never fires. The group is the
 `hover-3d` wrapper, which the zones *are* inside.
 
+**A character's card in the library turns over.** Pressing one flips it in 3D to
+a back that prints all seven characteristics — SPD, DEX, INIT, REC, END, STUN,
+BODY — ruled down the frame's window like the back of a baseball card, with the
+name still in its usual strip so a shelf of turned-over cards is still readable.
+The sheet that pressing a card used to open has its own control in the corner, so
+nothing was taken away; it stopped being what the whole card does. Only the
+library gives a card a back: on the session screens those numbers are already on
+the screen beside it, and turning the card over there would hide the picture to
+say something said twice.
+
+The flip cannot go on the tile, and that is the thing to know before touching it.
+`hover-3d` owns that element's `transform` — the tilt — and gives it
+`overflow: hidden`, which forces `transform-style: flat`, so a rotation there is
+either overwritten or drawn flat. So the turn is a **layer inside** the tile
+(`.card-flip` in `styles.css`): the tile goes on tilting and supplies the
+perspective, the layer below it turns, and the two compose. Both faces are
+mounted and stacked at all times — the far one has to be there to be turned
+towards — and `backface-visibility: hidden` is what swaps them, each face
+disappearing as it turns away. `HoverCard` grows a `back` and a `flipped` for it;
+with no `back` the markup is exactly what it always was, so campaign cards and the
+session screens pay nothing. The card is a toggle once it has a back, so it
+carries `aria-pressed`, and the corner controls — which ride outside the tile and
+cannot turn with it — fade out while the back is showing.
+
+The back is drawn in the same frame as the front and carries `data-theme="winter"`
+for the whole face, for the reason the name's strip carries it on the front: one
+cut of the artwork serves both themes, so the back of a card is pale whatever the
+page is doing, and the ink on it has to be the ink that belongs on pale card. The
+stat block's type scales with `--card-image-size` (`.card-stat`) exactly as the
+name's does — seven ruled rows come to about 0.61 of the card's width against a
+window of 0.85, so they fit at every size the slider allows.
+
 **The card also catches the light as it tilts**, and that too is daisyUI's, only
 turned up. `hover-3d` sets a `--shine` beside the `--transform` it rotates by —
 `0% 0%` for the top left zone, `200% 200%` for the bottom right, `100% 100%` at
@@ -534,7 +567,10 @@ which is worse than the slide — so `styles.css` neutralises the transform
 outright and drops the sheen's pseudo-elements, unlayered so it beats daisyUI's
 own rule. The hover border still says which card the pointer is on. The foil
 stays, pinned to its resting cell: held still it is a colour the card is printed
-in rather than a motion, which is nothing for that reader to object to.
+in rather than a motion, which is nothing for that reader to object to. The flip
+needs nothing of its own: it is a turn between two settled states rather than a
+motion that starts and stops on hover, so the blanket zeroing above simply makes
+it instant, which is what a reader who asked for less movement wants of it.
 
 **Colour belongs to daisyUI, not to the components.** `src/client/styles.css`
 enables two of its stock themes — `winter` for light and `night` for dark — and
