@@ -19,8 +19,10 @@
 
 import type { BunRequest, Server, ServerWebSocket } from "bun";
 import { config } from "../lib/config.ts";
+import { AppError } from "../lib/errors.ts";
 import { log } from "../lib/log.ts";
 import { currentGm, currentPlayer } from "./middleware/auth.ts";
+import { checkOrigin } from "./middleware/csrf.ts";
 import { playerDisconnected } from "./events.ts";
 import { buildGmSessionList, buildSnapshot } from "./session-state.ts";
 import { gameSessions, players, sessionEvents } from "../db/queries.ts";
@@ -266,6 +268,28 @@ function libraryUpgrade(request: BunRequest): SocketData | null {
  * every other endpoint.
  */
 export const wsRoute = (request: BunRequest, server: Server<SocketData>): Response | undefined => {
+  // The same Origin check every mutating API request goes through, for a reason
+  // that is sharper here than there: a handshake is exempt from CORS, so nothing
+  // in the browser refuses one another site opened. `SameSite=Lax` keeps the
+  // cookies off such a request and is what actually stops it today; this is the
+  // second lock, and the one that does not depend on the cookie policy of
+  // whichever browser is asking.
+  //
+  // Caught rather than left to propagate because this route is registered raw
+  // instead of behind `handler()` — the thing that made the check necessary — so
+  // there is no error boundary above it, and an escaping throw would land in
+  // Bun's own handler as a 500 rather than the 403 this is.
+  try {
+    checkOrigin(request);
+  } catch (error) {
+    if (!(error instanceof AppError)) throw error;
+    log.warn("socket refused: unexpected origin", {
+      origin: request.headers.get("origin"),
+      fetchSite: request.headers.get("sec-fetch-site"),
+    });
+    return new Response(error.message, { status: error.status });
+  }
+
   const params = new URL(request.url).searchParams;
   const data = params.get("scope") === "library"
     ? libraryUpgrade(request)

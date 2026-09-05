@@ -2143,14 +2143,38 @@ describe("the library socket", () => {
     }
   });
 
-  test("refuses a caller who is not signed in", async () => {
-    const socket = new WebSocket(`${wsBase()}/ws?scope=library`);
-    const settled = new Promise<string>((resolve) => {
+  /** Whether a handshake was accepted, without caring how it was turned away. */
+  function settles(socket: WebSocket): Promise<string> {
+    return new Promise((resolve) => {
       socket.addEventListener("open", () => resolve("open"), { once: true });
       socket.addEventListener("close", () => resolve("closed"), { once: true });
       socket.addEventListener("error", () => resolve("closed"), { once: true });
     });
-    expect(await settled).toBe("closed");
+  }
+
+  test("refuses a caller who is not signed in", async () => {
+    // Carries the Origin a browser would send, so what this measures is the
+    // missing cookie and not the check below.
+    const socket = new WebSocket(`${wsBase()}/ws?scope=library`, {
+      headers: { Origin: base },
+    } as unknown as string[]);
+    expect(await settles(socket)).toBe("closed");
+    socket.close();
+  });
+
+  /**
+   * A handshake is exempt from CORS, so a page on another site can open one and
+   * the browser will not stop it. `SameSite=Lax` keeps the cookie off that
+   * request, but the server refuses it on the Origin alone — which is what holds
+   * even where the cookie policy does not, and is the same rule the JSON API
+   * applies to every request that changes something.
+   */
+  test("refuses a signed-in caller arriving from another site", async () => {
+    const { cookie } = await signIn();
+    const socket = new WebSocket(`${wsBase()}/ws?scope=library`, {
+      headers: { Cookie: cookie, Origin: "https://evil.example" },
+    } as unknown as string[]);
+    expect(await settles(socket)).toBe("closed");
     socket.close();
   });
 });
